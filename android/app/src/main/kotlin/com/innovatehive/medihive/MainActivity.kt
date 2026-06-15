@@ -1,0 +1,5 @@
+package com.innovatehive.medihive
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

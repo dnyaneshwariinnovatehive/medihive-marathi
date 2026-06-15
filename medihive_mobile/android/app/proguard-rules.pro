@@ -1,0 +1,7 @@
+-keep class androidx.work.impl.** { *; }
+-keep class androidx.work.WorkerParameters { *; }
+-keep class androidx.work.ListenableWorker { *; }
+-keep class androidx.work.CoroutineWorker { *; }
+-keep class androidx.room.** { *; }
+-keep class * extends androidx.room.RoomDatabase
+-dontwarn androidx.work.**
