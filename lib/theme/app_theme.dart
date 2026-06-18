@@ -4,90 +4,115 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   static bool isDarkMode = false;
 
-  // ── PRIMARY PALETTE ──────────────────────
-  static const Color primary        = Color(0xFF1A506C);
-  static const Color primaryLight   = Color(0xFF2A6E90); // 15% lighter
-  static const Color primaryLighter = Color(0xFF3A8CB4); // 30% lighter
-  static const Color primaryDark    = Color(0xFF103848); // 20% darker
-  static const Color primarySurface = Color(0xFFE8F2F7); // 5% tint on white
+  // ── LIGHT MODE PALETTE ──────────────────────
+  static const Color lightBackground    = Color(0xFFFBF9F6);
+  static const Color lightSurface       = Color(0xFFFFFFFF);
+  static const Color lightPrimary       = Color(0xFF1A1A2E);
+  static const Color lightSecondary     = Color(0xFFC9A96E);
+  static const Color lightAccent        = Color(0xFFB87351);
+  static const Color lightTextPrimary   = Color(0xFF2D2D2D);
+  static const Color lightTextSecondary = Color(0xFF6B6B6B);
+  static const Color lightTextHint      = Color(0xFFA09888);
+  static const Color lightBorder        = Color(0xFFE8DDD0);
+  static const Color lightDivider       = Color(0xFFE8DDD0);
+  static const Color lightInputBg       = Color(0xFFF5F2ED);
 
-  // ── NEUTRAL PALETTE (derived from white) ─
-  static const Color white          = Color(0xFFFFFFFF);
-  static const Color backgroundLight = Color(0xFFF4F8FA); // off-white bg
-  static const Color surfaceLight    = Color(0xFFFFFFFF); // card surface
-  static const Color dividerLight    = Color(0xFFE2ECF1); // subtle divider
-  static const Color inputFillLight  = Color(0xFFF0F6F9); // input background
+  // ── DARK MODE PALETTE ───────────────────────
+  static const Color darkBackground    = Color(0xFF0F0F1A);
+  static const Color darkSurface       = Color(0xFF1A1A2E);
+  static const Color darkCard          = Color(0xFF1E1E34);
+  static const Color darkPrimary       = Color(0xFFD4AF37);
+  static const Color darkSecondary     = Color(0xFF8B7355);
+  static const Color darkAccent        = Color(0xFFB76E79);
+  static const Color darkTextPrimary   = Color(0xFFF5F0E8);
+  static const Color darkTextSecondary = Color(0xFFA09888);
+  static const Color darkTextHint      = Color(0xFF6B6B6B);
+  static const Color darkBorder        = Color(0xFF2A2835);
+  static const Color darkDivider       = Color(0xFF2A2835);
+  static const Color darkInputBg       = Color(0xFF141425);
 
-  // ── TEXT COLORS ───────────────────────────
-  static const Color textPrimaryLight    = Color(0xFF1A506C); // brand color
-  static const Color textSecondaryLight  = Color(0xFF4A7A92); // mid tone
-  static const Color textHintLight       = Color(0xFF8AAFC0); // light hint
-  static const Color textOnPrimary  = Color(0xFFFFFFFF); // white on primary
+  // ── COMMON COLORS (used in const contexts) ──
+  static const Color primary        = Color(0xFF1A1A2E);
+  static const Color primaryLight   = Color(0xFF2D2D44);
+  static const Color primaryLighter = Color(0xFFC9A96E);
+  static const Color primaryDark    = Color(0xFF0F0F1A);
+  static const Color primarySurface = Color(0xFFFBF9F6);
 
-  // ── SEMANTIC COLORS ───────────────────────
-  static const Color success        = Color(0xFF1A8C5B); // green tint of primary
-  static const Color successSurface = Color(0xFFE8F7F0);
-  static const Color error          = Color(0xFFDC2626);
-  static const Color errorSurface   = Color(0xFFFEF2F2);
-  static const Color warning        = Color(0xFFF0A500);
-  static const Color warningSurface = Color(0xFFFFF8E8);
+  // ── TEXT COLORS ──────────────────────────────
+  static const Color textOnPrimary    = Color(0xFFF5F0E8);
+  static const Color textPrimaryLight = Color(0xFF2D2D2D);
+  static const Color textSecondaryLight = Color(0xFF6B6B6B);
+  static const Color textHintLight    = Color(0xFFA09888);
 
-  // ── DARK MODE EQUIVALENTS ─────────────────
-  static const Color darkBackground = Color(0xFF0D1E26); // very dark teal
-  static const Color darkSurface    = Color(0xFF152838); // dark teal card
-  static const Color darkCard       = Color(0xFF1C3347); // slightly lighter
-  static const Color darkPrimary    = Color(0xFF2A6E90); // lighter for dark bg
-  static const Color darkTextPrimary   = Color(0xFFFFFFFF);
-  static const Color darkTextSecondary = Color(0xFFB0CCDA);
-  static const Color darkDivider       = Color(0xFF1E3D52);
+  // ── SEMANTIC COLORS ─────────────────────────
+  static const Color success        = Color(0xFF2D5A27);
+  static const Color successLight   = Color(0xFF4A7A44);
+  static const Color successSurface = Color(0xFFEDF3EB);
+  static const Color error          = Color(0xFF9E2A2B);
+  static const Color errorLight     = Color(0xFFC2696F);
+  static const Color errorSurface   = Color(0xFFF5E8E8);
+  static const Color warning        = Color(0xFFD4A017);
+  static const Color warningLight   = Color(0xFFCFB53B);
+  static const Color warningSurface = Color(0xFFF8F0D8);
 
-  // ── GRADIENTS ─────────────────────────────
+  // ── GRADIENTS ───────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF1A506C), Color(0xFF2A6E90)],
+    colors: [Color(0xFF1A1A2E), Color(0xFF2D2D44)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient goldCopperGradient = LinearGradient(
+    colors: [Color(0xFFC9A96E), Color(0xFFB87351)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient goldRoseGradient = LinearGradient(
+    colors: [Color(0xFFD4AF37), Color(0xFFB76E79)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient headerGradient = LinearGradient(
-    colors: [Color(0xFF103848), Color(0xFF1A506C)],
+    colors: [Color(0xFF1A1A2E), Color(0xFF2D2D44)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
-  static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF1A506C), Color(0xFF3A8CB4)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
   static const LinearGradient loginBgGradient = LinearGradient(
-    colors: [Color(0xFFF4F8FA), Colors.white],
+    colors: [Color(0xFFFBF9F6), Color(0xFFFFFFFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Dynamic getters to support existing widgets seamlessly
-  static Color get background => isDarkMode ? darkBackground : backgroundLight;
-  static Color get surface => isDarkMode ? darkSurface : surfaceLight;
-  static Color get cardBg => isDarkMode ? darkCard : white;
-  static Color get textPrimary => isDarkMode ? darkTextPrimary : textPrimaryLight;
-  static Color get textSecondary => isDarkMode ? darkTextSecondary : textSecondaryLight;
-  static Color get textHint => textHintLight;
-  static Color get border => isDarkMode ? darkDivider : dividerLight;
-  static Color get divider => isDarkMode ? darkDivider : dividerLight;
-
-  static const Color danger = error; // compatibility alias
-  static const Color whatsapp = Color(0xFF25D366);
-
-  static Color get surfaceVariant => isDarkMode ? darkCard : white;
-  static Color get surfaceTint => isDarkMode ? darkSurface : primarySurface;
-  static Color get actionButton => isDarkMode ? darkCard : backgroundLight;
+  // ── DYNAMIC GETTERS (mode-aware) ────────────
+  static Color get background => isDarkMode ? darkBackground : lightBackground;
+  static Color get surface => isDarkMode ? darkSurface : lightSurface;
+  static Color get cardBg => isDarkMode ? darkCard : lightSurface;
+  static Color get textPrimary => isDarkMode ? darkTextPrimary : lightTextPrimary;
+  static Color get textSecondary => isDarkMode ? darkTextSecondary : lightTextSecondary;
+  static Color get textHint => isDarkMode ? darkTextHint : lightTextHint;
+  static Color get border => isDarkMode ? darkBorder : lightBorder;
+  static Color get divider => isDarkMode ? darkDivider : lightDivider;
+  static Color get inputBg => isDarkMode ? darkInputBg : lightInputBg;
+  static Color get surfaceVariant => isDarkMode ? darkCard : lightSurface;
+  static Color get surfaceTint => isDarkMode ? darkSurface : lightBorder;
+  static Color get actionButton => isDarkMode ? darkCard : lightBorder;
   static Color get textTertiary => textHint;
 
-  // ─── Shadows ──────────────────────────────────────────────
+  static Color get danger => isDarkMode ? errorLight : error;
+  static const Color whatsapp = Color(0xFF25D366);
+
+  // ─── SHADOWS (warm undertone) ───────────────
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: const Color(0xFF000000).withValues(alpha: 0.05),
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+        BoxShadow(
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.04),
           blurRadius: 16,
           offset: const Offset(0, 4),
         ),
@@ -95,7 +120,12 @@ class AppTheme {
 
   static List<BoxShadow> get heavyShadow => [
         BoxShadow(
-          color: primary.withValues(alpha: 0.12),
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+        BoxShadow(
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.06),
           blurRadius: 24,
           offset: const Offset(0, 8),
         ),
@@ -103,13 +133,26 @@ class AppTheme {
 
   static List<BoxShadow> get elevatedShadow => [
         BoxShadow(
-          color: primary.withValues(alpha: 0.12),
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+        BoxShadow(
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.06),
           blurRadius: 24,
           offset: const Offset(0, 8),
         ),
       ];
 
-  // ─── Spacing System ───────────────────────────────────────
+  static List<BoxShadow> get subtleShadow => [
+        BoxShadow(
+          color: const Color(0xFF2D2D1A).withValues(alpha: 0.04),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+      ];
+
+  // ─── SPACING ─────────────────────────────────
   static const double xs = 4.0;
   static const double sm = 8.0;
   static const double md = 16.0;
@@ -117,219 +160,200 @@ class AppTheme {
   static const double xl = 32.0;
   static const double xxl = 48.0;
 
-  // ─── Border Radius ────────────────────────────────────────
+  // ─── BORDER RADIUS ───────────────────────────
   static const double radiusSmall = 8.0;
   static const double radiusMedium = 12.0;
   static const double radiusLarge = 16.0;
   static const double radiusXl = 24.0;
   static const double radiusPill = 100.0;
 
-  // Compatible aliases
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
   static const double radiusRound = 100.0;
 
-  // ─── Typography ───────────────────────────────────────────
+  // ─── TYPOGRAPHY ──────────────────────────────
   static TextStyle get display => GoogleFonts.nunito(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-        color: textPrimary,
+        fontSize: 28, fontWeight: FontWeight.bold, color: textPrimary,
+        letterSpacing: -0.5, height: 1.2,
       );
-
+  static TextStyle get displaySmall => GoogleFonts.nunito(
+        fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary,
+        letterSpacing: -0.3, height: 1.25,
+      );
   static TextStyle get heading => GoogleFonts.nunito(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: textPrimary,
+        fontSize: 22, fontWeight: FontWeight.bold, color: textPrimary,
+        letterSpacing: -0.3, height: 1.3,
       );
-
   static TextStyle get subHeading => GoogleFonts.nunito(
-        fontSize: 17,
-        fontWeight: FontWeight.bold,
-        color: textPrimary,
+        fontSize: 17, fontWeight: FontWeight.w600, color: textPrimary,
+        letterSpacing: -0.2, height: 1.35,
       );
-
   static TextStyle get body => GoogleFonts.nunito(
-        fontSize: 14,
-        fontWeight: FontWeight.normal,
-        color: textPrimary,
+        fontSize: 14, fontWeight: FontWeight.normal, color: textPrimary,
+        letterSpacing: 0.1, height: 1.5,
       );
-
+  static TextStyle get bodySmall => GoogleFonts.nunito(
+        fontSize: 13, fontWeight: FontWeight.normal, color: textPrimary,
+        letterSpacing: 0.1, height: 1.4,
+      );
   static TextStyle get caption => GoogleFonts.nunito(
-        fontSize: 12,
-        fontWeight: FontWeight.normal,
-        color: textSecondary,
+        fontSize: 12, fontWeight: FontWeight.normal, color: textSecondary,
+        letterSpacing: 0.2, height: 1.4,
       );
-
   static TextStyle get label => GoogleFonts.nunito(
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        color: textSecondary,
+        fontSize: 13, fontWeight: FontWeight.w500, color: textSecondary,
+        letterSpacing: 0.2,
+      );
+  static TextStyle get overline => GoogleFonts.nunito(
+        fontSize: 11, fontWeight: FontWeight.w600, color: textSecondary,
+        letterSpacing: 0.5, height: 1.3,
       );
 
-  // ─── ThemeData (Light Mode) ───────────────────────────────
+  // ─── THEMEDATA (LIGHT) ──────────────────────
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
-        primary: Color(0xFF1A506C),
-        onPrimary: Color(0xFFFFFFFF),
-        secondary: Color(0xFF2A6E90),
-        onSecondary: Color(0xFFFFFFFF),
+        primary: Color(0xFF1A1A2E),
+        onPrimary: Color(0xFFF5F0E8),
+        secondary: Color(0xFFC9A96E),
+        onSecondary: Color(0xFF1A1A2E),
         surface: Color(0xFFFFFFFF),
-        onSurface: Color(0xFF1A506C),
-
-        error: Color(0xFFDC2626),
-        outline: Color(0xFFE2ECF1),
+        onSurface: Color(0xFF2D2D2D),
+        error: Color(0xFF9E2A2B),
+        onError: Color(0xFFF5F0E8),
+        outline: Color(0xFFE8DDD0),
       ),
-      scaffoldBackgroundColor: const Color(0xFFF4F8FA),
+      scaffoldBackgroundColor: const Color(0xFFFBF9F6),
       cardColor: const Color(0xFFFFFFFF),
-      dividerColor: const Color(0xFFE2ECF1),
-      
+      dividerColor: const Color(0xFFE8DDD0),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1A506C),
-        foregroundColor: Color(0xFFFFFFFF),
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: Color(0xFF1A1A2E),
+        foregroundColor: Color(0xFFF5F0E8),
+        elevation: 0, centerTitle: true,
+        iconTheme: IconThemeData(color: Color(0xFFF5F0E8)),
         titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+          color: Color(0xFFF5F0E8), fontSize: 18,
+          fontWeight: FontWeight.bold, letterSpacing: -0.3,
         ),
       ),
-      
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1A506C),
-          foregroundColor: const Color(0xFFFFFFFF),
+          backgroundColor: const Color(0xFF1A1A2E),
+          foregroundColor: const Color(0xFFF5F0E8),
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24, vertical: 14),
-        )
-      ),
-
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF1A506C),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          side: const BorderSide(color: Color(0xFF1A506C), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2),
         ),
       ),
-
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1A1A2E),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: const BorderSide(color: Color(0xFF1A1A2E), width: 1.5),
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF0F6F9),
+        fillColor: const Color(0xFFF5F2ED),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF1A506C), width: 1.5)),
+          borderSide: const BorderSide(color: Color(0xFF1A1A2E), width: 1.5)),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFFDC2626), width: 1.5)),
-        hintStyle: const TextStyle(
-          color: Color(0xFF8AAFC0), fontSize: 14),
-        labelStyle: const TextStyle(
-          color: Color(0xFF1A506C)),
-        floatingLabelStyle: const TextStyle(
-          color: Color(0xFF1A506C),
-          fontWeight: FontWeight.w600),
+          borderSide: const BorderSide(color: Color(0xFF9E2A2B), width: 1.5)),
+        hintStyle: const TextStyle(color: Color(0xFFA09888), fontSize: 14),
+        labelStyle: const TextStyle(color: Color(0xFF1A1A2E)),
+        floatingLabelStyle: const TextStyle(color: Color(0xFF1A1A2E), fontWeight: FontWeight.w600),
       ),
-
       chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFFE8F2F7),
-        selectedColor: const Color(0xFF1A506C),
-        labelStyle: const TextStyle(color: Color(0xFF1A506C)),
-        secondaryLabelStyle: const TextStyle(
-          color: Color(0xFFFFFFFF)),
+        backgroundColor: const Color(0xFFF5F2ED),
+        selectedColor: const Color(0xFF1A1A2E),
+        labelStyle: const TextStyle(color: Color(0xFF1A1A2E)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFF5F0E8)),
         side: BorderSide.none,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Color(0xFFFFFFFF),
-        selectedItemColor: Color(0xFF1A506C),
-        unselectedItemColor: Color(0xFF8AAFC0),
+        selectedItemColor: Color(0xFF1A1A2E),
+        unselectedItemColor: Color(0xFFA09888),
         elevation: 0,
       ),
-
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: const Color(0xFF1A506C),
-        foregroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: const Color(0xFF1A1A2E),
+        foregroundColor: const Color(0xFFF5F0E8),
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
 
-  // ─── ThemeData (Dark Mode) ────────────────────────────────
+  // ─── THEMEDATA (DARK) ───────────────────────
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF2A6E90),
-        onPrimary: Color(0xFFFFFFFF),
-        secondary: Color(0xFF3A8CB4),
-        onSecondary: Color(0xFFFFFFFF),
-        surface: Color(0xFF1C3347),
-        onSurface: Color(0xFFFFFFFF),
-
-        error: Color(0xFFDC2626),
-        outline: Color(0xFF1E3D52),
+        primary: Color(0xFFD4AF37),
+        onPrimary: Color(0xFF0F0F1A),
+        secondary: Color(0xFF8B7355),
+        onSecondary: Color(0xFFF5F0E8),
+        surface: Color(0xFF1A1A2E),
+        onSurface: Color(0xFFF5F0E8),
+        error: Color(0xFFC2696F),
+        onError: Color(0xFF0F0F1A),
+        outline: Color(0xFF2A2835),
       ),
-      scaffoldBackgroundColor: const Color(0xFF0D1E26),
-      cardColor: const Color(0xFF1C3347),
-      dividerColor: const Color(0xFF1E3D52),
-      
+      scaffoldBackgroundColor: const Color(0xFF0F0F1A),
+      cardColor: const Color(0xFF1E1E34),
+      dividerColor: const Color(0xFF2A2835),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF103848),
-        foregroundColor: Color(0xFFFFFFFF),
-        elevation: 0,
+        backgroundColor: Color(0xFF1A1A2E),
+        foregroundColor: Color(0xFFF5F0E8),
+        elevation: 0, centerTitle: true,
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF152838),
+        fillColor: const Color(0xFF141425),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF2A6E90), width: 1.5)),
-        hintStyle: const TextStyle(
-          color: Color(0xFF8AAFC0)),
-        labelStyle: const TextStyle(
-          color: Color(0xFF2A6E90)),
+          borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 1.5)),
+        hintStyle: const TextStyle(color: Color(0xFF6B6B6B)),
+        labelStyle: const TextStyle(color: Color(0xFFD4AF37)),
       ),
-
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF2A6E90),
+          foregroundColor: const Color(0xFFD4AF37),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          side: const BorderSide(color: Color(0xFF2A6E90), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: const BorderSide(color: Color(0xFFD4AF37), width: 1.5),
         ),
       ),
-
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF152838),
-        selectedItemColor: Color(0xFF2A6E90),
-        unselectedItemColor: Color(0xFF8AAFC0),
+        backgroundColor: Color(0xFF1A1A2E),
+        selectedItemColor: Color(0xFFD4AF37),
+        unselectedItemColor: Color(0xFF6B6B6B),
       ),
     );
   }

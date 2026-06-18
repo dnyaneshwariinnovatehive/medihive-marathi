@@ -159,7 +159,7 @@ class _PatientCardState extends State<PatientCard> {
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
                             ),
-                            child: const Text(
+                            child: Text(
                               'DRAFT',
                               style: TextStyle(
                                 color: AppTheme.danger,

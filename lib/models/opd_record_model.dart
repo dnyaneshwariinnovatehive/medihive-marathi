@@ -37,6 +37,36 @@ class OPDRecordModel extends HiveObject {
   @HiveField(10)
   final DateTime updatedAt;
 
+  @HiveField(11)
+  final String clinicalNotes;
+
+  @HiveField(12)
+  final String consultationFee;
+
+  @HiveField(13)
+  final String medicineFee;
+
+  @HiveField(14)
+  final String discount;
+
+  @HiveField(15)
+  final String paymentMode;
+
+  @HiveField(16)
+  final String chargeType;
+
+  @HiveField(17)
+  final String previousVisitDate;
+
+  @HiveField(18)
+  final String followUpReason;
+
+  @HiveField(19)
+  final String nextVisit;
+
+  @HiveField(20)
+  final String bloodGroup;
+
   OPDRecordModel({
     required this.id,
     required this.patientId,
@@ -49,6 +79,16 @@ class OPDRecordModel extends HiveObject {
     required this.isSynced,
     required this.createdAt,
     required this.updatedAt,
+    this.clinicalNotes = '',
+    this.consultationFee = '',
+    this.medicineFee = '',
+    this.discount = '',
+    this.paymentMode = '',
+    this.chargeType = '',
+    this.previousVisitDate = '',
+    this.followUpReason = '',
+    this.nextVisit = '',
+    this.bloodGroup = '',
   });
 
   OPDRecordModel copyWith({
@@ -63,6 +103,16 @@ class OPDRecordModel extends HiveObject {
     bool? isSynced,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? clinicalNotes,
+    String? consultationFee,
+    String? medicineFee,
+    String? discount,
+    String? paymentMode,
+    String? chargeType,
+    String? previousVisitDate,
+    String? followUpReason,
+    String? nextVisit,
+    String? bloodGroup,
   }) {
     return OPDRecordModel(
       id: id ?? this.id,
@@ -76,6 +126,16 @@ class OPDRecordModel extends HiveObject {
       isSynced: isSynced ?? this.isSynced,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      clinicalNotes: clinicalNotes ?? this.clinicalNotes,
+      consultationFee: consultationFee ?? this.consultationFee,
+      medicineFee: medicineFee ?? this.medicineFee,
+      discount: discount ?? this.discount,
+      paymentMode: paymentMode ?? this.paymentMode,
+      chargeType: chargeType ?? this.chargeType,
+      previousVisitDate: previousVisitDate ?? this.previousVisitDate,
+      followUpReason: followUpReason ?? this.followUpReason,
+      nextVisit: nextVisit ?? this.nextVisit,
+      bloodGroup: bloodGroup ?? this.bloodGroup,
     );
   }
 }

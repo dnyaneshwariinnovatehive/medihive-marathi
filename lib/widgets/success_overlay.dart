@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class SuccessOverlay extends StatefulWidget {
   final String title;
@@ -91,8 +92,8 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                 child: Container(
                   width: 88, 
                   height: 88,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1A506C),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
                     shape: BoxShape.circle,
                   ),
                   child: FadeTransition(
@@ -121,10 +122,10 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                     children: [
                       Text(
                         widget.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A506C),
+                          color: AppTheme.primary,
                         ),
                       ),
                       const SizedBox(height: 6),

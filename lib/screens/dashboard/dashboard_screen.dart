@@ -110,15 +110,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           opacity: _showFab ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 250),
           child: FloatingActionButton(
-            backgroundColor: const Color(0xFF1A506C),
+            backgroundColor: AppTheme.primary,
             onPressed: () => context.push('/app/opd/new'),
-            child: const Icon(Icons.add, color: Colors.white),
+            child: Icon(Icons.add, color: AppTheme.textOnPrimary),
           ),
         ),
       ),
       body: RefreshIndicator(
-        color: const Color(0xFF1A506C),
-        backgroundColor: Colors.white,
+        color: AppTheme.primary,
+        backgroundColor: AppTheme.lightSurface,
         strokeWidth: 2.5,
         displacement: 60,
         onRefresh: () async {
@@ -127,6 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         },
         child: CustomScrollView(
           controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
           slivers: [
             // ═══════════════════════════════════════════════════
           // PREMIUM CLINICAL GRADIENT HEADER (200px)
@@ -185,10 +186,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '$greeting, 👋',
+                                      greeting,
                                       style: AppTheme.caption.copyWith(
                                         color: Colors.white.withValues(alpha: 0.85),
                                         fontSize: 13,
+                                        letterSpacing: 0.4,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -225,7 +227,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                       child: Container(
                                         width: 16,
                                         height: 16,
-                                        decoration: const BoxDecoration(
+                                        decoration: BoxDecoration(
                                           color: AppTheme.danger,
                                           shape: BoxShape.circle,
                                         ),
@@ -285,36 +287,40 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     Row(
                       children: [
                         Expanded(
-                          child: InkWell(
+                          child: _PressableActionButton(
                             onTap: () => context.go('/app/opd/new'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              height: 52,
+                            child: Container(
+                              height: 56,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [AppTheme.primary, AppTheme.primaryLight],
                                 ),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
                                     color: AppTheme.primary.withValues(alpha: 0.35),
                                     blurRadius: 16,
                                     offset: const Offset(0, 6),
                                   ),
+                                  BoxShadow(
+                                    color: AppTheme.primary.withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
                                 ],
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.add, color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
+                                  const Icon(Icons.add_circle_outline, color: Colors.white, size: 22),
+                                  const SizedBox(width: 10),
                                   Text(
                                     'New OPD',
                                     style: AppTheme.label.copyWith(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
                                 ],
@@ -323,20 +329,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           ),
                         ),
                         const SizedBox(width: 12),
-                        InkWell(
+                        _PressableActionButton(
                           onTap: () => context.go('/app/chatbot'),
-                          borderRadius: BorderRadius.circular(14),
                           child: Container(
-                            height: 52,
-                            width: 60,
+                            height: 56,
+                            width: 64,
                             decoration: BoxDecoration(
                               color: AppTheme.cardBg,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppTheme.border),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.divider, width: 1.5),
                               boxShadow: AppTheme.cardShadow,
                             ),
                             child: const Center(
-                              child: Icon(Icons.chat_bubble_outline, color: AppTheme.primary, size: 22),
+                              child: Icon(Icons.chat_bubble_outline, color: AppTheme.primary, size: 24),
                             ),
                           ),
                         ),
@@ -392,7 +397,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
                     // RECENT PATIENTS
                     _buildRecentPatients(context, dashboard.recentPatients),
-                    const SizedBox(height: 24),
 
                   ],
                 ),
@@ -432,21 +436,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         decoration: BoxDecoration(
           color: AppTheme.cardBg,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: AppTheme.heavyShadow,
         ),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppTheme.primary, size: 18),
+              child: Icon(icon, color: AppTheme.primary, size: 20),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: targetValue),
               duration: const Duration(milliseconds: 900),
@@ -458,7 +462,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 return Text(
                   displayValue,
                   style: AppTheme.display.copyWith(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                   ),
@@ -467,12 +471,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 );
               },
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               label,
-              style: AppTheme.caption.copyWith(
+              style: AppTheme.overline.copyWith(
                 color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -956,8 +960,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 final curve = Curves.easeOutCubic.transform(progress);
                 return Opacity(
                   opacity: curve,
-                  child: SlideTransition(
-                    position: AlwaysStoppedAnimation(Offset(0, 0.25 * (1 - curve))),
+                  child: Transform.translate(
+                    offset: Offset(0, 20 * (1 - curve)),
                     child: child,
                   ),
                 );
@@ -971,15 +975,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                            child: Text(
+                          Hero(
+                            tag: 'patient_avatar_${patient.id}',
+                            child: CircleAvatar(
+                              radius: 22,
+                              backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                              child: Text(
                               patient.initial,
                               style: AppTheme.caption.copyWith(
                                 color: AppTheme.primary,
                                 fontWeight: FontWeight.bold,
                               ),
+                            ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1048,11 +1055,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   Widget _headerStatCard(String label, String value, IconData icon) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1060,27 +1067,29 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 12),
-              const SizedBox(width: 4),
+              Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 13),
+              const SizedBox(width: 5),
               Flexible(
                 child: Text(
                   label,
                   style: AppTheme.caption.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 10,
+                    letterSpacing: 0.3,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             value,
             style: AppTheme.heading.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 18,
+              letterSpacing: -0.3,
             ),
           ),
         ],
@@ -1129,6 +1138,59 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       default:
         return Colors.orange;
     }
+  }
+}
+
+class _PressableActionButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _PressableActionButton({
+    required this.child,
+    required this.onTap,
+  });
+
+  @override
+  State<_PressableActionButton> createState() => _PressableActionButtonState();
+}
+
+class _PressableActionButtonState extends State<_PressableActionButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _scaleAnim,
+        builder: (context, child) => Transform.scale(scale: _scaleAnim.value, child: child),
+        child: widget.child,
+      ),
+    );
   }
 }
 

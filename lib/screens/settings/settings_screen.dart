@@ -494,13 +494,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
             expandedHeight: 200,
             floating: false,
             pinned: true,
-            elevation: 4,
+            elevation: 0,
             backgroundColor: AppTheme.primary,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
             title: Text(
               'Settings',
               style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600),
@@ -508,6 +515,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             flexibleSpace: Container(
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
+                ),
               ),
               child: FlexibleSpaceBar(
                 background: SafeArea(
@@ -654,7 +665,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsGroupTile(
                       icon: Icons.notifications_outlined,
                       label: 'Notifications',
-                      badge: '3',
                       onTap: () => context.push('/app/settings/notifications'),
                     ),
                     SettingsGroupTile(
@@ -775,7 +785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _group(List<Widget> children) => Container(
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.cardBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppTheme.cardShadow,
         ),
@@ -788,7 +798,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return Container(
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.cardBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppTheme.cardShadow,
         ),
@@ -817,7 +827,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.cardShadow,
         border: hasError ? Border.all(color: AppTheme.danger.withValues(alpha: 0.5), width: 1.5) : null,

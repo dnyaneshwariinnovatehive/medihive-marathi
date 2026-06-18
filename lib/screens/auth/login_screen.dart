@@ -11,17 +11,38 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   bool _showPassword = false;
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   String _lastSyncedUsername = '';
+  late AnimationController _staggerController;
+  late List<Animation<double>> _staggerAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _staggerController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+
+    _staggerAnimations = List.generate(6, (i) {
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _staggerController,
+          curve: Interval(i * 0.12, 0.4 + (i * 0.08), curve: Curves.easeOutCubic),
+        ),
+      );
+    });
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _staggerController.dispose();
     super.dispose();
   }
 
@@ -51,6 +72,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Widget _staggeredItem(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: _staggerAnimations[index],
+      builder: (context, child) {
+        return Opacity(
+          opacity: _staggerAnimations[index].value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - _staggerAnimations[index].value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -62,8 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       });
     }
-    
-    // Determine if it's a wide screen for responsive layout
+
     final isWide = MediaQuery.of(context).size.width > 700;
 
     return Scaffold(
@@ -75,29 +111,33 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 850, minHeight: 450),
             decoration: BoxDecoration(
               color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: isWide 
+            child: isWide
                 ? IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // ─── Left Side: Branding ────────────────────
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(40),
+                            padding: const EdgeInsets.all(48),
                             decoration: const BoxDecoration(
                               gradient: AppTheme.headerGradient,
                               borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                bottomLeft: Radius.circular(16),
+                                topLeft: Radius.circular(20),
+                                bottomLeft: Radius.circular(20),
                               ),
                             ),
                             child: Column(
@@ -142,8 +182,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        
-                        // ─── Right Side: Login Form ──────────────────────
                         Expanded(
                           child: _buildLoginForm(auth, context),
                         ),
@@ -152,15 +190,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   )
                 : Column(
                     children: [
-                      // ─── Top Branding (Mobile) ────────────────────
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(32),
                         decoration: const BoxDecoration(
                           gradient: AppTheme.headerGradient,
                           borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
                           ),
                         ),
                         child: Column(
@@ -203,7 +240,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-                      // ─── Bottom Login Form (Mobile) ──────────────────────
                       _buildLoginForm(auth, context),
                     ],
                   ),
@@ -222,50 +258,48 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-          // Logo
-          Container(
-            width: 64,
-            height: 64,
+          _staggeredItem(0, Container(
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
               color: AppTheme.surfaceVariant,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  color: AppTheme.primary.withValues(alpha: 0.15),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
             child: const Icon(
-              Icons.monitor_heart_outlined,
-              size: 36,
+              Icons.medical_services_outlined,
+              size: 40,
               color: AppTheme.primary,
             ),
-          ),
+          )),
           const SizedBox(height: 16),
-          const Text(
+          _staggeredItem(1, const Text(
             'MediHive',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 26,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.0,
               color: AppTheme.primary,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
+          )),
+          const SizedBox(height: 6),
+          _staggeredItem(2, Text(
             'Sign in to your account',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppTheme.textSecondary,
             ),
-          ),
+          )),
           const SizedBox(height: 40),
-          
-          // Username Field
-          TextFormField(
+
+          _staggeredItem(3, TextFormField(
             controller: _usernameController,
             enabled: !auth.isLoading,
             textInputAction: TextInputAction.next,
@@ -288,24 +322,23 @@ class _LoginScreenState extends State<LoginScreen> {
               fillColor: AppTheme.surfaceVariant,
               prefixIcon: const Icon(Icons.person_outline, color: AppTheme.primary),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
-          ),
+          )),
           const SizedBox(height: 24),
-          
-          // Password Field
-          TextFormField(
+
+          _staggeredItem(3, TextFormField(
             controller: _passwordController,
             enabled: !auth.isLoading,
             obscureText: !_showPassword,
@@ -327,15 +360,15 @@ class _LoginScreenState extends State<LoginScreen> {
               fillColor: AppTheme.surfaceVariant,
               prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primary),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -347,10 +380,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-          ),
+          )),
           const SizedBox(height: 18),
 
-          Row(
+          _staggeredItem(4, Row(
             children: [
               Checkbox(
                 value: auth.rememberMe,
@@ -358,6 +391,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? null
                     : (value) => auth.setRememberMe(value ?? false),
                 activeColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
               GestureDetector(
                 onTap: auth.isLoading
@@ -372,17 +406,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {},
+                child: Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
             ],
-          ),
+          )),
           const SizedBox(height: 22),
-          
-          // Log In Button
-          Container(
+
+          _staggeredItem(5, Container(
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
                   color: AppTheme.primary.withValues(alpha: 0.3),
@@ -399,7 +444,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: auth.isLoading
@@ -421,21 +466,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
             ),
-          ),
+          )),
           const SizedBox(height: 24),
-          
-          // Google Sign In
-          Container(
+
+          _staggeredItem(5, Container(
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -457,14 +501,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              icon: Image.network(
-                'https://developers.google.com/static/identity/images/g-logo.png',
-                height: 24,
+              icon: Container(
                 width: 24,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.login, size: 24, color: Colors.black87),
+                height: 24,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: const Center(
+                  child: Text(
+                    'G',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4285F4),
+                    ),
+                  ),
+                ),
               ),
               label: const Text(
                 'SIGN IN WITH GOOGLE',
@@ -476,21 +532,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Forgot Password
-          GestureDetector(
-            onTap: () {},
-            child: Text(
-              'Forgot Password?',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.primary,
+          )),
+          const SizedBox(height: 16),
+
+          _staggeredItem(5, Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.fingerprint, size: 18, color: AppTheme.textHint),
+              const SizedBox(width: 6),
+              Text(
+                'Quick Login',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textHint,
+                ),
               ),
-            ),
-          ),
+            ],
+          )),
           ],
         ),
       ),

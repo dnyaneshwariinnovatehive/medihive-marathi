@@ -28,13 +28,23 @@ class OPDRecordModelAdapter extends TypeAdapter<OPDRecordModel> {
       isSynced: fields[8] as bool,
       createdAt: fields[9] as DateTime,
       updatedAt: fields[10] as DateTime,
+      clinicalNotes: (fields[11] as String?) ?? '',
+      consultationFee: (fields[12] as String?) ?? '',
+      medicineFee: (fields[13] as String?) ?? '',
+      discount: (fields[14] as String?) ?? '',
+      paymentMode: (fields[15] as String?) ?? '',
+      chargeType: (fields[16] as String?) ?? '',
+      previousVisitDate: (fields[17] as String?) ?? '',
+      followUpReason: (fields[18] as String?) ?? '',
+      nextVisit: (fields[19] as String?) ?? '',
+      bloodGroup: (fields[20] as String?) ?? '',
     );
   }
 
   @override
   void write(BinaryWriter writer, OPDRecordModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +66,27 @@ class OPDRecordModelAdapter extends TypeAdapter<OPDRecordModel> {
       ..writeByte(9)
       ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(11)
+      ..write(obj.clinicalNotes)
+      ..writeByte(12)
+      ..write(obj.consultationFee)
+      ..writeByte(13)
+      ..write(obj.medicineFee)
+      ..writeByte(14)
+      ..write(obj.discount)
+      ..writeByte(15)
+      ..write(obj.paymentMode)
+      ..writeByte(16)
+      ..write(obj.chargeType)
+      ..writeByte(17)
+      ..write(obj.previousVisitDate)
+      ..writeByte(18)
+      ..write(obj.followUpReason)
+      ..writeByte(19)
+      ..write(obj.nextVisit)
+      ..writeByte(20)
+      ..write(obj.bloodGroup);
   }
 
   @override

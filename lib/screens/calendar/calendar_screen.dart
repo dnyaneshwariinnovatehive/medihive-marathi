@@ -65,7 +65,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Appointment', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold)),
+        title: Text('Delete Appointment', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold)),
         content: Text('Remove appointment for $patient?', style: AppTheme.body),
         actions: [
           TextButton(
@@ -84,7 +84,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 ),
               );
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.danger)),
+            child: Text('Delete', style: TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -239,7 +239,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                               onPressed: () {
                                 if (patientController.text.trim().isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text('Please enter patient name'),
                                       backgroundColor: AppTheme.danger,
                                     ),
@@ -292,6 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
         controller: _scrollController,
+        physics: const BouncingScrollPhysics(),
         slivers: [
           // ═══════════════════════════════════════════════════
           // PREMIUM GRADIENT SLIVER APP BAR (180px)
@@ -629,7 +630,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                                                     color: AppTheme.danger.withValues(alpha: 0.1),
                                                     shape: BoxShape.circle,
                                                   ),
-                                                  child: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
+                                                  child: Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
                                                 ),
                                               ),
                                             ],
@@ -665,7 +666,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                           const SizedBox(height: 12),
                           TextField(
                             controller: _notesController,
-                            onChanged: apt.setNotes,
+                            onChanged: apt.addNote,
                             maxLines: 3,
                             style: AppTheme.body,
                             decoration: InputDecoration(

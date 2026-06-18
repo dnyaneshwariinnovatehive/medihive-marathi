@@ -143,7 +143,8 @@ class ExcelExportService {
       'Address',
       'Total Visits',
       'Last Visit',
-      'Created At'
+      'Created At',
+      'Updated At',
     ];
     _writeRow(patientsSheet, 0, patientsHeaders, headerStyle);
 
@@ -163,13 +164,14 @@ class ExcelExportService {
       final data = [
         p.id,
         p.name,
-        p.dob, // already a formatted string in DB or raw input
+        p.dob,
         p.age.toString(),
         p.mobile,
         p.address,
         totalVisits.toString(),
         lastVisitStr,
         _formatDate(p.createdAt),
+        _formatDate(p.updatedAt),
       ];
       _writeRow(patientsSheet, i + 1, data, rowStyle);
     }
@@ -188,7 +190,8 @@ class ExcelExportService {
       'Medicines',
       'Dosage',
       'Notes',
-      'Draft Status'
+      'Draft Status',
+      'Updated At',
     ];
     _writeRow(opdSheet, 0, opdHeaders, headerStyle);
 
@@ -212,9 +215,10 @@ class ExcelExportService {
         r.symptoms,
         r.diagnosis,
         r.medicines,
-        'N/A', // Dosage is inline in medicines string in our models
-        'N/A', // Notes placeholder
+        'N/A',
+        'N/A',
         r.isDraft ? 'Draft' : 'Final',
+        _formatDate(r.updatedAt),
       ];
       _writeRow(opdSheet, i + 1, data, rowStyle);
     }
@@ -228,7 +232,8 @@ class ExcelExportService {
       'Date',
       'Time',
       'Notes',
-      'Status'
+      'Status',
+      'Updated At',
     ];
     _writeRow(apptSheet, 0, apptHeaders, headerStyle);
 
@@ -250,6 +255,7 @@ class ExcelExportService {
         _formatTime(a.dateTime),
         a.notes,
         a.isSynced ? 'Synced' : 'Pending Sync',
+        _formatDate(a.updatedAt),
       ];
       _writeRow(apptSheet, i + 1, data, rowStyle);
     }

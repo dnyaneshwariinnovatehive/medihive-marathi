@@ -21,7 +21,7 @@ class StatCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A506C), Color(0xFF2A6E90)],
+          colors: [Color(0xFF1A1A2E), Color(0xFF2D2D44)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

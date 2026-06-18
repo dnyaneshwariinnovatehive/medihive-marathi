@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'google_auth_service.dart';
 import 'excel_export_service.dart';
+import 'excel_merge_service.dart';
 import '../models/patient_model.dart';
 import '../models/opd_record_model.dart';
 import '../models/appointment_model.dart';
@@ -184,39 +185,36 @@ class GoogleDriveSyncService {
     }
   }
 
-  /// Synchronizes all unsynced data records with Google Drive
+  /// Two-way sync: download latest backup, merge with local, then upload merged result
   Future<void> syncPendingRecords() async {
     final patientsBox = Hive.box<PatientModel>('patients');
     final opdBox = Hive.box<OPDRecordModel>('opd_records');
     final apptBox = Hive.box<AppointmentModel>('appointments');
 
-    final pendingPatients = patientsBox.values.where((p) => !p.isSynced).toList();
-    final pendingOpd = opdBox.values.where((r) => !r.isSynced).toList();
-    final pendingAppt = apptBox.values.where((a) => !a.isSynced).toList();
-
-    if (pendingPatients.isEmpty && pendingOpd.isEmpty && pendingAppt.isEmpty) {
-      return;
-    }
-
     final totalCount = patientsBox.length + opdBox.length + apptBox.length;
-    final excelBytes = await ExcelExportService().generateExcelFile();
-    final fileName = ExcelExportService().generateFileName('Shree_Clinic', recordCount: totalCount);
 
     try {
+      // Step 1: Download the latest backup and merge it into local data
+      final folderId = await _getOrCreateFolderId(await _getDriveApi());
+      final backupBytes = await _downloadLatestBackup(folderId);
+      if (backupBytes != null) {
+        await ExcelMergeService().mergeFromExcel(backupBytes);
+      }
+
+      // Step 2: Upload merged result
+      final excelBytes = await ExcelExportService().generateExcelFile();
+      final fileName = ExcelExportService().generateFileName('Shree_Clinic', recordCount: totalCount);
       await uploadBackup(excelBytes, fileName);
 
-      // Successfully synced: update objects in boxes
-      for (final p in pendingPatients) {
-        final updated = p.copyWith(isSynced: true);
-        await patientsBox.put(p.id, updated);
+      // Step 3: Mark all records as synced
+      for (final p in patientsBox.values) {
+        await patientsBox.put(p.id, p.copyWith(isSynced: true));
       }
-      for (final r in pendingOpd) {
-        final updated = r.copyWith(isSynced: true);
-        await opdBox.put(r.id, updated);
+      for (final r in opdBox.values) {
+        await opdBox.put(r.id, r.copyWith(isSynced: true));
       }
-      for (final a in pendingAppt) {
-        final updated = a.copyWith(isSynced: true);
-        await apptBox.put(a.id, updated);
+      for (final a in apptBox.values) {
+        await apptBox.put(a.id, a.copyWith(isSynced: true));
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -225,6 +223,28 @@ class GoogleDriveSyncService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('google_drive_pending_sync', true);
       rethrow;
+    }
+  }
+
+  /// Downloads the latest backup file from the MediHive Backups folder, or null if none exist
+  Future<Uint8List?> _downloadLatestBackup(String folderId) async {
+    try {
+      final driveApi = await _getDriveApi();
+      final query = "'$folderId' in parents and trashed = false";
+      final list = await driveApi.files.list(
+        q: query,
+        spaces: 'drive',
+        orderBy: 'modifiedTime desc',
+        pageSize: 1,
+        $fields: 'files(id, name)',
+      );
+
+      if (list.files == null || list.files!.isEmpty) return null;
+
+      final latestFileId = list.files!.first.id!;
+      return await downloadBackupBytes(latestFileId);
+    } catch (_) {
+      return null;
     }
   }
 

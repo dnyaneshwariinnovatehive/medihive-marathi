@@ -118,12 +118,12 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
-  /// Extracts the total fee from an OPD record.
-  /// Tries to read fee metadata from JSON-encoded data in the record,
-  /// falls back to type-based defaults (500 for consultation, 200 for follow-up).
   double _extractRecordFee(OPDRecordModel record) {
-    // Default fees based on record type
-    return record.type == 'follow_up' ? 200.0 : 500.0;
+    final consultation = double.tryParse(record.consultationFee) ?? 0;
+    final medicine = double.tryParse(record.medicineFee) ?? 0;
+    final disc = double.tryParse(record.discount) ?? 0;
+    final total = consultation + medicine - disc;
+    return total > 0 ? total : (record.type == 'follow_up' ? 200.0 : 500.0);
   }
 
   void setRevenuePeriod(String period) {

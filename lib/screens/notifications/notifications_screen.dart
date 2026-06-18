@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/notification_provider.dart';
+import '../../widgets/animated_list_item.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -32,11 +33,13 @@ class NotificationsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
             pinned: true,
             expandedHeight: 110,
             floating: false,
+            centerTitle: true,
             actions: [
               if (notifications.isNotEmpty) ...[
                 IconButton(
@@ -65,12 +68,19 @@ class NotificationsScreen extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.notifications_none,
-                              size: 64,
-                              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.notifications_none,
+                                size: 48,
+                                color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                              ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             Text(
                               'No new notifications',
                               style: TextStyle(
@@ -79,64 +89,111 @@ class NotificationsScreen extends StatelessWidget {
                                 color: AppTheme.textSecondary,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'You\'re all caught up!',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textHint,
+                              ),
+                            ),
                           ],
                         ),
                       )
                     : Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Card(
-                          elevation: 0,
-                          color: AppTheme.surface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(color: AppTheme.border),
-                          ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: notifications.length,
-                            separatorBuilder: (_, __) => Divider(color: AppTheme.border),
-                            itemBuilder: (context, index) {
-                              final note = notifications[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: note.isRead
-                                      ? AppTheme.textSecondary.withValues(alpha: 0.1)
-                                      : AppTheme.primary.withValues(alpha: 0.1),
-                                  child: Icon(
-                                    note.isRead ? Icons.notifications_none : Icons.notifications_active,
-                                    color: note.isRead ? AppTheme.textSecondary : AppTheme.primary,
-                                  ),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: notifications.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final note = notifications[index];
+                            return AnimatedListItem(
+                              index: index,
+                              child: GestureDetector(
+                              onTap: () => provider.markAsRead(note.id),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.cardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: note.isRead
+                                      ? AppTheme.subtleShadow
+                                      : AppTheme.cardShadow,
+                                  border: note.isRead
+                                      ? Border.all(color: AppTheme.divider, width: 1)
+                                      : null,
                                 ),
-                                title: Text(
-                                  note.title,
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontWeight: note.isRead ? FontWeight.w500 : FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Column(
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      note.body,
-                                      style: TextStyle(
-                                        color: note.isRead ? AppTheme.textSecondary : AppTheme.textPrimary,
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: note.isRead
+                                            ? AppTheme.textSecondary.withValues(alpha: 0.08)
+                                            : AppTheme.primary.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        note.isRead ? Icons.notifications_none : Icons.notifications_active,
+                                        color: note.isRead ? AppTheme.textSecondary : AppTheme.primary,
+                                        size: 20,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _formatTimestamp(note.timestamp),
-                                      style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  note.title,
+                                                  style: TextStyle(
+                                                    color: AppTheme.textPrimary,
+                                                    fontWeight: note.isRead ? FontWeight.w500 : FontWeight.w700,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (!note.isRead)
+                                                Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  decoration: const BoxDecoration(
+                                                    color: AppTheme.primary,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            note.body,
+                                            style: TextStyle(
+                                              color: note.isRead ? AppTheme.textSecondary : AppTheme.textPrimary,
+                                              fontSize: 13,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            _formatTimestamp(note.timestamp),
+                                            style: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
-                                onTap: () => provider.markAsRead(note.id),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+                            );
+                          },
                         ),
                       ),
           ),

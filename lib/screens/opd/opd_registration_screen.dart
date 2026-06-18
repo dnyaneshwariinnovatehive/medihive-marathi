@@ -8,9 +8,10 @@ import '../../providers/patient_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/appointment_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/chip_selector.dart';
-import '../../widgets/medi_date_picker_field.dart';
+import '../../widgets/scrollable_date_picker.dart';
 import '../../widgets/medi_chip_input_field.dart';
 import '../../widgets/chip_input_field.dart';
 import '../../widgets/shake_widget.dart';
@@ -19,12 +20,14 @@ import '../../widgets/success_overlay.dart';
 import '../../utils/constants.dart';
 import '../../utils/medical_data.dart';
 import 'dart:io';
+import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class OpdRegistrationScreen extends StatefulWidget {
-  const OpdRegistrationScreen({super.key});
+  final String? editPatientId;
+  const OpdRegistrationScreen({super.key, this.editPatientId});
 
   @override
   State<OpdRegistrationScreen> createState() => _OpdRegistrationScreenState();
@@ -46,8 +49,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   bool _shakeAddress = false;
   bool _isSubmitting = false;
 
-  late PageController _pageController;
-
   @override
   void initState() {
     super.initState();
@@ -57,12 +58,16 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         setState(() => _showFab = show);
       }
     });
-    _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<OpdProvider>();
-      p.loadDraftFromHive();
+      if (widget.editPatientId != null && widget.editPatientId!.isNotEmpty) {
+        p.loadPatientForEdit(widget.editPatientId!);
+      } else {
+        p.loadDraftFromHive();
+      }
       if (p.hasDraft) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          duration: const Duration(seconds: 3),
           content: Text('Resuming saved draft — ${p.patientName}'),
           action: SnackBarAction(
             label: 'Discard', onPressed: p.clearDraft)
@@ -74,7 +79,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -187,6 +191,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<SettingsProvider>();
     final opd = context.watch<OpdProvider>();
 
     return PopScope(
@@ -240,25 +245,25 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             Expanded(
               child: CustomScrollView(
                 controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
                 slivers: [
                   SliverAppBar(
                     pinned: true,
-                    expandedHeight: 100.0,
-                    floating: false,
-                    snap: false,
-                    forceElevated: true,
-                    flexibleSpace: const FlexibleSpaceBar(
-                      title: Text(
-                        'OPD Registration',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    toolbarHeight: 56,
+                    elevation: 0,
+                    backgroundColor: AppTheme.primary,
+                    title: Text(
+                      'OPD Registration',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      titlePadding: EdgeInsetsDirectional.only(start: 16, bottom: 12),
-                      expandedTitleScale: 1.0,
                     ),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                       child: MediStepProgressIndicator(
                         currentStep: opd.currentStep,
                         stepLabels: const [
@@ -272,21 +277,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.72,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 3,
-                          itemBuilder: (context, index) {
-                            return SingleChildScrollView(
-                              child: Form(
-                                key: _formKeys[index],
-                                child: _buildStepContent(opd, context, index),
-                              ),
-                            );
-                          },
-                        ),
+                      child: Form(
+                        key: _formKeys[opd.currentStep],
+                        child: _buildStepContent(opd, context, opd.currentStep),
                       ),
                     ),
                   ),
@@ -309,10 +302,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                         child: AnimatedButton(
                           onTap: () {
                             opd.previousStep();
-                            _pageController.previousPage(
-                              duration: const Duration(milliseconds: 380),
-                              curve: Curves.easeInOutCubic,
-                            );
                           },
                           child: Container(
                             alignment: Alignment.center,
@@ -347,17 +336,35 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
                           if (opd.currentStep < 2) {
                             opd.nextStep();
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 380),
-                              curve: Curves.easeInOutCubic,
-                            );
                           } else {
                             if (_isSubmitting) return;
                             setState(() => _isSubmitting = true);
                             try {
-                              context.read<PatientProvider>().addPatientFromOpd(opd.formData);
+                              await context.read<PatientProvider>().addPatientFromOpd(opd.formData);
+                              if (!context.mounted) return;
                               final patientNameForNotification = opd.formData.name;
-                              await opd.submitRecord(dashboardProvider: context.read<DashboardProvider>(), appointmentProvider: context.read<AppointmentProvider>());
+                              // Find existing record ID if editing
+                              String? existingId;
+                              if (widget.editPatientId != null) {
+                                final opdBox = Hive.box('opd_records');
+                                final records = opdBox.values.where((r) {
+                                  final rec = r as dynamic;
+                                  return rec.patientId == widget.editPatientId;
+                                }).toList();
+                                if (records.isNotEmpty) {
+                                  records.sort((a, b) {
+                                    final aDate = (a as dynamic).visitDate as DateTime;
+                                    final bDate = (b as dynamic).visitDate as DateTime;
+                                    return bDate.compareTo(aDate);
+                                  });
+                                  existingId = (records.first as dynamic).id?.toString();
+                                }
+                              }
+                              await opd.submitRecord(
+                                dashboardProvider: context.read<DashboardProvider>(),
+                                appointmentProvider: context.read<AppointmentProvider>(),
+                                existingRecordId: existingId,
+                              );
                               context.read<NotificationProvider>().addNotification(
                                 'OPD Record Saved',
                                 'Patient $patientNameForNotification record saved',
@@ -380,7 +387,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                     _isSubmitting = false;
                                     opd.clearDraft();
                                     if (context.mounted) {
-                                      context.go('/app');
+                                      context.go(widget.editPatientId != null ? '/app/patients' : '/app');
                                     }
                                   });
                                 },
@@ -496,40 +503,82 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          MediDatePickerField(
-                            label: 'Date of Birth',
-                            value: opd.formData.dob,
-                            isRequired: true,
-                            firstDate: DateTime(1900),
-                            lastDate: DateTime.now(),
-                            onChanged: (v) {
-                              final date = DateTime.tryParse(v);
-                              if (date != null) {
+                          InkWell(
+                            onTap: () async {
+                              final initial = DateTime.tryParse(opd.formData.dob);
+                              final picked = await showScrollableDatePicker(
+                                context: context,
+                                initialDate: initial,
+                                firstDate: DateTime(1900),
+                                lastDate: DateTime.now(),
+                              );
+                              if (picked != null) {
+                                final iso = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
                                 final today = DateTime.now();
-                                int years = today.year - date.year;
-                                int months = today.month - date.month;
-                                if (months < 0 || (months == 0 && today.day < date.day)) {
+                                int years = today.year - picked.year;
+                                int months = today.month - picked.month;
+                                if (months < 0 || (months == 0 && today.day < picked.day)) {
                                   years--;
                                   months += 12;
                                 }
-                                if (today.day < date.day) {
+                                if (today.day < picked.day) {
                                   months--;
                                 }
                                 if (months < 0) {
                                   months = 11;
                                 }
-                                opd.setDob(v);
+                                opd.setDob(iso);
                                 opd.setAge('$years yr $months mo');
-                              } else {
-                                opd.updateField('dob', v);
                               }
                             },
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Date of birth is required';
-                              }
-                              return null;
-                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.border),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Date of Birth *',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.danger,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Builder(
+                                          builder: (context) {
+                                            final date = DateTime.tryParse(opd.formData.dob);
+                                            final display = date != null
+                                                ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
+                                                : '';
+                                            return Text(
+                                              opd.formData.dob.isEmpty
+                                                  ? 'Tap to select date'
+                                                  : display,
+                                              style: AppTheme.body.copyWith(
+                                                color: opd.formData.dob.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                                ],
+                              ),
+                            ),
                           ),
                           if (opd.formData.dob.isNotEmpty) ...[
                             const SizedBox(height: 8),
@@ -785,7 +834,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+                          icon: Icon(Icons.delete_outline, color: AppTheme.danger),
                           onPressed: () {
                             setState(() {
                               _documentPath = null;
@@ -822,18 +871,67 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 16),
-                      MediDatePickerField(
-                        label: 'Previous Visit Date',
-                        value: opd.formData.previousVisitDate,
-                        isRequired: false,
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime.now(),
-                        onChanged: (v) {
-                          final date = DateTime.tryParse(v);
-                          if (date != null) {
-                            opd.previousVisitDate = date;
+                      InkWell(
+                        onTap: () async {
+                          final initial = DateTime.tryParse(opd.formData.previousVisitDate);
+                          final picked = await showScrollableDatePicker(
+                            context: context,
+                            initialDate: initial,
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            opd.previousVisitDate = picked;
                           }
                         },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Builder(
+                                  builder: (context) {
+                                    final date = DateTime.tryParse(opd.formData.previousVisitDate);
+                                    final display = date != null
+                                        ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
+                                        : '';
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Previous Visit Date',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          opd.formData.previousVisitDate.isEmpty
+                                              ? 'Tap to select date'
+                                              : display,
+                                          style: AppTheme.body.copyWith(
+                                            color: opd.formData.previousVisitDate.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                              Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _textField(
@@ -996,7 +1094,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                              icon: Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
                               onPressed: () {
                                 final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
                                 newList.removeAt(index);
@@ -1080,12 +1178,68 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          MediDatePickerField(
-            label: 'Next Visit Date',
-            value: opd.formData.nextVisit,
-            isRequired: false,
-            firstDate: DateTime.now(),
-            onChanged: (v) => opd.updateField('nextVisit', v),
+          InkWell(
+            onTap: () async {
+              final initial = DateTime.tryParse(opd.formData.nextVisit);
+              final picked = await showScrollableDatePicker(
+                context: context,
+                initialDate: initial,
+                firstDate: DateTime.now(),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) {
+                final iso = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                opd.updateField('nextVisit', iso);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final date = DateTime.tryParse(opd.formData.nextVisit);
+                        final display = date != null
+                            ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
+                            : '';
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Next Visit Date',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              opd.formData.nextVisit.isEmpty
+                                  ? 'Tap to select date'
+                                  : display,
+                              style: AppTheme.body.copyWith(
+                                color: opd.formData.nextVisit.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -1240,11 +1394,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.danger),
+          borderSide: BorderSide(color: AppTheme.danger),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.danger, width: 2),
+          borderSide: BorderSide(color: AppTheme.danger, width: 2),
         ),
       ),
     );
@@ -1252,7 +1406,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 }
 
 // ─── STEP PROGRESS INDICATOR ─────────────────────────────────
-class MediStepProgressIndicator extends StatelessWidget {
+class MediStepProgressIndicator extends StatefulWidget {
   final int currentStep;
   final List<String> stepLabels;
 
@@ -1263,15 +1417,58 @@ class MediStepProgressIndicator extends StatelessWidget {
   });
 
   @override
+  State<MediStepProgressIndicator> createState() => _MediStepProgressIndicatorState();
+}
+
+class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> with TickerProviderStateMixin {
+  late AnimationController _springController;
+  late Animation<double> _labelAnim;
+  String _displayedLabel = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _displayedLabel = widget.stepLabels[widget.currentStep];
+    _springController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _labelAnim = CurvedAnimation(
+      parent: _springController,
+      curve: Curves.elasticOut,
+    );
+    _springController.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(MediStepProgressIndicator old) {
+    super.didUpdateWidget(old);
+    if (widget.currentStep != old.currentStep) {
+      setState(() {
+        _displayedLabel = widget.stepLabels[widget.currentStep];
+      });
+      _springController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _springController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final int totalSteps = stepLabels.length;
-    
+    final int totalSteps = widget.stepLabels.length;
+    final int currentStep = widget.currentStep;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceVariant,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: AppTheme.divider),
       ),
       child: Column(
         children: [
@@ -1280,18 +1477,27 @@ class MediStepProgressIndicator extends StatelessWidget {
             children: [
               Text(
                 'Step ${currentStep + 1} of $totalSteps',
-                style: const TextStyle(
+                style: AppTheme.label.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: AppTheme.primary,
                 ),
               ),
-              Text(
-                stepLabels[currentStep],
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
+              AnimatedBuilder(
+                animation: _labelAnim,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: 0.9 + (_labelAnim.value * 0.1),
+                    child: child,
+                  );
+                },
+                child: Text(
+                  _displayedLabel,
+                  style: AppTheme.caption.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -1300,74 +1506,94 @@ class MediStepProgressIndicator extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final double width = constraints.maxWidth;
-              // Space per segment = width / (totalSteps - 1) if steps > 1
-              final double progressWidth = totalSteps > 1 
-                  ? width * (currentStep / (totalSteps - 1)) 
-                  : width;
 
-              return Stack(
-                alignment: Alignment.centerLeft,
-                clipBehavior: Clip.none,
-                children: [
-                  // Background Line
-                  Container(
-                    height: 2,
-                    width: width,
-                    color: AppTheme.primary.withValues(alpha: 0.15),
-                  ),
-                  // Animated Foreground Line
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeInOutCubic,
-                    height: 2,
-                    width: progressWidth,
-                    color: AppTheme.primary,
-                  ),
-                  // Step Dots
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(totalSteps, (index) {
-                      final bool isCompleted = index < currentStep;
-                      final bool isActive = index == currentStep;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: isActive ? 34 : 28,
-                        height: isActive ? 34 : 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isCompleted
-                              ? AppTheme.primary
-                              : isActive
-                                  ? AppTheme.primary.withValues(alpha: 0.1)
-                                  : AppTheme.surface,
-                          border: Border.all(
-                            color: isCompleted || isActive
-                                ? AppTheme.primary
-                                : AppTheme.border,
-                            width: isActive ? 2.5 : 2.0,
+              return SizedBox(
+                height: 34,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOutCubic,
+                          height: 2,
+                          width: (width - 28) * (totalSteps > 1 ? currentStep / (totalSteps - 1) : 1),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(1),
                           ),
-                          boxShadow: isActive ? AppTheme.cardShadow : null,
                         ),
-                        child: Center(
-                          child: isCompleted
-                              ? const Icon(Icons.check, color: Colors.white, size: 16)
-                              : Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: isActive ? 13 : 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isCompleted
-                                        ? Colors.white
-                                        : isActive
-                                            ? AppTheme.primary
-                                            : AppTheme.textTertiary,
-                                  ),
-                                ),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(totalSteps, (index) {
+                        final bool isCompleted = index < currentStep;
+                        final bool isActive = index == currentStep;
+                        return AnimatedScale(
+                          scale: isActive ? 1.0 : 0.85,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.elasticOut,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            width: isActive ? 34 : 28,
+                            height: isActive ? 34 : 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isCompleted
+                                  ? AppTheme.primary
+                                  : isActive
+                                      ? AppTheme.cardBg
+                                      : AppTheme.surfaceVariant,
+                              border: Border.all(
+                                color: isCompleted || isActive
+                                    ? AppTheme.primary
+                                    : AppTheme.divider,
+                                width: isActive ? 2.5 : 2,
+                              ),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.primary.withValues(alpha: 0.25),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                child: isCompleted
+                                    ? const Icon(Icons.check, color: Colors.white, size: 16, key: ValueKey('check'))
+                                    : Text(
+                                        '${index + 1}',
+                                        key: ValueKey('num_$index'),
+                                        style: TextStyle(
+                                          fontSize: isActive ? 13 : 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isActive ? AppTheme.primary : AppTheme.textTertiary,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
               );
             },
           ),

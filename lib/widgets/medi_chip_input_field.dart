@@ -276,11 +276,11 @@ class _MediChipInputFieldState extends State<MediChipInputField> {
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppTheme.danger),
+                borderSide: BorderSide(color: AppTheme.danger),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppTheme.danger, width: 2),
+                borderSide: BorderSide(color: AppTheme.danger, width: 2),
               ),
             ),
           ),

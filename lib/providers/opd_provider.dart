@@ -5,7 +5,6 @@ import 'package:hive/hive.dart';
 import '../models/opd_form_data.dart';
 import '../models/opd_record_model.dart';
 import '../services/local_storage_service.dart';
-import '../models/appointment_model.dart';
 import 'dashboard_provider.dart';
 import 'appointment_provider.dart';
 
@@ -174,6 +173,50 @@ class OpdProvider extends ChangeNotifier {
     prescribedMedicines = medicines;
   }
 
+  void loadPatientForEdit(String patientId) {
+    final patientsBox = Hive.box('patients');
+    final opdBox = Hive.box<OPDRecordModel>('opd_records');
+
+    final patient = patientsBox.get(patientId);
+    if (patient == null) return;
+
+    final p = patient as dynamic;
+    updateField('patientId', patientId);
+    updateField('name', p.name ?? '');
+    updateField('dob', p.dob ?? '');
+    updateField('age', p.age?.toString() ?? '');
+    updateField('gender', p.gender ?? 'Male');
+    updateField('mobile', p.mobile ?? '');
+    updateField('address', p.address ?? '');
+    updateField('bloodGroup', p.bloodGroup ?? 'O+');
+
+    final records = opdBox.values.where((r) => r.patientId == patientId).toList();
+    records.sort((a, b) => b.visitDate.compareTo(a.visitDate));
+    if (records.isNotEmpty) {
+      final latest = records.first;
+      updateField('diagnosis', latest.diagnosis);
+      updateField('symptoms', latest.symptoms);
+      updateField('medicines', latest.medicines);
+      updateField('clinicalNotes', latest.clinicalNotes);
+      updateField('opdType', latest.type == 'follow_up' ? 'Follow-up' : 'Consultation');
+      updateField('consultationFee', latest.consultationFee);
+      updateField('medicineFee', latest.medicineFee);
+      updateField('discount', latest.discount);
+      updateField('paymentMode', latest.paymentMode);
+      updateField('chargeType', latest.chargeType);
+      updateField('previousVisitDate', latest.previousVisitDate);
+      updateField('followUpReason', latest.followUpReason);
+      updateField('nextVisit', latest.nextVisit);
+      _visitType = latest.type;
+      if (latest.previousVisitDate.isNotEmpty) {
+        _previousVisitDate = DateTime.tryParse(latest.previousVisitDate);
+      }
+    }
+
+    currentStep = 0;
+    notifyListeners();
+  }
+
   OpdFormData get formData => _formData;
 
   // Hive Draft System Private & Public Save Methods
@@ -182,6 +225,7 @@ class OpdProvider extends ChangeNotifier {
       final box = Hive.isBoxOpen('drafts') ? Hive.box('drafts') : null;
       if (box != null) {
         box.put('current_opd_draft', {
+          'patientId': _formData.patientId,
           'patientName': patientName,
           'dob': dob?.toIso8601String(),
           'age': age,
@@ -211,6 +255,7 @@ class OpdProvider extends ChangeNotifier {
         final draft = box.get('current_opd_draft');
         if (draft != null && draft is Map) {
           final map = Map<String, dynamic>.from(draft);
+          _formData.patientId = map['patientId'] ?? '';
           _formData.name = map['patientName'] ?? '';
           final dobStr = map['dob'];
           if (dobStr != null) {
@@ -451,15 +496,23 @@ class OpdProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submitRecord({DashboardProvider? dashboardProvider, AppointmentProvider? appointmentProvider}) async {
+  Future<bool> submitRecord({DashboardProvider? dashboardProvider, AppointmentProvider? appointmentProvider, String? existingRecordId}) async {
     try {
-      // Pre-capture form data before any await to avoid race with form reset
       final nextVisit = _formData.nextVisit;
       final patientId = _formData.patientId;
       final patientName = _formData.name.isEmpty ? 'Unknown' : _formData.name;
 
-      // 1. Save OPD Record
-      final recordId = 'R${DateTime.now().millisecondsSinceEpoch}';
+      // 1. Save OPD Record (update if editing, insert if new)
+      String recordId;
+      DateTime preservedCreatedAt;
+      if (existingRecordId != null) {
+        recordId = existingRecordId;
+        final existing = Hive.box<OPDRecordModel>('opd_records').get(existingRecordId);
+        preservedCreatedAt = existing?.createdAt ?? DateTime.now();
+      } else {
+        recordId = 'R${DateTime.now().millisecondsSinceEpoch}';
+        preservedCreatedAt = DateTime.now();
+      }
       final record = OPDRecordModel(
         id: recordId,
         patientId: patientId,
@@ -470,37 +523,32 @@ class OpdProvider extends ChangeNotifier {
         visitDate: DateTime.now(),
         isDraft: false,
         isSynced: false,
-        createdAt: DateTime.now(),
+        createdAt: preservedCreatedAt,
         updatedAt: DateTime.now(),
+        clinicalNotes: _formData.clinicalNotes,
+        consultationFee: _formData.consultationFee,
+        medicineFee: _formData.medicineFee,
+        discount: _formData.discount,
+        paymentMode: _formData.paymentMode,
+        chargeType: _formData.chargeType,
+        previousVisitDate: _formData.previousVisitDate,
+        followUpReason: _formData.followUpReason,
+        nextVisit: _formData.nextVisit,
+        bloodGroup: _formData.bloodGroup,
       );
       await LocalStorageService().saveOPDRecord(record);
 
-      // 2. Auto-create follow-up appointment if nextVisit is set
+      // 2. Create calendar appointment for follow-up
       if (nextVisit.isNotEmpty && appointmentProvider != null) {
-        final nextDate = DateTime.tryParse(nextVisit);
-        if (nextDate != null && !nextDate.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          final aptBox = Hive.box<AppointmentModel>('appointments');
-          final aptId = 'opd_fu_${patientId}_${nextDate.year}_${nextDate.month}_${nextDate.day}';
-          final exists = aptBox.values.any((a) => a.id == aptId);
-          if (!exists) {
-            final displayTime = '9:00 AM';
-            appointmentProvider.addAppointment(
-              dateTime: nextDate,
-              type: 'Follow-up',
-              patient: patientName,
-              time: displayTime,
-            );
-            final appointmentModel = AppointmentModel(
-              id: aptId,
-              patientId: patientId,
-              dateTime: nextDate,
-              notes: 'Follow-up',
-              isSynced: false,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            );
-            await aptBox.put(aptId, appointmentModel);
-          }
+        final visitDate = DateTime.tryParse(nextVisit);
+        if (visitDate != null) {
+          appointmentProvider.addAppointment(
+            dateTime: visitDate,
+            type: 'Follow-up',
+            patient: patientName,
+            time: '09:00',
+            patientId: patientId,
+          );
         }
       }
 

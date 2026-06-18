@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/patient_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../models/patient.dart';
 import '../../widgets/animated_list_item.dart';
+import '../../widgets/pressable_card.dart';
 
 import 'package:flutter/rendering.dart';
 
@@ -108,18 +110,20 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<SettingsProvider>();
     final provider = context.watch<PatientProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
         controller: _scrollController,
+        physics: const BouncingScrollPhysics(),
         slivers: [
           // ═══════════════════════════════════════════════════
           // PREMIUM GRADIENT HEADER WITH SEARCH
           // ═══════════════════════════════════════════════════
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 160,
             pinned: true,
             elevation: 0,
             automaticallyImplyLeading: false,
@@ -186,7 +190,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                         fontSize: 13,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 12),
                     // Embedded search bar just before curve ends
                     Container(
                       height: 48,
@@ -299,9 +303,8 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             index: index,
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
+                              child: PressableCard(
                                 onTap: () => context.go('/app/patients/$id'),
-                                borderRadius: BorderRadius.circular(14),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: AppTheme.cardBg,
@@ -311,15 +314,18 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                   padding: const EdgeInsets.all(14),
                                   child: Row(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 24,
-                                        backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                                        child: Text(
-                                          name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'P',
-                                          style: TextStyle(
-                                            color: AppTheme.primary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                      Hero(
+                                        tag: 'patient_avatar_$id',
+                                        child: CircleAvatar(
+                                          radius: 24,
+                                          backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                                          child: Text(
+                                            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'P',
+                                            style: TextStyle(
+                                              color: AppTheme.primary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -371,6 +377,30 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               GestureDetector(
+                                                onTap: () => context.go('/app/patients/$id'),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.primary.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Icon(Icons.visibility_outlined, size: 16, color: AppTheme.primary),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              GestureDetector(
+                                                onTap: () => context.go('/app/opd/edit/$id'),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.warning.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Icon(Icons.edit_outlined, size: 16, color: AppTheme.warning),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              GestureDetector(
                                                 onTap: () async {
                                                   final confirmed = await showDialog<bool>(
                                                     context: context,
@@ -394,10 +424,15 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                                     await context.read<PatientProvider>().deletePatientAndRecords(id);
                                                   }
                                                 },
-                                                child: Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.danger.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Icon(Icons.delete_outline, size: 16, color: AppTheme.danger),
+                                                ),
                                               ),
-                                              const SizedBox(width: 6),
-                                              Icon(Icons.arrow_forward_ios, size: 13, color: AppTheme.textHint),
                                             ],
                                           ),
                                         ],

@@ -208,40 +208,51 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
           Container(
             decoration: const BoxDecoration(
               gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(color: Color(0x30000000), blurRadius: 16, offset: Offset(0, 6)),
+              ],
             ),
             child: SafeArea(bottom: false, child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(8, 12, 16, 24),
               child: Row(children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
+                GestureDetector(
+                  onTap: () {
                     if (context.canPop()) {
                       context.pop();
                     } else {
                       context.go('/app/patients');
                     }
                   },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                  ),
                 ),
                 SizedBox(width: 12),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Prescription', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
+                  Text('Prescription', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
                   Text(_rx.date, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13)),
                 ]),
                 const Spacer(),
                 GestureDetector(
                   onTap: _toggleEdit,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: _isEditing ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: _isEditing ? null : Border.all(color: Colors.white.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _isEditing ? Icons.check : Icons.edit,
+                          _isEditing ? Icons.check : Icons.edit_outlined,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -261,20 +272,28 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
               decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(16), boxShadow: AppTheme.heavyShadow),
               clipBehavior: Clip.antiAlias,
               child: Column(children: [
-                Container(
-                  width: double.infinity, padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_rx.clinicName, style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text(_rx.clinicAddress, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13)),
-                    SizedBox(height: 12),
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text('Phone: ${_rx.clinicPhone}', style: TextStyle(color: Colors.white, fontSize: 13)),
-                      Text('Lic: ${_rx.licenseNo}', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  Container(
+                    width: double.infinity, padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_rx.clinicName, style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.3)),
+                      SizedBox(height: 4),
+                      Text(_rx.clinicAddress, style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13, height: 1.4)),
+                      SizedBox(height: 14),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Row(children: [
+                          Icon(Icons.phone, color: Colors.white.withValues(alpha: 0.7), size: 14),
+                          SizedBox(width: 6),
+                          Text(_rx.clinicPhone, style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ]),
+                        Row(children: [
+                          Icon(Icons.badge_outlined, color: Colors.white.withValues(alpha: 0.7), size: 14),
+                          SizedBox(width: 6),
+                          Text('Lic: ${_rx.licenseNo}', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ]),
+                      ]),
                     ]),
-                  ]),
-                ),
+                  ),
                 Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(_rx.doctorName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
@@ -414,8 +433,15 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
               },
               icon: Icon(Icons.send, size: 20),
               label: Text('Share via WhatsApp'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.whatsapp, foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 4),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.whatsapp,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+                shadowColor: AppTheme.whatsapp.withValues(alpha: 0.3),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+              ),
             )),
             SizedBox(height: 12),
             Row(children: [

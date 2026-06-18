@@ -99,8 +99,8 @@ class AppConstants {
   ];
 
   // ─── Colors ───────────────────────────────────────────────
-  static const Color primary = Color(0xFF1A506C);
-  static const Color primaryLight = Color(0xFF2D7A9E);
-  static const Color success = Color(0xFF4ADE80);
+  static const Color primary = Color(0xFF1A1A2E);
+  static const Color primaryLight = Color(0xFF2D2D44);
+  static const Color success = Color(0xFF2D5A27);
   static const Color whatsapp = Color(0xFF25D366);
 }

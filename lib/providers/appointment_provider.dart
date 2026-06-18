@@ -1,37 +1,46 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/appointment.dart';
 import '../models/appointment_model.dart';
+import 'notification_provider.dart';
 
 class AppointmentProvider extends ChangeNotifier {
   DateTime _currentDate = DateTime.now();
   int _selectedDay = DateTime.now().day;
-  final Map<String, String> _dayNotes = {};
+  final Map<String, List<String>> _dayNotes = {};
 
   DateTime get currentDate => _currentDate;
   int get selectedDay => _selectedDay;
 
-  String get notes {
+  String get notes => '';
+
+  List<String> get dayNotes {
     final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
-    return _dayNotes[key] ?? '';
+    return _dayNotes[key] ?? [];
   }
 
-  int _nextId = 4;
+  bool hasNotesForDay(int day) {
+    final key = '${_currentDate.year}-${_currentDate.month}-$day';
+    return _dayNotes.containsKey(key) && (_dayNotes[key]?.isNotEmpty == true);
+  }
 
-  final List<Appointment> _appointments = [
-    Appointment(id: 'apt_1', dateTime: DateTime(DateTime.now().year, DateTime.now().month, 17), type: 'Follow-up', patient: 'Aryan Patil', time: '10:00 AM'),
-    Appointment(id: 'apt_2', dateTime: DateTime(DateTime.now().year, DateTime.now().month, 19), type: 'Consultation', patient: 'Jiya Sharma', time: '2:00 PM'),
-    Appointment(id: 'apt_3', dateTime: DateTime(DateTime.now().year, DateTime.now().month, 21), type: 'Follow-up', patient: 'Nehal P', time: '11:30 AM'),
-    Appointment(id: 'apt_4', dateTime: DateTime(DateTime.now().year, DateTime.now().month, 29), type: 'Follow-up', patient: 'Vira', time: '3:00 PM'),
-  ];
+  int _nextId = 0;
+
+  final List<Appointment> _appointments = [];
+  StreamSubscription? _apptSubscription;
 
   AppointmentProvider() {
     _loadFromHive();
+    _apptSubscription = Hive.box<AppointmentModel>('appointments').watch().listen((_) {
+      _loadFromHive();
+    });
   }
 
   void _loadFromHive() {
     try {
       final box = Hive.box<AppointmentModel>('appointments');
+      _appointments.clear();
       for (final m in box.values) {
         _appointments.add(Appointment(
           id: m.id,
@@ -41,6 +50,12 @@ class AppointmentProvider extends ChangeNotifier {
           time: '${m.dateTime.hour.toString().padLeft(2, '0')}:${m.dateTime.minute.toString().padLeft(2, '0')}',
         ));
       }
+      final maxId = box.values.fold<int>(0, (max, m) {
+        final numId = int.tryParse(m.id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        return numId > max ? numId : max;
+      });
+      _nextId = maxId;
+      notifyListeners();
     } catch (_) {}
   }
 
@@ -71,14 +86,42 @@ class AppointmentProvider extends ChangeNotifier {
   }
 
   List<Appointment> get upcomingFollowUps {
-    if (!_hasRealData) return [];
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     return _appointments.where((a) {
       if (a.type != 'Follow-up') return false;
-      return a.dateTime.year > now.year ||
-          (a.dateTime.year == now.year && a.dateTime.month > now.month) ||
-          (a.dateTime.year == now.year && a.dateTime.month == now.month && a.dateTime.day >= now.day);
+      final aptDate = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day);
+      return !aptDate.isBefore(today);
     }).toList();
+  }
+
+  final Map<String, List<String>> _dayReminders = {};
+
+  List<String> get dayReminders {
+    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    return _dayReminders[key] ?? [];
+  }
+
+  void addReminder(String value) {
+    if (value.trim().isEmpty) return;
+    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    _dayReminders.putIfAbsent(key, () => []);
+    _dayReminders[key]!.add(value.trim());
+    NotificationProvider.addNotificationSilently(
+      'Reminder: $_selectedDay ${_currentDate.month}/${_currentDate.year}',
+      value.trim(),
+    );
+    notifyListeners();
+  }
+
+  void removeReminderAt(int index) {
+    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    final reminders = _dayReminders[key];
+    if (reminders != null && index < reminders.length) {
+      reminders.removeAt(index);
+      if (reminders.isEmpty) _dayReminders.remove(key);
+      notifyListeners();
+    }
   }
 
   void setSelectedDay(int day) {
@@ -86,10 +129,22 @@ class AppointmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setNotes(String value) {
+  void addNote(String value) {
+    if (value.trim().isEmpty) return;
     final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
-    _dayNotes[key] = value;
+    _dayNotes.putIfAbsent(key, () => []);
+    _dayNotes[key]!.add(value.trim());
     notifyListeners();
+  }
+
+  void removeNoteAt(int index) {
+    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    final notes = _dayNotes[key];
+    if (notes != null && index < notes.length) {
+      notes.removeAt(index);
+      if (notes.isEmpty) _dayNotes.remove(key);
+      notifyListeners();
+    }
   }
 
   void previousMonth() {
@@ -111,15 +166,38 @@ class AppointmentProvider extends ChangeNotifier {
     required String type,
     required String patient,
     required String time,
+    String? patientId,
   }) {
     _nextId++;
+    final id = 'apt_$_nextId';
     _appointments.add(Appointment(
-      id: 'apt_$_nextId',
+      id: id,
       dateTime: dateTime,
       type: type,
       patient: patient,
       time: time,
     ));
+    try {
+      final box = Hive.box<AppointmentModel>('appointments');
+      if (patientId == null || patientId.isEmpty) {
+        final patientBox = Hive.box('patients');
+        for (final p in patientBox.values) {
+          if ((p as dynamic).name == patient) {
+            patientId = (p as dynamic).id ?? '';
+            break;
+          }
+        }
+      }
+      box.put(id, AppointmentModel(
+        id: id,
+        patientId: patientId ?? '',
+        dateTime: dateTime,
+        notes: type == 'Follow-up' ? 'Follow-up' : '',
+        isSynced: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -130,5 +208,11 @@ class AppointmentProvider extends ChangeNotifier {
       box.delete(id);
     } catch (_) {}
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _apptSubscription?.cancel();
+    super.dispose();
   }
 }

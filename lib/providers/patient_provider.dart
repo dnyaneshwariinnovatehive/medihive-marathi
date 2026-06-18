@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/opd_form_data.dart';
 import '../models/patient.dart';
 import '../models/patient_model.dart';
@@ -27,9 +28,28 @@ class PatientProvider extends ChangeNotifier {
 
   List<PatientModel> get _sortedPatients {
     final list = Hive.box<PatientModel>('patients').values.toList();
-    list.sort((a, b) => 
-      (b.lastVisitDate ?? b.createdAt)
-        .compareTo(a.lastVisitDate ?? a.createdAt));
+    switch (_sortFilter) {
+      case 'oldest_visit':
+        list.sort((a, b) =>
+          (a.lastVisitDate ?? a.createdAt)
+            .compareTo(b.lastVisitDate ?? b.createdAt));
+        break;
+      case 'name_asc':
+        list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case 'name_desc':
+        list.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case 'id_asc':
+        list.sort((a, b) => a.id.compareTo(b.id));
+        break;
+      case 'recent_visit':
+      default:
+        list.sort((a, b) =>
+          (b.lastVisitDate ?? b.createdAt)
+            .compareTo(a.lastVisitDate ?? a.createdAt));
+        break;
+    }
     return list;
   }
 
@@ -164,22 +184,25 @@ class PatientProvider extends ChangeNotifier {
     onSearchChanged(query);
   }
 
-  String generateNextPatientId() {
-    int maxIdVal = 0;
-    try {
-      final box = Hive.box<PatientModel>('patients');
-      for (final patient in box.values) {
-        if (patient.id.startsWith('P')) {
-          final idPart = patient.id.substring(1);
-          final val = int.tryParse(idPart);
-          if (val != null && val > maxIdVal) {
-            maxIdVal = val;
-          }
+  Future<String> generateNextPatientId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final box = Hive.box<PatientModel>('patients');
+    int maxExisting = 0;
+    for (final patient in box.values) {
+      if (patient.id.startsWith('P')) {
+        final val = int.tryParse(patient.id.substring(1));
+        if (val != null && val > maxExisting) {
+          maxExisting = val;
         }
       }
-    } catch (_) {}
-    final nextVal = maxIdVal + 1;
-    return 'P${nextVal.toString().padLeft(3, '0')}';
+    }
+    int counter = prefs.getInt('patient_id_counter') ?? 0;
+    if (counter < maxExisting) {
+      counter = maxExisting;
+    }
+    counter++;
+    await prefs.setInt('patient_id_counter', counter);
+    return 'P${counter.toString().padLeft(3, '0')}';
   }
 
   int _calculateAgeFromDob(String dobStr) {
@@ -193,21 +216,12 @@ class PatientProvider extends ChangeNotifier {
     return age;
   }
 
-  void addPatientFromOpd(OpdFormData formData) {
+  Future<void> addPatientFromOpd(OpdFormData formData) async {
     final box = Hive.box<PatientModel>('patients');
     
-    // Check if patient already exists in Hive box by ID or Mobile
     PatientModel? existingPatient;
     if (formData.patientId.isNotEmpty) {
-      existingPatient = box.values.cast<PatientModel?>().firstWhere(
-        (p) => p?.id == formData.patientId,
-        orElse: () => null,
-      );
-    } else if (formData.mobile.isNotEmpty) {
-      existingPatient = box.values.cast<PatientModel?>().firstWhere(
-        (p) => p?.mobile == formData.mobile,
-        orElse: () => null,
-      );
+      existingPatient = box.get(formData.patientId);
     }
 
     final ageFromDob = _calculateAgeFromDob(formData.dob);
@@ -227,7 +241,7 @@ class PatientProvider extends ChangeNotifier {
       );
       box.put(updatedPatient.id, updatedPatient);
     } else {
-      final nextId = generateNextPatientId();
+      final nextId = await generateNextPatientId();
       formData.patientId = nextId;
 
       final newPatient = PatientModel(

@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/foundation.dart'; // for kIsWeb
-import 'package:workmanager/workmanager.dart'; // Workmanager plugin
+import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:workmanager/workmanager.dart'; // Workmanager plugin
 import 'package:flutter/services.dart'; // for SystemNavigator
 
 import 'theme/app_theme.dart'; // app theme definitions
@@ -68,15 +69,15 @@ void main() async {
   };
   
   // Initialize Workmanager - only on non‑web platforms
-  if (!kIsWeb) {
-    try {
-      await Workmanager().initialize(
-        callbackDispatcher,
-      );
-    } catch (_) {
-      // Workmanager initialization failure is non-fatal
-    }
-  }
+  // if (!kIsWeb) {
+  //   try {
+  //     await Workmanager().initialize(
+  //       callbackDispatcher,
+  //     );
+  //   } catch (_) {
+  //     // Workmanager initialization failure is non-fatal
+  //   }
+  // }
 
   // Initialize Hive
   try {
@@ -92,6 +93,15 @@ void main() async {
     await Hive.openBox<OPDRecordModel>('opd_records');
     await Hive.openBox<AppointmentModel>('appointments');
     await Hive.openBox('drafts');
+    // One-time data reset (runs only on first launch after this patch)
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('data_reset_done') != true) {
+      await Hive.box<PatientModel>('patients').clear();
+      await Hive.box<OPDRecordModel>('opd_records').clear();
+      await Hive.box<AppointmentModel>('appointments').clear();
+      await Hive.box('drafts').clear();
+      await prefs.setBool('data_reset_done', true);
+    }
   } catch (e) {
     // Hive initialization failure - log and continue with best-effort
     debugPrint('Hive initialization error: $e');
@@ -222,6 +232,12 @@ final _router = GoRouter(
                 GoRoute(
                   path: 'new',
                   builder: (context, state) => const OpdRegistrationScreen(),
+                ),
+                GoRoute(
+                  path: 'edit/:patientId',
+                  builder: (context, state) => OpdRegistrationScreen(
+                    editPatientId: state.pathParameters['patientId'] ?? '',
+                  ),
                 ),
               ],
             ),

@@ -16,49 +16,52 @@ class AnimatedListItem extends StatefulWidget {
 
 class _AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 500),
     );
-    
-    // Staggered delay capped at 300ms
+
+    _fadeAnim = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+
     final delay = (widget.index * 60).clamp(0, 300);
     Future.delayed(Duration(milliseconds: delay), () {
-      if (mounted) {
-        _controller.forward();
-      }
+      if (mounted) _controller.forward();
     });
   }
-  
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: CurvedAnimation(
-          parent: _controller,
-          curve: Curves.easeOutCubic,
-        ),
-        builder: (context, child) {
-          return Opacity(
-            opacity: _controller.value,
-            child: Transform.translate(
-              offset: Offset(0, 20 * (1 - _controller.value)),
-              child: child,
-            ),
-          );
-        },
-        child: widget.child,
-      ),
-    );
-  }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }
