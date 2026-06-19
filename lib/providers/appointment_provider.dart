@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../models/appointment.dart';
 import '../models/appointment_model.dart';
 import 'notification_provider.dart';
+import '../services/local_notification_service.dart';
 
 class AppointmentProvider extends ChangeNotifier {
   DateTime _currentDate = DateTime.now();
@@ -13,16 +14,31 @@ class AppointmentProvider extends ChangeNotifier {
   DateTime get currentDate => _currentDate;
   int get selectedDay => _selectedDay;
 
-  String get notes => '';
-
   List<String> get dayNotes {
-    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    final key = _noteKeyFor(_currentDate.year, _currentDate.month, _selectedDay);
     return _dayNotes[key] ?? [];
   }
 
   bool hasNotesForDay(int day) {
-    final key = '${_currentDate.year}-${_currentDate.month}-$day';
-    return _dayNotes.containsKey(key) && (_dayNotes[key]?.isNotEmpty == true);
+    final key = _noteKeyFor(_currentDate.year, _currentDate.month, day);
+    return _dayNotes[key]?.isNotEmpty == true;
+  }
+
+  String _noteKeyFor(int year, int month, int day) => '$year-$month-$day';
+
+  void loadNotesFromHive() {
+    try {
+      final box = Hive.box('day_notes');
+      _dayNotes.clear();
+      for (final key in box.keys) {
+        final val = box.get(key);
+        if (val is String) {
+          _dayNotes[key.toString()] = [val];
+        } else if (val is List) {
+          _dayNotes[key.toString()] = val.cast<String>();
+        }
+      }
+    } catch (_) {}
   }
 
   int _nextId = 0;
@@ -32,9 +48,31 @@ class AppointmentProvider extends ChangeNotifier {
 
   AppointmentProvider() {
     _loadFromHive();
+    loadNotesFromHive();
     _apptSubscription = Hive.box<AppointmentModel>('appointments').watch().listen((_) {
       _loadFromHive();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rescheduleNotifications();
+    });
+  }
+
+  Future<void> _rescheduleNotifications() async {
+    final now = DateTime.now();
+    for (final apt in _appointments) {
+      final remindAt = apt.dateTime.subtract(const Duration(minutes: 10));
+      if (remindAt.isAfter(now)) {
+        try {
+          await LocalNotificationService().scheduleAppointmentReminder(
+            id: apt.id,
+            patientName: apt.patient,
+            appointmentTime: apt.dateTime,
+          );
+        } catch (e) {
+          debugPrint('Notification reschedule error for ${apt.id}: $e');
+        }
+      }
+    }
   }
 
   void _loadFromHive() {
@@ -73,7 +111,11 @@ class AppointmentProvider extends ChangeNotifier {
   List<Appointment> get appointments => _appointments;
 
   List<Appointment> get selectedDayAppointments =>
-      _appointments.where((a) => a.dateTime.day == _selectedDay).toList();
+      _appointments.where((a) =>
+          a.dateTime.day == _selectedDay &&
+          a.dateTime.month == _currentDate.month &&
+          a.dateTime.year == _currentDate.year,
+      ).toList();
 
   bool get _hasRealData {
     try {
@@ -131,34 +173,70 @@ class AppointmentProvider extends ChangeNotifier {
 
   void addNote(String value) {
     if (value.trim().isEmpty) return;
-    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    final key = _noteKeyFor(_currentDate.year, _currentDate.month, _selectedDay);
     _dayNotes.putIfAbsent(key, () => []);
     _dayNotes[key]!.add(value.trim());
+    try {
+      final box = Hive.box('day_notes');
+      box.put(key, _dayNotes[key]);
+    } catch (_) {}
     notifyListeners();
   }
 
   void removeNoteAt(int index) {
-    final key = '${_currentDate.year}-${_currentDate.month}-$_selectedDay';
+    final key = _noteKeyFor(_currentDate.year, _currentDate.month, _selectedDay);
     final notes = _dayNotes[key];
     if (notes != null && index < notes.length) {
       notes.removeAt(index);
-      if (notes.isEmpty) _dayNotes.remove(key);
+      if (notes.isEmpty) {
+        _dayNotes.remove(key);
+        try {
+          Hive.box('day_notes').delete(key);
+        } catch (_) {}
+      } else {
+        try {
+          Hive.box('day_notes').put(key, notes);
+        } catch (_) {}
+      }
       notifyListeners();
     }
   }
 
+  void removeNoteForDay(int day) {
+    final key = _noteKeyFor(_currentDate.year, _currentDate.month, day);
+    _dayNotes.remove(key);
+    try {
+      Hive.box('day_notes').delete(key);
+    } catch (_) {}
+    notifyListeners();
+  }
+
   void previousMonth() {
     _currentDate = DateTime(_currentDate.year, _currentDate.month - 1);
+    final daysInNewMonth = DateTime(_currentDate.year, _currentDate.month + 1, 0).day;
+    if (_selectedDay > daysInNewMonth) _selectedDay = daysInNewMonth;
     notifyListeners();
   }
 
   void nextMonth() {
     _currentDate = DateTime(_currentDate.year, _currentDate.month + 1);
+    final daysInNewMonth = DateTime(_currentDate.year, _currentDate.month + 1, 0).day;
+    if (_selectedDay > daysInNewMonth) _selectedDay = daysInNewMonth;
     notifyListeners();
   }
 
   bool hasAppointment(int day) {
-    return _appointments.any((a) => a.dateTime.day == day && a.dateTime.month == _currentDate.month && a.dateTime.year == _currentDate.year);
+    return _appointments.any((a) =>
+        a.dateTime.day == day &&
+        a.dateTime.month == _currentDate.month &&
+        a.dateTime.year == _currentDate.year);
+  }
+
+  List<Appointment> appointmentsForDay(int day) {
+    return _appointments.where((a) =>
+        a.dateTime.day == day &&
+        a.dateTime.month == _currentDate.month &&
+        a.dateTime.year == _currentDate.year).toList();
   }
 
   void addAppointment({
@@ -198,6 +276,11 @@ class AppointmentProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
       ));
     } catch (_) {}
+    LocalNotificationService().scheduleAppointmentReminder(
+      id: id,
+      patientName: patient,
+      appointmentTime: dateTime,
+    );
     notifyListeners();
   }
 
@@ -207,6 +290,7 @@ class AppointmentProvider extends ChangeNotifier {
       final box = Hive.box<AppointmentModel>('appointments');
       box.delete(id);
     } catch (_) {}
+    LocalNotificationService().cancelAppointmentReminder(id);
     notifyListeners();
   }
 

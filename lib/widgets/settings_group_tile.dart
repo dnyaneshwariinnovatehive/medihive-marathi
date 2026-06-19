@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 /// Settings group tile matching the web app's settings row pattern.
 class SettingsGroupTile extends StatelessWidget {
   final IconData icon;
-  final Color iconBgColor;
+  final Color? iconBgColor;
   final Color iconColor;
   final String label;
   final String? badge;
@@ -17,7 +17,7 @@ class SettingsGroupTile extends StatelessWidget {
   const SettingsGroupTile({
     super.key,
     required this.icon,
-    this.iconBgColor = const Color(0x1A1A506C),
+    this.iconBgColor,
     this.iconColor = AppTheme.primary,
     required this.label,
     this.badge,
@@ -33,7 +33,9 @@ class SettingsGroupTile extends StatelessWidget {
     return Column(
       children: [
         InkWell(
-          onTap: isToggle ? null : onTap,
+          onTap: isToggle
+              ? () => onToggleChanged?.call(!toggleValue)
+              : onTap,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -43,7 +45,7 @@ class SettingsGroupTile extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: iconBgColor,
+                    color: iconBgColor ?? AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   ),
                   child: Icon(icon, color: iconColor, size: 20),
@@ -70,7 +72,7 @@ class SettingsGroupTile extends StatelessWidget {
                     child: Text(
                       badge!,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.textOnPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -82,6 +84,9 @@ class SettingsGroupTile extends StatelessWidget {
                     value: toggleValue,
                     onChanged: onToggleChanged,
                     activeThumbColor: AppTheme.primary,
+                    activeTrackColor: AppTheme.primary.withValues(alpha: 0.4),
+                    inactiveThumbColor: AppTheme.textTertiary,
+                    inactiveTrackColor: AppTheme.border,
                   )
                 else
                   Icon(Icons.chevron_right,
@@ -91,7 +96,13 @@ class SettingsGroupTile extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Divider(height: 1, indent: 68, color: AppTheme.actionButton),
+          Divider(
+            height: 1,
+            indent: 68,
+            color: AppTheme.isDarkMode
+                ? AppTheme.textOnPrimary.withValues(alpha: 0.08)
+                : AppTheme.actionButton,
+          ),
       ],
     );
   }

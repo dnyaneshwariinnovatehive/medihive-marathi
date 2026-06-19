@@ -90,8 +90,11 @@ class _BackupScreenState extends State<BackupScreen> {
       });
     } catch (_) {
       setState(() {
-        _driveUsageStr = '2.3 MB used';
+        _driveUsageStr = 'Unknown';
       });
+      if (mounted) {
+        _showToast('Could not fetch Drive usage', isError: true);
+      }
     }
   }
 
@@ -108,6 +111,9 @@ class _BackupScreenState extends State<BackupScreen> {
       });
     } catch (e) {
       setState(() => _isLoadingHistory = false);
+      if (mounted) {
+        _showToast('Failed to load backup history: $e', isError: true);
+      }
     }
   }
 
@@ -133,7 +139,7 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   String _formatSize(int? bytes) {
-    if (bytes == null) return '2.3 MB';
+    if (bytes == null) return 'Unknown';
     if (bytes < 1024) return '$bytes B';
     final kb = bytes / 1024;
     if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
@@ -145,9 +151,9 @@ class _BackupScreenState extends State<BackupScreen> {
     final regExp = RegExp(r'_(\d+)_records_');
     final match = regExp.firstMatch(filename);
     if (match != null) {
-      return int.tryParse(match.group(1)!) ?? 47;
+      return int.tryParse(match.group(1)!) ?? 0;
     }
-    return 47; // standard placeholder count matching visual specifications
+    return 0;
   }
 
   void _showToast(String message, {bool isError = false}) {
@@ -222,8 +228,8 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.danger,
-              foregroundColor: Colors.white,
+                                                  backgroundColor: AppTheme.danger,
+                                                  foregroundColor: AppTheme.textOnPrimary,
             ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Restore Data'),
@@ -330,7 +336,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: const Color(0x1A1A506C),
+                                    color: AppTheme.primary.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(Icons.storage, color: AppTheme.primary, size: 24),
@@ -377,22 +383,24 @@ class _BackupScreenState extends State<BackupScreen> {
                                     label: const Text('Export to Device'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppTheme.primary,
-                                      foregroundColor: Colors.white,
+                                      foregroundColor: AppTheme.textOnPrimary,
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                OutlinedButton.icon(
-                                  onPressed: _shareBackup,
-                                  icon: const Icon(Icons.share, size: 20),
-                                  label: const Text('Share Backup'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primary,
-                                    side: BorderSide(color: AppTheme.primary),
-                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _shareBackup,
+                                    icon: const Icon(Icons.share, size: 20),
+                                    label: const Text('Share Backup'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.primary,
+                                      side: BorderSide(color: AppTheme.primary),
+                                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -410,33 +418,39 @@ class _BackupScreenState extends State<BackupScreen> {
                                   children: ['1 Month', '3 Months', '6 Months', '12 Months', 'Complete Backup'].map((p) => InkWell(
                                     onTap: () async {
                                       setState(() => _showDropdown = false);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Generating $p backup...')),
-                                      );
+                                      try {
+                                        _showToast('Generating $p backup...');
+                                        final bytes = await ExcelExportService().generateExcelFile();
+                                        final suffix = p.replaceAll(' ', '_').toLowerCase();
+                                        final fileName = ExcelExportService().generateFileName('Shree_Clinic')
+                                            .replaceAll('.xlsx', '_$suffix.xlsx');
 
-                                      if (p == 'Complete Backup') {
-                                        try {
-                                          final bytes = await ExcelExportService().generateExcelFile();
-                                          final fileName = ExcelExportService().generateFileName('Shree_Clinic');
+                                        final appDir = await getApplicationDocumentsDirectory();
+                                        final path = '${appDir.path}/$fileName';
 
-                                          String? path;
-                                          if (Platform.isAndroid) {
-                                            final dir = Directory('/storage/emulated/0/Download');
-                                            if (await dir.exists()) {
-                                              path = '${dir.path}/$fileName';
-                                            }
+                                        final file = File(path);
+                                        await file.writeAsBytes(bytes);
+                                        _showToast('✓ Backup saved locally: $fileName');
+
+                                        final syncMgr = context.read<SyncManager>();
+                                        if (syncMgr.syncState != SyncState.offline) {
+                                          final upload = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Upload to Drive?'),
+                                              content: const Text('Backup saved locally. Upload to Google Drive as well?'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+                                                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Upload')),
+                                              ],
+                                            ),
+                                          );
+                                          if (upload == true) {
+                                            await syncMgr.backupToDriveOnly();
                                           }
-                                          if (path == null) {
-                                            final appDir = await getApplicationDocumentsDirectory();
-                                            path = '${appDir.path}/$fileName';
-                                          }
-
-                                          final file = File(path);
-                                          await file.writeAsBytes(bytes);
-                                          _showToast('✓ Backup downloaded to: $fileName');
-                                        } catch (e) {
-                                          _showToast('✗ Backup generation failed: $e', isError: true);
                                         }
+                                      } catch (e) {
+                                        _showToast('✗ Backup generation failed: $e', isError: true);
                                       }
                                     },
                                     child: Container(
@@ -472,10 +486,10 @@ class _BackupScreenState extends State<BackupScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: const Color(0x1A22C55E),
+                                        color: AppTheme.success.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                      child: const Icon(Icons.cloud_done_outlined, color: Color(0xFF22C55E), size: 24),
+                                      child: Icon(Icons.cloud_done_outlined, color: AppTheme.success, size: 24),
                                     ),
                                     const SizedBox(width: 12),
                                     Column(
@@ -519,22 +533,29 @@ class _BackupScreenState extends State<BackupScreen> {
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppTheme.primary,
-                                        foregroundColor: Colors.white,
+                                        foregroundColor: AppTheme.textOnPrimary,
                                         padding: const EdgeInsets.symmetric(vertical: 14),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       ),
                                       onPressed: settings.isGoogleSigningIn
                                           ? null
                                           : () async {
-                                              await settings.signInGoogle();
-                                              _fetchDriveUsage();
-                                              _fetchCloudBackupHistory();
+                                              try {
+                                                await settings.signInGoogle();
+                                                if (!context.mounted) return;
+                                                _fetchDriveUsage();
+                                                _fetchCloudBackupHistory();
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  _showToast('Failed to connect: $e', isError: true);
+                                                }
+                                              }
                                             },
                                       icon: settings.isGoogleSigningIn
-                                          ? const SizedBox(
+                                          ? SizedBox(
                                               width: 20,
                                               height: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textOnPrimary),
                                             )
                                           : const Icon(Icons.link, size: 20),
                                       label: Text(
@@ -595,10 +616,17 @@ class _BackupScreenState extends State<BackupScreen> {
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                           ),
                                           onPressed: () async {
-                                            await settings.signOutGoogle();
-                                            setState(() {
-                                              _cloudBackups.clear();
-                                            });
+                                            try {
+                                              await settings.signOutGoogle();
+                                              if (!context.mounted) return;
+                                              setState(() {
+                                                _cloudBackups.clear();
+                                              });
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                _showToast('Failed to disconnect: $e', isError: true);
+                                              }
+                                            }
                                           },
                                           child: const Text('Disconnect', style: TextStyle(fontSize: 12)),
                                         ),
@@ -615,7 +643,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                       Text(
                                         settings.lastSyncTime.contains('Never') 
                                             ? 'Never' 
-                                            : '${settings.lastSyncTime} — 47 records synced',
+                                            : settings.lastSyncTime,
                                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
                                       ),
                                     ],
@@ -719,31 +747,71 @@ class _BackupScreenState extends State<BackupScreen> {
                                     ),
                                   ],
                                   
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.primary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppTheme.primary,
+                                              foregroundColor: AppTheme.textOnPrimary,
+                                              padding: const EdgeInsets.symmetric(vertical: 14),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                            onPressed: (isSyncing || syncMgr.syncState == SyncState.offline)
+                                              ? null
+                                              : () async {
+                                                  try {
+                                                    final success = await syncMgr.triggerManualSync();
+                                                    if (!context.mounted) return;
+                                                    if (success) {
+                                                      await settings.triggerSync();
+                                                      _fetchDriveUsage();
+                                                      _fetchCloudBackupHistory();
+                                                      _showToast('Synced successfully');
+                                                    } else {
+                                                      _showToast('Sync failed. Retry?', isError: true);
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      _showToast('Sync failed: $e', isError: true);
+                                                    }
+                                                  }
+                                                },
+                                          icon: const Icon(Icons.sync, size: 20),
+                                          label: Text(isSyncing ? 'Syncing...' : 'Sync Now'),
+                                        ),
                                       ),
-                                      onPressed: (isSyncing || syncMgr.syncState == SyncState.offline)
-                                          ? null
-                                          : () async {
-                                              final success = await syncMgr.triggerManualSync();
-                                              if (success) {
-                                                await settings.triggerSync();
-                                                _fetchDriveUsage();
-                                                _fetchCloudBackupHistory();
-                                                _showToast('✓ Synced successfully');
-                                              } else {
-                                                _showToast('✗ Sync failed. Retry?', isError: true);
-                                              }
-                                            },
-                                      icon: const Icon(Icons.sync, size: 20),
-                                      label: Text(isSyncing ? 'Syncing...' : 'Sync Now'),
-                                    ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppTheme.primary,
+                                            side: BorderSide(color: AppTheme.primary),
+                                            padding: const EdgeInsets.symmetric(vertical: 14),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          onPressed: (isSyncing || syncMgr.syncState == SyncState.offline)
+                                              ? null
+                                              : () async {
+                                                  try {
+                                                    final success = await syncMgr.backupToDriveOnly();
+                                                    if (!context.mounted) return;
+                                                    if (success) {
+                                                      await settings.triggerSync();
+                                                      _fetchDriveUsage();
+                                                      _fetchCloudBackupHistory();
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      _showToast('Upload failed: $e', isError: true);
+                                                    }
+                                                  }
+                                                },
+                                          icon: const Icon(Icons.cloud_upload_outlined, size: 20),
+                                          label: Text(isSyncing ? 'Uploading...' : 'Upload to Drive'),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ],
@@ -859,13 +927,13 @@ class _BackupScreenState extends State<BackupScreen> {
                                             ),
                                           ),
                                           ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppTheme.primary,
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            onPressed: () => _confirmAndRestore(b),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppTheme.primary,
+                                                foregroundColor: AppTheme.textOnPrimary,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                              onPressed: () => _confirmAndRestore(b),
                                             icon: const Icon(Icons.restore, size: 14),
                                             label: const Text('Restore', style: TextStyle(fontSize: 12)),
                                           ),
@@ -890,7 +958,7 @@ class _BackupScreenState extends State<BackupScreen> {
           // Restore Screen Progress Modal Overlay
           if (_isRestoring)
             Container(
-              color: Colors.black.withValues(alpha: 0.6),
+              color: const Color(0xFF000000).withValues(alpha: 0.6),
               child: Center(
                 child: Container(
                   margin: const EdgeInsets.all(32),

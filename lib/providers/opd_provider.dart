@@ -39,7 +39,8 @@ class OpdProvider extends ChangeNotifier {
   set previousVisitDate(DateTime? val) {
     _previousVisitDate = val;
     if (val != null) {
-      _formData.previousVisitDate = '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
+      _formData.previousVisitDate =
+          '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
     } else {
       _formData.previousVisitDate = '';
     }
@@ -67,7 +68,8 @@ class OpdProvider extends ChangeNotifier {
   DateTime? get dob => DateTime.tryParse(_formData.dob);
   set dob(DateTime? val) {
     if (val != null) {
-      _formData.dob = '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
+      _formData.dob =
+          '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
     } else {
       _formData.dob = '';
     }
@@ -96,14 +98,16 @@ class OpdProvider extends ChangeNotifier {
     _saveDraftToHive();
   }
 
-  List<String> get selectedSymptoms => _formData.symptoms.isEmpty ? [] : _formData.symptoms.split(', ');
+  List<String> get selectedSymptoms =>
+      _formData.symptoms.isEmpty ? [] : _formData.symptoms.split(', ');
   set selectedSymptoms(List<String> val) {
     _formData.symptoms = val.join(', ');
     notifyListeners();
     _saveDraftToHive();
   }
 
-  List<String> get selectedDiagnoses => _formData.diagnosis.isEmpty ? [] : _formData.diagnosis.split(', ');
+  List<String> get selectedDiagnoses =>
+      _formData.diagnosis.isEmpty ? [] : _formData.diagnosis.split(', ');
   set selectedDiagnoses(List<String> val) {
     _formData.diagnosis = val.join(', ');
     notifyListeners();
@@ -116,12 +120,19 @@ class OpdProvider extends ChangeNotifier {
       final decoded = jsonDecode(_formData.medicines);
       if (decoded is List) {
         return List<Map<String, dynamic>>.from(
-            decoded.map((e) => Map<String, dynamic>.from(e)));
+          decoded.map((e) => Map<String, dynamic>.from(e)),
+        );
       }
     } catch (_) {
       // Fallback for old comma-separated strings
       return _formData.medicines.split(', ').map((e) {
-        return {'name': e, 'type': '', 'dosage': '', 'frequency': '', 'duration': ''};
+        return {
+          'name': e,
+          'type': '',
+          'dosage': '',
+          'frequency': '',
+          'duration': '',
+        };
       }).toList();
     }
     return [];
@@ -174,43 +185,55 @@ class OpdProvider extends ChangeNotifier {
   }
 
   void loadPatientForEdit(String patientId) {
-    final patientsBox = Hive.box('patients');
-    final opdBox = Hive.box<OPDRecordModel>('opd_records');
+    reset();
+    hasDraft = false;
 
-    final patient = patientsBox.get(patientId);
-    if (patient == null) return;
+    try {
+      final patientsBox = Hive.box('patients');
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
 
-    final p = patient as dynamic;
-    updateField('patientId', patientId);
-    updateField('name', p.name ?? '');
-    updateField('dob', p.dob ?? '');
-    updateField('age', p.age?.toString() ?? '');
-    updateField('gender', p.gender ?? 'Male');
-    updateField('mobile', p.mobile ?? '');
-    updateField('address', p.address ?? '');
-    updateField('bloodGroup', p.bloodGroup ?? 'O+');
+      final patient = patientsBox.get(patientId);
+      if (patient == null) return;
 
-    final records = opdBox.values.where((r) => r.patientId == patientId).toList();
-    records.sort((a, b) => b.visitDate.compareTo(a.visitDate));
-    if (records.isNotEmpty) {
-      final latest = records.first;
-      updateField('diagnosis', latest.diagnosis);
-      updateField('symptoms', latest.symptoms);
-      updateField('medicines', latest.medicines);
-      updateField('clinicalNotes', latest.clinicalNotes);
-      updateField('opdType', latest.type == 'follow_up' ? 'Follow-up' : 'Consultation');
-      updateField('consultationFee', latest.consultationFee);
-      updateField('medicineFee', latest.medicineFee);
-      updateField('discount', latest.discount);
-      updateField('paymentMode', latest.paymentMode);
-      updateField('chargeType', latest.chargeType);
-      updateField('previousVisitDate', latest.previousVisitDate);
-      updateField('followUpReason', latest.followUpReason);
-      updateField('nextVisit', latest.nextVisit);
-      _visitType = latest.type;
-      if (latest.previousVisitDate.isNotEmpty) {
-        _previousVisitDate = DateTime.tryParse(latest.previousVisitDate);
+      final p = patient as dynamic;
+      updateField('patientId', patientId);
+      updateField('name', p.name?.toString() ?? '');
+      updateField('dob', p.dob?.toString() ?? '');
+      updateField('age', p.age?.toString() ?? '');
+      updateField('gender', p.gender?.toString() ?? 'Male');
+      updateField('mobile', p.mobile?.toString() ?? '');
+      updateField('address', p.address?.toString() ?? '');
+      updateField('bloodGroup', p.bloodGroup?.toString() ?? 'O+');
+
+      final records = opdBox.values
+          .where((r) => r.patientId == patientId)
+          .toList();
+      records.sort((a, b) => b.visitDate.compareTo(a.visitDate));
+      if (records.isNotEmpty) {
+        final latest = records.first;
+        updateField('diagnosis', latest.diagnosis);
+        updateField('symptoms', latest.symptoms);
+        updateField('medicines', latest.medicines);
+        updateField('clinicalNotes', latest.clinicalNotes);
+        updateField(
+          'opdType',
+          latest.type == 'follow_up' ? 'Follow-up' : 'Consultation',
+        );
+        updateField('consultationFee', latest.consultationFee);
+        updateField('medicineFee', latest.medicineFee);
+        updateField('discount', latest.discount);
+        updateField('paymentMode', latest.paymentMode);
+        updateField('chargeType', latest.chargeType);
+        updateField('previousVisitDate', latest.previousVisitDate);
+        updateField('followUpReason', latest.followUpReason);
+        updateField('nextVisit', latest.nextVisit);
+        _visitType = latest.type;
+        if (latest.previousVisitDate.isNotEmpty) {
+          _previousVisitDate = DateTime.tryParse(latest.previousVisitDate);
+        }
       }
+    } catch (_) {
+      // Silently handle — form stays at default values
     }
 
     currentStep = 0;
@@ -261,17 +284,20 @@ class OpdProvider extends ChangeNotifier {
           if (dobStr != null) {
             final parsed = DateTime.tryParse(dobStr);
             if (parsed != null) {
-              _formData.dob = '${parsed.year}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
+              _formData.dob =
+                  '${parsed.year}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
             }
           }
           _formData.age = map['age'] ?? '';
           _formData.mobile = map['mobile'] ?? '';
           _formData.address = map['address'] ?? '';
-          
+
           final savedVisitType = map['visitType'] ?? 'consultation';
           _visitType = savedVisitType;
-          _formData.opdType = savedVisitType == 'follow_up' ? 'Follow-up' : 'Consultation';
-          
+          _formData.opdType = savedVisitType == 'follow_up'
+              ? 'Follow-up'
+              : 'Consultation';
+
           final symptoms = map['selectedSymptoms'];
           if (symptoms is List) {
             _formData.symptoms = List<String>.from(symptoms).join(', ');
@@ -283,7 +309,9 @@ class OpdProvider extends ChangeNotifier {
           final medicines = map['prescribedMedicines'];
           if (medicines is List) {
             if (medicines.isNotEmpty && medicines.first is Map) {
-              prescribedMedicines = List<Map<String, dynamic>>.from(medicines.map((e) => Map<String, dynamic>.from(e)));
+              prescribedMedicines = List<Map<String, dynamic>>.from(
+                medicines.map((e) => Map<String, dynamic>.from(e)),
+              );
             } else {
               _formData.medicines = List<String>.from(medicines).join(', ');
             }
@@ -326,18 +354,16 @@ class OpdProvider extends ChangeNotifier {
   Future<void> autoSaveDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final draftKey = _formData.patientId.isNotEmpty 
-          ? 'opd_draft_${_formData.patientId}' 
+      final draftKey = _formData.patientId.isNotEmpty
+          ? 'opd_draft_${_formData.patientId}'
           : 'opd_draft_new_patient';
-      
-      final draftData = {
-        'step': _currentStep,
-        'form': _formData.toJson(),
-      };
+
+      final draftData = {'step': _currentStep, 'form': _formData.toJson()};
 
       await prefs.setString(draftKey, jsonEncode(draftData));
 
-      final Set<String> allDraftKeys = prefs.getStringList('opd_draft_keys')?.toSet() ?? {};
+      final Set<String> allDraftKeys =
+          prefs.getStringList('opd_draft_keys')?.toSet() ?? {};
       allDraftKeys.add(draftKey);
       await prefs.setStringList('opd_draft_keys', allDraftKeys.toList());
       notifyListeners();
@@ -354,10 +380,10 @@ class OpdProvider extends ChangeNotifier {
         final data = jsonDecode(jsonString);
         _currentStep = data['step'] ?? 0;
         _formData.fromJson(data['form'] ?? {});
-        
+
         // Rebuild prescriptions from medicines string
         updateField('medicines', _formData.medicines);
-        
+
         notifyListeners();
       }
     } catch (e) {
@@ -370,7 +396,8 @@ class OpdProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(key);
 
-      final List<String> allDraftKeys = prefs.getStringList('opd_draft_keys') ?? [];
+      final List<String> allDraftKeys =
+          prefs.getStringList('opd_draft_keys') ?? [];
       allDraftKeys.remove(key);
       await prefs.setStringList('opd_draft_keys', allDraftKeys);
       notifyListeners();
@@ -486,8 +513,8 @@ class OpdProvider extends ChangeNotifier {
   }
 
   void reset() {
-    final draftKey = _formData.patientId.isNotEmpty 
-        ? 'opd_draft_${_formData.patientId}' 
+    final draftKey = _formData.patientId.isNotEmpty
+        ? 'opd_draft_${_formData.patientId}'
         : 'opd_draft_new_patient';
     discardDraft(draftKey);
 
@@ -496,7 +523,11 @@ class OpdProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submitRecord({DashboardProvider? dashboardProvider, AppointmentProvider? appointmentProvider, String? existingRecordId}) async {
+  Future<bool> submitRecord({
+    DashboardProvider? dashboardProvider,
+    AppointmentProvider? appointmentProvider,
+    String? existingRecordId,
+  }) async {
     try {
       final nextVisit = _formData.nextVisit;
       final patientId = _formData.patientId;
@@ -507,7 +538,9 @@ class OpdProvider extends ChangeNotifier {
       DateTime preservedCreatedAt;
       if (existingRecordId != null) {
         recordId = existingRecordId;
-        final existing = Hive.box<OPDRecordModel>('opd_records').get(existingRecordId);
+        final existing = Hive.box<OPDRecordModel>(
+          'opd_records',
+        ).get(existingRecordId);
         preservedCreatedAt = existing?.createdAt ?? DateTime.now();
       } else {
         recordId = 'R${DateTime.now().millisecondsSinceEpoch}';
@@ -538,7 +571,24 @@ class OpdProvider extends ChangeNotifier {
       );
       await LocalStorageService().saveOPDRecord(record);
 
-      // 2. Create calendar appointment for follow-up
+      // 2. Create calendar appointment for the current visit
+      if (appointmentProvider != null && patientId.isNotEmpty) {
+        final now = DateTime.now();
+        final timeStr =
+            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        final opdType = _formData.opdType == 'Follow-up'
+            ? 'Follow-up'
+            : 'Consultation';
+        appointmentProvider.addAppointment(
+          dateTime: now,
+          type: opdType,
+          patient: patientName,
+          time: timeStr,
+          patientId: patientId,
+        );
+      }
+
+      // 3. Create calendar appointment for future follow-up (nextVisit)
       if (nextVisit.isNotEmpty && appointmentProvider != null) {
         final visitDate = DateTime.tryParse(nextVisit);
         if (visitDate != null) {
@@ -552,10 +602,10 @@ class OpdProvider extends ChangeNotifier {
         }
       }
 
-      // 3. Reset form
+      // 5. Reset form
       reset();
 
-      // 4. Notify dashboard to reload
+      // 6. Notify dashboard to reload
       if (dashboardProvider != null) {
         await dashboardProvider.loadDashboardData();
       }
@@ -566,9 +616,13 @@ class OpdProvider extends ChangeNotifier {
     }
   }
 
-  bool saveRecord({DashboardProvider? dashboardProvider, AppointmentProvider? appointmentProvider}) {
-    submitRecord(dashboardProvider: dashboardProvider, appointmentProvider: appointmentProvider);
-    return true;
+  Future<bool> saveRecord({
+    DashboardProvider? dashboardProvider,
+    AppointmentProvider? appointmentProvider,
+  }) async {
+    return await submitRecord(
+      dashboardProvider: dashboardProvider,
+      appointmentProvider: appointmentProvider,
+    );
   }
-
 }

@@ -141,7 +141,9 @@ class SyncManager extends ChangeNotifier {
       if (_isSignedIn) {
         try {
           await _driveService.syncPendingRecords();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Auto-sync: Drive sync failed: $e');
+        }
       }
 
       _syncState = SyncState.synced;
@@ -250,16 +252,29 @@ class SyncManager extends ChangeNotifier {
 
     try {
       await _syncWithFlask();
-      await _driveService.syncPendingRecords();
+    } catch (_) {}
 
-      _syncState = SyncState.synced;
-      notifyListeners();
+    bool driveOk = false;
+    if (!_isSignedIn) {
+      _isSignedIn = await _authService.isSignedIn();
+    }
+    if (_isSignedIn) {
+      try {
+        await _driveService.syncPendingRecords();
+        driveOk = true;
+      } catch (_) {}
+    } else {
+      driveOk = true;
+    }
 
+    _syncState = SyncState.synced;
+    notifyListeners();
+
+    if (driveOk) {
       await NotificationProvider.addNotificationSilently(
         'Sync Complete',
         'Data synced to server and Google Drive',
       );
-
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: const Text('✓ Data synced'),
@@ -267,10 +282,51 @@ class SyncManager extends ChangeNotifier {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+    return true;
+  }
+
+  Future<bool> backupToDriveOnly() async {
+    if (kIsWeb) return false;
+    if (_syncState == SyncState.syncing) return false;
+
+    _syncState = SyncState.syncing;
+    notifyListeners();
+
+    try {
+      if (!_isSignedIn) {
+        _isSignedIn = await _authService.isSignedIn();
+      }
+      if (!_isSignedIn) {
+        _syncState = SyncState.error;
+        notifyListeners();
+        return false;
+      }
+      await _driveService.syncPendingRecords();
+      _syncState = SyncState.synced;
+      notifyListeners();
+      await NotificationProvider.addNotificationSilently(
+        'Drive Backup Complete',
+        'Data backed up to Google Drive',
+      );
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: const Text('✓ Backed up to Google Drive'),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return true;
-    } catch (_) {
+    } catch (e) {
       _syncState = SyncState.error;
       notifyListeners();
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('✗ Backup failed: $e'),
+          backgroundColor: AppTheme.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return false;
     }
   }

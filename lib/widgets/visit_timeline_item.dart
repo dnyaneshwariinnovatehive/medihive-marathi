@@ -74,11 +74,13 @@ class VisitTimelineItem extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: visit.type == 'Follow-up'
-                              ? const Color(0xFFDCFCE7)
-                              : const Color(0xFFDBEAFE),
+                              ? AppTheme.success.withValues(alpha: 0.15)
+                              : AppTheme.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -87,8 +89,8 @@ class VisitTimelineItem extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: visit.type == 'Follow-up'
-                                ? const Color(0xFF15803D)
-                                : const Color(0xFF1D4ED8),
+                                ? AppTheme.success
+                                : AppTheme.primary,
                           ),
                         ),
                       ),
@@ -107,7 +109,9 @@ class VisitTimelineItem extends StatelessWidget {
                       Text(
                         'Total Fees',
                         style: TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 13),
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       Text(
                         '₹${visit.fees}',
@@ -131,18 +135,20 @@ class VisitTimelineItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: TextStyle(
-                color: AppTheme.textSecondary, fontSize: 13)),
+        Text(
+          label,
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
         SizedBox(height: 2),
-        Text(value,
-            style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textPrimary,
-                fontSize: 14)),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textPrimary,
+            fontSize: 14,
+          ),
+        ),
       ],
     );
   }
 }
-
-

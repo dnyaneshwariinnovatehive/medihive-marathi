@@ -35,7 +35,10 @@ class OpdRegistrationScreen extends StatefulWidget {
 
 class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   // GlobalKeys for Step Forms
-  final List<GlobalKey<FormState>> _formKeys = List.generate(3, (_) => GlobalKey<FormState>());
+  final List<GlobalKey<FormState>> _formKeys = List.generate(
+    3,
+    (_) => GlobalKey<FormState>(),
+  );
   final _scrollController = ScrollController();
   TextEditingController? _autocompleteController;
   String? _documentPath;
@@ -53,7 +56,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      final show = _scrollController.position.userScrollDirection == ScrollDirection.forward;
+      final show =
+          _scrollController.position.userScrollDirection ==
+          ScrollDirection.forward;
       if (show != _showFab) {
         setState(() => _showFab = show);
       }
@@ -66,12 +71,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         p.loadDraftFromHive();
       }
       if (p.hasDraft) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          duration: const Duration(seconds: 3),
-          content: Text('Resuming saved draft — ${p.patientName}'),
-          action: SnackBarAction(
-            label: 'Discard', onPressed: p.clearDraft)
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            content: Text('Resuming saved draft — ${p.patientName}'),
+            action: SnackBarAction(label: 'Discard', onPressed: p.clearDraft),
+          ),
+        );
       }
     });
   }
@@ -85,7 +91,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   int calculateAge(DateTime dob) {
     final today = DateTime.now();
     int years = today.year - dob.year;
-    if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+    if (today.month < dob.month ||
+        (today.month == dob.month && today.day < dob.day)) {
       years--;
     }
     return years;
@@ -108,8 +115,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
     return "Age: $years years $months months";
   }
 
-
-
   bool _validateStep1(OpdProvider opd) {
     bool isValid = true;
     bool shouldScroll = false;
@@ -130,7 +135,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         if (mounted) setState(() => _shakeDob = false);
       });
     }
-    if (opd.formData.mobile.trim().isEmpty || opd.formData.mobile.trim().replaceAll(RegExp(r'[^0-9]'), '').length != 10) {
+    if (opd.formData.mobile.trim().isEmpty ||
+        opd.formData.mobile.trim().replaceAll(RegExp(r'[^0-9]'), '').length !=
+            10) {
       isValid = false;
       shouldScroll = true;
       setState(() => _shakeMobile = true);
@@ -302,13 +309,21 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                         child: AnimatedButton(
                           onTap: () {
                             opd.previousStep();
+                            _scrollController.animateTo(
+                              0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
                           },
                           child: Container(
                             alignment: Alignment.center,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.primary, width: 2),
+                              border: Border.all(
+                                color: AppTheme.primary,
+                                width: 2,
+                              ),
                             ),
                             child: const Text(
                               'Previous',
@@ -329,20 +344,30 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           if (opd.currentStep == 0) {
                             if (!_validateStep1(opd)) return;
                           } else {
-                            if (!(_formKeys[opd.currentStep].currentState?.validate() ?? false)) {
+                            if (!(_formKeys[opd.currentStep].currentState
+                                    ?.validate() ??
+                                false)) {
                               return;
                             }
                           }
 
                           if (opd.currentStep < 2) {
                             opd.nextStep();
+                            _scrollController.animateTo(
+                              0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
                           } else {
                             if (_isSubmitting) return;
                             setState(() => _isSubmitting = true);
                             try {
-                              await context.read<PatientProvider>().addPatientFromOpd(opd.formData);
+                              await context
+                                  .read<PatientProvider>()
+                                  .addPatientFromOpd(opd.formData);
                               if (!context.mounted) return;
-                              final patientNameForNotification = opd.formData.name;
+                              final patientNameForNotification =
+                                  opd.formData.name;
                               // Find existing record ID if editing
                               String? existingId;
                               if (widget.editPatientId != null) {
@@ -353,16 +378,21 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 }).toList();
                                 if (records.isNotEmpty) {
                                   records.sort((a, b) {
-                                    final aDate = (a as dynamic).visitDate as DateTime;
-                                    final bDate = (b as dynamic).visitDate as DateTime;
+                                    final aDate =
+                                        (a as dynamic).visitDate as DateTime;
+                                    final bDate =
+                                        (b as dynamic).visitDate as DateTime;
                                     return bDate.compareTo(aDate);
                                   });
-                                  existingId = (records.first as dynamic).id?.toString();
+                                  existingId = (records.first as dynamic).id
+                                      ?.toString();
                                 }
                               }
                               await opd.submitRecord(
-                                dashboardProvider: context.read<DashboardProvider>(),
-                                appointmentProvider: context.read<AppointmentProvider>(),
+                                dashboardProvider: context
+                                    .read<DashboardProvider>(),
+                                appointmentProvider: context
+                                    .read<AppointmentProvider>(),
                                 existingRecordId: existingId,
                               );
                               context.read<NotificationProvider>().addNotification(
@@ -373,25 +403,35 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               setState(() => _isSubmitting = false);
                               rethrow;
                             }
-                            
+
                             showGeneralDialog(
                               context: context,
-                              barrierColor: Colors.black.withValues(alpha: 0.45),
-                              barrierDismissible: false,
-                              pageBuilder: (dialogContext, __, ___) => SuccessOverlay(
-                                title: 'Record Saved!',
-                                subtitle: 'Patient added successfully',
-                                onComplete: () {
-                                  Navigator.of(dialogContext, rootNavigator: true).pop();
-                                  Future.delayed(Duration.zero, () {
-                                    _isSubmitting = false;
-                                    opd.clearDraft();
-                                    if (context.mounted) {
-                                      context.go(widget.editPatientId != null ? '/app/patients' : '/app');
-                                    }
-                                  });
-                                },
+                              barrierColor: Colors.black.withValues(
+                                alpha: 0.45,
                               ),
+                              barrierDismissible: false,
+                              pageBuilder: (dialogContext, __, ___) =>
+                                  SuccessOverlay(
+                                    title: 'Record Saved!',
+                                    subtitle: 'Patient added successfully',
+                                    onComplete: () {
+                                      Navigator.of(
+                                        dialogContext,
+                                        rootNavigator: true,
+                                      ).pop();
+                                      Future.delayed(Duration.zero, () {
+                                        _isSubmitting = false;
+                                        opd.clearDraft();
+                                        if (context.mounted) {
+                                          context.go(
+                                            widget.editPatientId != null
+                                                ? '/app/patients'
+                                                : '/app',
+                                          );
+                                        }
+                                      });
+                                    },
+                                  ),
                             );
                           }
                         },
@@ -408,10 +448,16 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               if (opd.currentStep == 2)
                                 const Padding(
                                   padding: EdgeInsets.only(right: 8.0),
-                                  child: Icon(Icons.save, size: 20, color: Colors.white),
+                                  child: Icon(
+                                    Icons.save,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               Text(
-                                opd.currentStep < 2 ? 'Next Step' : 'Save OPD Record',
+                                opd.currentStep < 2
+                                    ? 'Next Step'
+                                    : 'Save OPD Record',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -481,6 +527,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               opd.formData.name,
               (v) => opd.updateField('name', v),
               isRequired: true,
+              textInputAction: TextInputAction.done,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Full name is required';
@@ -505,7 +552,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                         children: [
                           InkWell(
                             onTap: () async {
-                              final initial = DateTime.tryParse(opd.formData.dob);
+                              final initial = DateTime.tryParse(
+                                opd.formData.dob,
+                              );
                               final picked = await showScrollableDatePicker(
                                 context: context,
                                 initialDate: initial,
@@ -513,11 +562,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 lastDate: DateTime.now(),
                               );
                               if (picked != null) {
-                                final iso = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                final iso =
+                                    '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
                                 final today = DateTime.now();
                                 int years = today.year - picked.year;
                                 int months = today.month - picked.month;
-                                if (months < 0 || (months == 0 && today.day < picked.day)) {
+                                if (months < 0 ||
+                                    (months == 0 && today.day < picked.day)) {
                                   years--;
                                   months += 12;
                                 }
@@ -532,7 +583,10 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
@@ -540,11 +594,16 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                                  Icon(
+                                    Icons.calendar_today,
+                                    color: AppTheme.primary,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Date of Birth *',
@@ -557,7 +616,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                         const SizedBox(height: 4),
                                         Builder(
                                           builder: (context) {
-                                            final date = DateTime.tryParse(opd.formData.dob);
+                                            final date = DateTime.tryParse(
+                                              opd.formData.dob,
+                                            );
                                             final display = date != null
                                                 ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
                                                 : '';
@@ -566,7 +627,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                                   ? 'Tap to select date'
                                                   : display,
                                               style: AppTheme.body.copyWith(
-                                                color: opd.formData.dob.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                                color: opd.formData.dob.isEmpty
+                                                    ? AppTheme.textHint
+                                                    : AppTheme.textPrimary,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             );
@@ -575,7 +638,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                                  Icon(
+                                    Icons.calendar_month_outlined,
+                                    color: AppTheme.primary,
+                                    size: 20,
+                                  ),
                                 ],
                               ),
                             ),
@@ -584,7 +651,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                             const SizedBox(height: 8),
                             Builder(
                               builder: (context) {
-                                final dobDate = DateTime.tryParse(opd.formData.dob);
+                                final dobDate = DateTime.tryParse(
+                                  opd.formData.dob,
+                                );
                                 if (dobDate != null) {
                                   return Padding(
                                     padding: const EdgeInsets.only(left: 4),
@@ -621,8 +690,12 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                       (v) => opd.updateField('age', v),
                       validator: (value) {
                         if (value != null && value.isNotEmpty) {
-                          final numStr = value.replaceAll(RegExp(r'[^0-9]'), '');
-                          if (numStr.isNotEmpty && (int.tryParse(numStr) ?? -1) < 0) {
+                          final numStr = value.replaceAll(
+                            RegExp(r'[^0-9]'),
+                            '',
+                          );
+                          if (numStr.isNotEmpty &&
+                              (int.tryParse(numStr) ?? -1) < 0) {
                             return 'Invalid age';
                           }
                         }
@@ -674,6 +747,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               (v) => opd.updateField('address', v),
               maxLines: 3,
               isRequired: true,
+              textInputAction: TextInputAction.done,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Address is required';
@@ -713,7 +787,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.description_outlined, color: AppTheme.primary, size: 20),
+              Icon(
+                Icons.description_outlined,
+                color: AppTheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Medical & Clinical Details',
@@ -748,7 +826,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               final messenger = ScaffoldMessenger.of(context);
               try {
                 final ImagePicker picker = ImagePicker();
-                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                );
                 if (image != null) {
                   final bytes = await image.readAsBytes();
                   setState(() {
@@ -784,10 +864,19 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.cloud_upload_outlined, size: 32, color: AppTheme.primary),
+                        Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 32,
+                          color: AppTheme.primary,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Tap to upload documents',
-                            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                        Text(
+                          'Tap to upload documents',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -824,17 +913,30 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                             children: [
                               Text(
                                 'document_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.textPrimary, fontSize: 14),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              const Text('Ready for submission', style: TextStyle(color: AppTheme.success, fontSize: 12)),
+                              const Text(
+                                'Ready for submission',
+                                style: TextStyle(
+                                  color: AppTheme.success,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete_outline, color: AppTheme.danger),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: AppTheme.danger,
+                          ),
                           onPressed: () {
                             setState(() {
                               _documentPath = null;
@@ -858,7 +960,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           _label('OPD Type'),
           ChipSelector(
             options: const ['Consultation', 'Follow-up'],
-            selected: opd.visitType == 'follow_up' ? 'Follow-up' : 'Consultation',
+            selected: opd.visitType == 'follow_up'
+                ? 'Follow-up'
+                : 'Consultation',
             onSelected: (v) {
               opd.visitType = v == 'Follow-up' ? 'follow_up' : 'consultation';
             },
@@ -873,7 +977,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                       const SizedBox(height: 16),
                       InkWell(
                         onTap: () async {
-                          final initial = DateTime.tryParse(opd.formData.previousVisitDate);
+                          final initial = DateTime.tryParse(
+                            opd.formData.previousVisitDate,
+                          );
                           final picked = await showScrollableDatePicker(
                             context: context,
                             initialDate: initial,
@@ -885,7 +991,10 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(12),
@@ -893,17 +1002,24 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                              Icon(
+                                Icons.calendar_today,
+                                color: AppTheme.primary,
+                                size: 20,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Builder(
                                   builder: (context) {
-                                    final date = DateTime.tryParse(opd.formData.previousVisitDate);
+                                    final date = DateTime.tryParse(
+                                      opd.formData.previousVisitDate,
+                                    );
                                     final display = date != null
                                         ? '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
                                         : '';
                                     return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Previous Visit Date',
@@ -919,7 +1035,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                               ? 'Tap to select date'
                                               : display,
                                           style: AppTheme.body.copyWith(
-                                            color: opd.formData.previousVisitDate.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                            color:
+                                                opd
+                                                    .formData
+                                                    .previousVisitDate
+                                                    .isEmpty
+                                                ? AppTheme.textHint
+                                                : AppTheme.textPrimary,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -928,7 +1050,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                   },
                                 ),
                               ),
-                              Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                              Icon(
+                                Icons.calendar_month_outlined,
+                                color: AppTheme.primary,
+                                size: 20,
+                              ),
                             ],
                           ),
                         ),
@@ -947,7 +1073,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Icon(Icons.medication_outlined, color: AppTheme.primary, size: 20),
+              Icon(
+                Icons.medication_outlined,
+                color: AppTheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Prescriptions',
@@ -966,43 +1096,53 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               if (query.isEmpty) {
                 return const Iterable<Map<String, String>>.empty();
               }
-              final matches = kMedicines.where((med) =>
-                  med['name']!.toLowerCase().contains(query)).toList();
-              
-              if (query.isNotEmpty && !matches.any((m) => m['name']!.toLowerCase() == query)) {
+              final matches = kMedicines
+                  .where((med) => med['name']!.toLowerCase().contains(query))
+                  .toList();
+
+              if (query.isNotEmpty &&
+                  !matches.any((m) => m['name']!.toLowerCase() == query)) {
                 matches.add({'name': textEditingValue.text, 'type': 'Custom'});
               }
               return matches;
             },
             displayStringForOption: (option) => option['name']!,
-            fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-              _autocompleteController = textEditingController;
-              return TextFormField(
-                controller: textEditingController,
-                focusNode: focusNode,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-                decoration: InputDecoration(
-                  labelText: 'Prescribe Medicine',
-                  hintText: 'Type medicine name to search...',
-                  floatingLabelBehavior: FloatingLabelBehavior.always,
-                  filled: true,
-                  fillColor: AppTheme.surface,
-                  prefixIcon: const Icon(Icons.search, color: AppTheme.primary, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppTheme.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppTheme.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                  ),
-                ),
-              );
-            },
+            fieldViewBuilder:
+                (context, textEditingController, focusNode, onFieldSubmitted) {
+                  _autocompleteController = textEditingController;
+                  return TextFormField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    decoration: InputDecoration(
+                      labelText: 'Prescribe Medicine',
+                      hintText: 'Type medicine name to search...',
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppTheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                },
             optionsViewBuilder: (context, onSelected, options) {
               final grouped = <String, List<Map<String, String>>>{};
               for (final opt in options) {
@@ -1030,17 +1170,40 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               color: AppTheme.primary.withValues(alpha: 0.1),
                               width: double.infinity,
-                              child: Text(type, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 13)),
+                              child: Text(
+                                type,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primary,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
-                            ...meds.map((med) => ListTile(
-                              dense: true,
-                              title: Text(med['name']!, style: const TextStyle(fontWeight: FontWeight.w500)),
-                              subtitle: Text(med['type']!, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                              onTap: () => onSelected(med),
-                            )),
+                            ...meds.map(
+                              (med) => ListTile(
+                                dense: true,
+                                title: Text(
+                                  med['name']!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  med['type']!,
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                onTap: () => onSelected(med),
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -1050,7 +1213,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               );
             },
             onSelected: (option) {
-              final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
+              final newList = List<Map<String, dynamic>>.from(
+                opd.prescribedMedicines,
+              );
               newList.add({
                 'name': option['name'],
                 'type': option['type'],
@@ -1090,13 +1255,23 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                             Expanded(
                               child: Text(
                                 '${item['name']} ${item['type'] != null && item['type'].toString().isNotEmpty ? '— ${item['type']}' : ''}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.primary),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppTheme.primary,
+                                ),
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: AppTheme.danger,
+                                size: 20,
+                              ),
                               onPressed: () {
-                                final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
+                                final newList = List<Map<String, dynamic>>.from(
+                                  opd.prescribedMedicines,
+                                );
                                 newList.removeAt(index);
                                 opd.setPrescribedMedicines(newList);
                               },
@@ -1110,16 +1285,38 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               flex: 3,
                               child: DropdownButtonFormField<String>(
                                 isExpanded: true,
-                                initialValue: kDosageOptions.contains(item['dosage']) ? item['dosage'] : kDosageOptions.first,
+                                initialValue:
+                                    kDosageOptions.contains(item['dosage'])
+                                    ? item['dosage']
+                                    : kDosageOptions.first,
                                 decoration: const InputDecoration(
                                   labelText: 'Dosage',
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
                                 ),
-                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                                items: kDosageOptions.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                ),
+                                items: kDosageOptions
+                                    .map(
+                                      (d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text(
+                                          d,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
+                                    final newList =
+                                        List<Map<String, dynamic>>.from(
+                                          opd.prescribedMedicines,
+                                        );
                                     newList[index]['dosage'] = val;
                                     opd.setPrescribedMedicines(newList);
                                   }
@@ -1131,16 +1328,40 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               flex: 4,
                               child: DropdownButtonFormField<String>(
                                 isExpanded: true,
-                                initialValue: kFrequencyOptions.contains(item['frequency']) ? item['frequency'] : kFrequencyOptions.first,
+                                initialValue:
+                                    kFrequencyOptions.contains(
+                                      item['frequency'],
+                                    )
+                                    ? item['frequency']
+                                    : kFrequencyOptions.first,
                                 decoration: const InputDecoration(
                                   labelText: 'Frequency',
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
                                 ),
-                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                                items: kFrequencyOptions.map((f) => DropdownMenuItem(value: f, child: Text(f, style: const TextStyle(fontSize: 12)))).toList(),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                ),
+                                items: kFrequencyOptions
+                                    .map(
+                                      (f) => DropdownMenuItem(
+                                        value: f,
+                                        child: Text(
+                                          f,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
+                                    final newList =
+                                        List<Map<String, dynamic>>.from(
+                                          opd.prescribedMedicines,
+                                        );
                                     newList[index]['frequency'] = val;
                                     opd.setPrescribedMedicines(newList);
                                   }
@@ -1152,16 +1373,38 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               flex: 3,
                               child: DropdownButtonFormField<String>(
                                 isExpanded: true,
-                                initialValue: kDurationOptions.contains(item['duration']) ? item['duration'] : kDurationOptions.first,
+                                initialValue:
+                                    kDurationOptions.contains(item['duration'])
+                                    ? item['duration']
+                                    : kDurationOptions.first,
                                 decoration: const InputDecoration(
                                   labelText: 'Duration',
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
                                 ),
-                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
-                                items: kDurationOptions.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                ),
+                                items: kDurationOptions
+                                    .map(
+                                      (d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text(
+                                          d,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    final newList = List<Map<String, dynamic>>.from(opd.prescribedMedicines);
+                                    final newList =
+                                        List<Map<String, dynamic>>.from(
+                                          opd.prescribedMedicines,
+                                        );
                                     newList[index]['duration'] = val;
                                     opd.setPrescribedMedicines(newList);
                                   }
@@ -1188,7 +1431,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 lastDate: DateTime(2100),
               );
               if (picked != null) {
-                final iso = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                final iso =
+                    '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
                 opd.updateField('nextVisit', iso);
               }
             },
@@ -1227,7 +1471,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                   ? 'Tap to select date'
                                   : display,
                               style: AppTheme.body.copyWith(
-                                color: opd.formData.nextVisit.isEmpty ? AppTheme.textHint : AppTheme.textPrimary,
+                                color: opd.formData.nextVisit.isEmpty
+                                    ? AppTheme.textHint
+                                    : AppTheme.textPrimary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1236,7 +1482,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                       },
                     ),
                   ),
-                  Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: AppTheme.primary,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -1274,7 +1524,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             keyboardType: TextInputType.number,
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'Required';
-              if (int.tryParse(value.trim()) == null) return 'Must be a valid number';
+              if (int.tryParse(value.trim()) == null)
+                return 'Must be a valid number';
               return null;
             },
           ),
@@ -1287,7 +1538,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             keyboardType: TextInputType.number,
             validator: (value) {
               if (value != null && value.trim().isNotEmpty) {
-                if (int.tryParse(value.trim()) == null) return 'Must be a valid number';
+                if (int.tryParse(value.trim()) == null)
+                  return 'Must be a valid number';
               }
               return null;
             },
@@ -1312,11 +1564,22 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Total Amount',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+                Text(
+                  'Total Amount',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 14,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('₹${opd.formData.totalFee}',
-                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                Text(
+                  '₹${opd.formData.totalFee}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1344,7 +1607,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       child: Text(
         text,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textSecondary,
+        ),
       ),
     );
   }
@@ -1359,6 +1626,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
     IconData? prefixIcon,
     bool isRequired = false,
     String? Function(String?)? validator,
+    TextInputAction? textInputAction,
   }) {
     return TextFormField(
       controller: TextEditingController(text: value)
@@ -1366,6 +1634,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
       onChanged: onChanged,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onFieldSubmitted: textInputAction == TextInputAction.done
+          ? (_) => FocusScope.of(context).unfocus()
+          : null,
+      onTapOutside: (_) => FocusScope.of(context).unfocus(),
       validator: validator,
       style: const TextStyle(fontWeight: FontWeight.w500),
       decoration: InputDecoration(
@@ -1378,8 +1651,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         floatingLabelBehavior: FloatingLabelBehavior.always,
         filled: true,
         fillColor: AppTheme.surface,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppTheme.primary, size: 20) : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, color: AppTheme.primary, size: 20)
+            : null,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppTheme.border),
@@ -1417,10 +1695,12 @@ class MediStepProgressIndicator extends StatefulWidget {
   });
 
   @override
-  State<MediStepProgressIndicator> createState() => _MediStepProgressIndicatorState();
+  State<MediStepProgressIndicator> createState() =>
+      _MediStepProgressIndicatorState();
 }
 
-class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> with TickerProviderStateMixin {
+class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator>
+    with TickerProviderStateMixin {
   late AnimationController _springController;
   late Animation<double> _labelAnim;
   String _displayedLabel = '';
@@ -1526,7 +1806,11 @@ class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> w
                           duration: const Duration(milliseconds: 400),
                           curve: Curves.easeInOutCubic,
                           height: 2,
-                          width: (width - 28) * (totalSteps > 1 ? currentStep / (totalSteps - 1) : 1),
+                          width:
+                              (width - 28) *
+                              (totalSteps > 1
+                                  ? currentStep / (totalSteps - 1)
+                                  : 1),
                           decoration: BoxDecoration(
                             color: AppTheme.primary,
                             borderRadius: BorderRadius.circular(1),
@@ -1553,8 +1837,8 @@ class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> w
                               color: isCompleted
                                   ? AppTheme.primary
                                   : isActive
-                                      ? AppTheme.cardBg
-                                      : AppTheme.surfaceVariant,
+                                  ? AppTheme.cardBg
+                                  : AppTheme.surfaceVariant,
                               border: Border.all(
                                 color: isCompleted || isActive
                                     ? AppTheme.primary
@@ -1564,7 +1848,9 @@ class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> w
                               boxShadow: isActive
                                   ? [
                                       BoxShadow(
-                                        color: AppTheme.primary.withValues(alpha: 0.25),
+                                        color: AppTheme.primary.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -1574,16 +1860,24 @@ class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> w
                             child: Center(
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 250),
-                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
                                 child: isCompleted
-                                    ? const Icon(Icons.check, color: Colors.white, size: 16, key: ValueKey('check'))
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 16,
+                                        key: ValueKey('check'),
+                                      )
                                     : Text(
                                         '${index + 1}',
                                         key: ValueKey('num_$index'),
                                         style: TextStyle(
                                           fontSize: isActive ? 13 : 12,
                                           fontWeight: FontWeight.bold,
-                                          color: isActive ? AppTheme.primary : AppTheme.textTertiary,
+                                          color: isActive
+                                              ? AppTheme.primary
+                                              : AppTheme.textTertiary,
                                         ),
                                       ),
                               ),
@@ -1602,4 +1896,3 @@ class _MediStepProgressIndicatorState extends State<MediStepProgressIndicator> w
     );
   }
 }
-

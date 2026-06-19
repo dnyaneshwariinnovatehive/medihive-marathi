@@ -17,6 +17,8 @@ import 'providers/appointment_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/notification_provider.dart';
 import 'services/sync_manager.dart';
+import 'services/local_notification_service.dart';
+import 'services/firebase_messaging_service.dart';
 
 import 'models/patient_model.dart';
 import 'models/opd_record_model.dart';
@@ -30,6 +32,7 @@ import 'package:medihive/screens/opd/opd_registration_screen.dart';
 import 'package:medihive/screens/opd/opd_queue_screen.dart';
 import 'screens/patients/patient_management_screen.dart';
 import 'screens/patients/patient_details_screen.dart';
+import 'screens/patients/patient_edit_screen.dart';
 import 'screens/prescription/prescription_screen.dart';
 import 'screens/calendar/calendar_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -37,6 +40,7 @@ import 'screens/help/help_center_screen.dart';
 import 'screens/backup/backup_screen.dart';
 import 'screens/auth_settings/auth_settings_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
+import 'screens/settings/import_screen.dart';
 import 'screens/chatbot/chatbot_screen.dart';
 
 void main() async {
@@ -79,6 +83,13 @@ void main() async {
   //   }
   // }
 
+  // Initialize Firebase Cloud Messaging (native only)
+  if (!kIsWeb) {
+    try {
+      await FirebaseMessagingService().init();
+    } catch (_) {}
+  }
+
   // Initialize Hive
   try {
     await Hive.initFlutter();
@@ -93,6 +104,7 @@ void main() async {
     await Hive.openBox<OPDRecordModel>('opd_records');
     await Hive.openBox<AppointmentModel>('appointments');
     await Hive.openBox('drafts');
+    await Hive.openBox('day_notes');
     // One-time data reset (runs only on first launch after this patch)
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('data_reset_done') != true) {
@@ -105,6 +117,13 @@ void main() async {
   } catch (e) {
     // Hive initialization failure - log and continue with best-effort
     debugPrint('Hive initialization error: $e');
+  }
+
+  // Initialize local notification service
+  if (!kIsWeb) {
+    try {
+      await LocalNotificationService().init();
+    } catch (_) {}
   }
 
   // Schedule daily background backup at default 2:00 AM (native only)
@@ -256,6 +275,14 @@ final _router = GoRouter(
                   builder: (context, state) => PatientDetailsScreen(
                     patientId: state.pathParameters['id'] ?? '',
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      builder: (context, state) => PatientEditScreen(
+                        patientId: state.pathParameters['id'] ?? '',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -286,6 +313,10 @@ final _router = GoRouter(
                 GoRoute(
                   path: 'notifications',
                   builder: (context, state) => const NotificationsScreen(),
+                ),
+                GoRoute(
+                  path: 'import',
+                  builder: (context, state) => const ImportScreen(),
                 ),
               ],
             ),

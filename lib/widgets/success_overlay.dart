@@ -17,7 +17,8 @@ class SuccessOverlay extends StatefulWidget {
   State<SuccessOverlay> createState() => _SuccessOverlayState();
 }
 
-class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStateMixin {
+class _SuccessOverlayState extends State<SuccessOverlay>
+    with TickerProviderStateMixin {
   late AnimationController _scaleController;
   late AnimationController _checkController;
   late AnimationController _textController;
@@ -77,7 +78,7 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                 color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 32,
                 offset: const Offset(0, 8),
-              )
+              ),
             ],
           ),
           child: Column(
@@ -90,7 +91,7 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                   curve: Curves.easeOutBack,
                 ),
                 child: Container(
-                  width: 88, 
+                  width: 88,
                   height: 88,
                   decoration: BoxDecoration(
                     color: AppTheme.primary,
@@ -100,7 +101,7 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                     opacity: _checkController,
                     child: const Icon(
                       Icons.check_rounded,
-                      color: Colors.white, 
+                      color: Colors.white,
                       size: 44,
                     ),
                   ),
@@ -111,13 +112,16 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
               FadeTransition(
                 opacity: _textController,
                 child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.3),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: _textController,
-                    curve: Curves.easeOut,
-                  )),
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(0, 0.3),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: _textController,
+                          curve: Curves.easeOut,
+                        ),
+                      ),
                   child: Column(
                     children: [
                       Text(
@@ -131,8 +135,8 @@ class _SuccessOverlayState extends State<SuccessOverlay> with TickerProviderStat
                       const SizedBox(height: 6),
                       Text(
                         widget.subtitle,
-                        style: const TextStyle(
-                          color: Color(0xFF8AAFC0),
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
                           fontSize: 14,
                         ),
                       ),

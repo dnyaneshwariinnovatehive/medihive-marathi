@@ -16,6 +16,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _appVersion = 'v1.0.2';
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   void _showToast(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -30,7 +37,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String getInitials(String name) {
-    final cleanName = name.replaceAll(RegExp(r'^Dr\.\s+', caseSensitive: false), '');
+    final cleanName = name.replaceAll(
+      RegExp(r'^Dr\.\s+', caseSensitive: false),
+      '',
+    );
     final parts = cleanName.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts[0].isEmpty) return 'RG';
     if (parts.length > 1) {
@@ -42,9 +52,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _pickProfileImage(SettingsProvider settings) async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
+        if (bytes.length > 500 * 1024) {
+          _showToast('Image too large. Max 500KB allowed.', isError: true);
+          return;
+        }
         final base64Image = base64Encode(bytes);
         await settings.updateDoctorProfileImage(base64Image);
         _showToast('Profile image updated successfully!');
@@ -98,103 +117,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showDoctorProfileDialog(SettingsProvider settings) {
-    final nameController = TextEditingController(text: settings.doctorName);
-    final specialtyController = TextEditingController(text: settings.doctorSpecialty);
-    final licenseController = TextEditingController(text: settings.doctorLicense);
-    final emailController = TextEditingController(text: settings.doctorEmail);
-    final phoneController = TextEditingController(text: settings.doctorPhone);
-
+  void _showSettingsEditDialog({
+    required IconData icon,
+    required String title,
+    required List<Widget> fields,
+    required String? Function() validate,
+    required Future<void> Function() onSave,
+  }) {
     showDialog(
       context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.person, color: AppTheme.primary, size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'Doctor Profile',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primary,
+      builder: (ctx) {
+        var isSaving = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(icon, color: AppTheme.primary, size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  Divider(),
-                  SizedBox(height: 12),
-                  _buildTextField('Full Name', nameController),
-                  SizedBox(height: 12),
-                  _buildTextField('Specialty / Designation', specialtyController),
-                  SizedBox(height: 12),
-                  _buildTextField('Medical License Number', licenseController),
-                  SizedBox(height: 12),
-                  _buildTextField('Email Address', emailController, keyboardType: TextInputType.emailAddress),
-                  SizedBox(height: 12),
-                  _buildTextField('Phone Number', phoneController, keyboardType: TextInputType.phone),
-                  SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('Cancel'),
+                          ],
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () async {
-                            if (nameController.text.trim().isEmpty || licenseController.text.trim().isEmpty) {
-                              _showToast('Name and License are required!', isError: true);
-                              return;
-                            }
-                            await settings.updateDoctorProfile(
-                              name: nameController.text.trim(),
-                              specialty: specialtyController.text.trim(),
-                              license: licenseController.text.trim(),
-                              email: emailController.text.trim(),
-                              phone: phoneController.text.trim(),
-                            );
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              _showToast('Doctor Profile updated successfully!');
-                            }
-                          },
-                          child: Text('Save Changes', style: TextStyle(color: Colors.white)),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: isSaving ? null : () => Navigator.pop(ctx),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    ...fields,
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    final error = validate();
+                                    if (error != null) {
+                                      _showToast(error, isError: true);
+                                      return;
+                                    }
+                                    setDialogState(() => isSaving = true);
+                                    try {
+                                      await onSave();
+                                      if (context.mounted) {
+                                        Navigator.pop(ctx);
+                                        _showToast('$title updated successfully!');
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        _showToast('Failed to save: $e', isError: true);
+                                      }
+                                    } finally {
+                                      if (context.mounted) {
+                                        setDialogState(() => isSaving = false);
+                                      }
+                                    }
+                                  },
+                            child: isSaving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                     child: CircularProgressIndicator(
+                                       strokeWidth: 2,
+                                       color: AppTheme.textOnPrimary,
+                                     ),
+                                   )
+                                 : Text(
+                                     'Save Changes',
+                                     style: TextStyle(color: AppTheme.textOnPrimary),
+                                   ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -203,106 +241,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showDoctorProfileDialog(SettingsProvider settings) {
+    final nameController = TextEditingController(text: settings.doctorName);
+    final specialtyController = TextEditingController(
+      text: settings.doctorSpecialty,
+    );
+    final licenseController = TextEditingController(
+      text: settings.doctorLicense,
+    );
+    final emailController = TextEditingController(text: settings.doctorEmail);
+    final phoneController = TextEditingController(text: settings.doctorPhone);
+
+    _showSettingsEditDialog(
+      icon: Icons.person,
+      title: 'Doctor Profile',
+      fields: [
+        _buildTextField('Full Name', nameController),
+        const SizedBox(height: 12),
+        _buildTextField('Specialty / Designation', specialtyController),
+        const SizedBox(height: 12),
+        _buildTextField('Medical License Number', licenseController),
+        const SizedBox(height: 12),
+        _buildTextField(
+          'Email Address',
+          emailController,
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          'Phone Number',
+          phoneController,
+          keyboardType: TextInputType.phone,
+        ),
+      ],
+      validate: () {
+        if (nameController.text.trim().isEmpty ||
+            licenseController.text.trim().isEmpty) {
+          return 'Name and License are required!';
+        }
+        final email = emailController.text.trim();
+        if (email.isNotEmpty &&
+            !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+          return 'Please enter a valid email address.';
+        }
+        final phone = phoneController.text.trim();
+        if (phone.isNotEmpty &&
+            !RegExp(r'^\+?[\d\s\-()]{7,20}$').hasMatch(phone)) {
+          return 'Please enter a valid phone number.';
+        }
+        return null;
+      },
+      onSave: () async {
+        await settings.updateDoctorProfile(
+          name: nameController.text.trim(),
+          specialty: specialtyController.text.trim(),
+          license: licenseController.text.trim(),
+          email: emailController.text.trim(),
+          phone: phoneController.text.trim(),
+        );
+      },
+    );
+  }
+
   void _showClinicInfoDialog(SettingsProvider settings) {
     final nameController = TextEditingController(text: settings.clinicName);
     final phoneController = TextEditingController(text: settings.clinicPhone);
-    final addressController = TextEditingController(text: settings.clinicAddress);
+    final addressController = TextEditingController(
+      text: settings.clinicAddress,
+    );
     final hoursController = TextEditingController(text: settings.clinicHours);
-    final websiteController = TextEditingController(text: settings.clinicWebsite);
+    final websiteController = TextEditingController(
+      text: settings.clinicWebsite,
+    );
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.business, color: AppTheme.primary, size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'Clinic Information',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  Divider(),
-                  SizedBox(height: 12),
-                  _buildTextField('Clinic Name', nameController),
-                  SizedBox(height: 12),
-                  _buildTextField('Clinic Phone / Contact', phoneController, keyboardType: TextInputType.phone),
-                  SizedBox(height: 12),
-                  _buildTextField('Full Address', addressController, maxLines: 2),
-                  SizedBox(height: 12),
-                  _buildTextField('Working Hours', hoursController),
-                  SizedBox(height: 12),
-                  _buildTextField('Website (optional)', websiteController, keyboardType: TextInputType.url),
-                  SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('Cancel'),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () async {
-                            if (nameController.text.trim().isEmpty || addressController.text.trim().isEmpty) {
-                              _showToast('Clinic Name and Address are required!', isError: true);
-                              return;
-                            }
-                            await settings.updateClinicInfo(
-                              name: nameController.text.trim(),
-                              phone: phoneController.text.trim(),
-                              address: addressController.text.trim(),
-                              hours: hoursController.text.trim(),
-                              website: websiteController.text.trim(),
-                            );
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              _showToast('Clinic Information updated successfully!');
-                            }
-                          },
-                          child: Text('Save Changes', style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+    _showSettingsEditDialog(
+      icon: Icons.business,
+      title: 'Clinic Information',
+      fields: [
+        _buildTextField('Clinic Name', nameController),
+        const SizedBox(height: 12),
+        _buildTextField(
+          'Clinic Phone / Contact',
+          phoneController,
+          keyboardType: TextInputType.phone,
+        ),
+        const SizedBox(height: 12),
+        _buildTextField('Full Address', addressController, maxLines: 2),
+        const SizedBox(height: 12),
+        _buildTextField('Working Hours', hoursController),
+        const SizedBox(height: 12),
+        _buildTextField(
+          'Website (optional)',
+          websiteController,
+          keyboardType: TextInputType.url,
+        ),
+      ],
+      validate: () {
+        if (nameController.text.trim().isEmpty ||
+            addressController.text.trim().isEmpty) {
+          return 'Clinic Name and Address are required!';
+        }
+        return null;
+      },
+      onSave: () async {
+        await settings.updateClinicInfo(
+          name: nameController.text.trim(),
+          phone: phoneController.text.trim(),
+          address: addressController.text.trim(),
+          hours: hoursController.text.trim(),
+          website: websiteController.text.trim(),
         );
       },
     );
@@ -324,7 +371,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: SingleChildScrollView(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -337,7 +386,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.mail, color: AppTheme.primary, size: 24),
+                              Icon(
+                                Icons.mail,
+                                color: AppTheme.primary,
+                                size: 24,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Email Configuration',
@@ -357,23 +410,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       Divider(),
                       SizedBox(height: 12),
-                      _buildTextField('Sender Name / Display Name', senderController),
+                      _buildTextField(
+                        'Sender Name / Display Name',
+                        senderController,
+                      ),
                       SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             flex: 2,
-                            child: _buildTextField('SMTP Server', smtpController),
+                            child: _buildTextField(
+                              'SMTP Server',
+                              smtpController,
+                            ),
                           ),
                           SizedBox(width: 12),
                           Expanded(
                             flex: 1,
-                            child: _buildTextField('Port', portController, keyboardType: TextInputType.number),
+                            child: _buildTextField(
+                              'Port',
+                              portController,
+                              keyboardType: TextInputType.number,
+                            ),
                           ),
                         ],
                       ),
                       SizedBox(height: 12),
-                      _buildTextField('SMTP Username / Email', userController, keyboardType: TextInputType.emailAddress),
+                      _buildTextField(
+                        'SMTP Username / Email',
+                        userController,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
                       SizedBox(height: 12),
                       _buildTextField(
                         'SMTP Password / App Password',
@@ -396,7 +463,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             side: BorderSide(color: AppTheme.primary),
                             padding: EdgeInsets.symmetric(vertical: 10),
                           ),
@@ -406,28 +475,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   if (smtpController.text.trim().isEmpty ||
                                       userController.text.trim().isEmpty ||
                                       passController.text.trim().isEmpty) {
-                                    _showToast('Please fill SMTP Server, Username, and Password to test connection.', isError: true);
+                                    _showToast(
+                                      'Please fill SMTP Server, Username, and Password to test connection.',
+                                      isError: true,
+                                    );
                                     return;
+                                  }
+                                  final port = portController.text.trim();
+                                  if (port.isNotEmpty) {
+                                    final portNum = int.tryParse(port);
+                                    if (portNum == null || portNum < 1 || portNum > 65535) {
+                                      _showToast(
+                                        'Port must be a number between 1 and 65535.',
+                                        isError: true,
+                                      );
+                                      return;
+                                    }
                                   }
                                   setStateDialog(() {
                                     isTesting = true;
                                   });
-                                  await Future.delayed(Duration(milliseconds: 1500));
-                                  setStateDialog(() {
-                                    isTesting = false;
-                                  });
-                                  _showToast('SMTP Connection Successful! Settings are verified.');
+                                  try {
+                                    await settings.updateEmailConfig(
+                                      sender: senderController.text.trim(),
+                                      smtp: smtpController.text.trim(),
+                                      port: portController.text.trim(),
+                                      user: userController.text.trim(),
+                                      pass: passController.text.trim(),
+                                    );
+                                    await Future.delayed(
+                                      const Duration(milliseconds: 800),
+                                    );
+                                  } finally {
+                                    setStateDialog(() {
+                                      isTesting = false;
+                                    });
+                                  }
+                                  _showToast(
+                                    'SMTP settings saved. Test connection from server.',
+                                  );
                                 },
                           icon: isTesting
                               ? SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppTheme.primary,
+                                  ),
                                 )
                               : Icon(Icons.network_ping, size: 16),
                           label: Text(
-                            isTesting ? 'Verifying Mail Server Connection...' : 'Test SMTP Connection',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            isTesting
+                                ? 'Verifying Mail Server Connection...'
+                                : 'Test SMTP Connection',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -437,7 +542,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Expanded(
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 padding: EdgeInsets.symmetric(vertical: 12),
                               ),
                               onPressed: () => Navigator.pop(context),
@@ -449,15 +556,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primary,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 padding: EdgeInsets.symmetric(vertical: 12),
                               ),
                               onPressed: () async {
                                 if (senderController.text.trim().isEmpty ||
                                     smtpController.text.trim().isEmpty ||
                                     userController.text.trim().isEmpty) {
-                                  _showToast('Sender, SMTP Server, and Username are required!', isError: true);
+                                  _showToast(
+                                    'Sender, SMTP Server, and Username are required!',
+                                    isError: true,
+                                  );
                                   return;
+                                }
+                                final port = portController.text.trim();
+                                if (port.isNotEmpty) {
+                                  final portNum = int.tryParse(port);
+                                  if (portNum == null || portNum < 1 || portNum > 65535) {
+                                    _showToast(
+                                      'Port must be a number between 1 and 65535.',
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
                                 }
                                 await settings.updateEmailConfig(
                                   sender: senderController.text.trim(),
@@ -468,10 +591,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 );
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  _showToast('Email Settings updated successfully!');
+                                  _showToast(
+                                    'Email Settings updated successfully!',
+                                  );
                                 }
                               },
-                              child: Text('Save Changes', style: TextStyle(color: Colors.white)),
+                              child: Text(
+                                'Save Changes',
+                                style: TextStyle(color: AppTheme.textOnPrimary),
+                              ),
                             ),
                           ),
                         ],
@@ -510,7 +638,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             title: Text(
               'Settings',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppTheme.textOnPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             flexibleSpace: Container(
               decoration: BoxDecoration(
@@ -525,94 +657,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(16, 76, 16, 16),
                     child: Container(
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _pickProfileImage(settings),
-                              child: Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 32,
-                                    backgroundColor: AppTheme.surface,
-                                    backgroundImage: settings.doctorProfileImage.isNotEmpty
-                                        ? MemoryImage(base64Decode(settings.doctorProfileImage))
-                                        : null,
-                                    child: settings.doctorProfileImage.isEmpty
-                                        ? Text(
-                                            getInitials(settings.doctorName),
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.primary,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primary,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.textOnPrimary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _pickProfileImage(settings),
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 32,
+                                  backgroundColor: AppTheme.surface,
+                                  backgroundImage:
+                                      settings.doctorProfileImage.isNotEmpty
+                                      ? MemoryImage(
+                                          base64Decode(
+                                            settings.doctorProfileImage,
+                                          ),
+                                        )
+                                      : null,
+                                  child: settings.doctorProfileImage.isEmpty
+                                      ? Text(
+                                          getInitials(settings.doctorName),
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primary,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppTheme.textOnPrimary,
+                                        width: 2,
                                       ),
-                                      child: Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                                    ),
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      size: 12,
+                                      color: AppTheme.textOnPrimary,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    settings.doctorName,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  settings.doctorName,
+                                  style: TextStyle(
+                                        color: AppTheme.textOnPrimary,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
                                   ),
-                                  Text(
-                                    '${settings.clinicName} • ${settings.doctorSpecialty}',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                      fontSize: 14,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  '${settings.clinicName} • ${settings.doctorSpecialty}',
+                                  style: TextStyle(
+                                      color: AppTheme.textOnPrimary.withValues(alpha: 0.8),
+                                    fontSize: 14,
                                   ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'License: ${settings.doctorLicense}',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.7),
-                                      fontSize: 12,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'License: ${settings.doctorLicense}',
+                                  style: TextStyle(
+                                      color: AppTheme.textOnPrimary.withValues(alpha: 0.7),
+                                    fontSize: 12,
                                   ),
-                                ],
-                              ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                          ],
-                        ), // Row
-                      ), // Container
-                    ), // Padding
-                  ), // SafeArea
-                ), // FlexibleSpaceBar
-              ), // flexibleSpace Container
+                          ),
+                        ],
+                      ), // Row
+                    ), // Container
+                  ), // Padding
+                ), // SafeArea
+              ), // FlexibleSpaceBar
+            ), // flexibleSpace Container
           ), // SliverAppBar
           SliverToBoxAdapter(
             child: Padding(
@@ -645,14 +789,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsGroupTile(
                       icon: Icons.cloud_outlined,
                       label: 'Backup & Cloud Sync',
-                      iconBgColor: Color(0x1A22C55E),
-                      iconColor: Color(0xFF22C55E),
+                      iconBgColor: AppTheme.success.withValues(alpha: 0.1),
+                      iconColor: AppTheme.success,
                       onTap: () => context.go('/app/backup'),
                     ),
                     SettingsGroupTile(
                       icon: Icons.shield_outlined,
                       label: 'Authentication',
                       onTap: () => context.go('/app/authentication'),
+                      showDivider: false,
+                    ),
+                    SettingsGroupTile(
+                      icon: Icons.upload_file_outlined,
+                      label: 'Import from Desktop',
+                      onTap: () => context.go('/app/settings/import'),
+                      iconBgColor: AppTheme.primarySurface,
+                      iconColor: AppTheme.primary,
                       showDivider: false,
                     ),
                   ]),
@@ -705,7 +857,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             TextButton(
                               onPressed: () async {
                                 Navigator.pop(ctx);
-                                await context.read<AuthProvider>().logout();
+                                try {
+                                  await context.read<AuthProvider>().logout();
+                                } catch (_) {
+                                  // continue to login screen regardless
+                                }
                                 if (context.mounted) {
                                   context.go('/login');
                                 }
@@ -749,13 +905,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'MediHive v1.0.2',
-                          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                          'MediHive $_appVersion',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                         SizedBox(height: 4),
                         Text(
                           'Healthcare Management System',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textTertiary,
+                          ),
                         ),
                       ],
                     ),
@@ -771,27 +933,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _sectionLabel(String text) => Padding(
-        padding: EdgeInsets.only(left: 4, bottom: 12),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      );
+    padding: EdgeInsets.only(left: 4, bottom: 12),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textSecondary,
+        letterSpacing: 0.5,
+      ),
+    ),
+  );
 
   Widget _group(List<Widget> children) => Container(
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(children: children),
-      );
+    decoration: BoxDecoration(
+      color: AppTheme.cardBg,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: AppTheme.cardShadow,
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(children: children),
+  );
 
   Widget _buildGoogleDriveSection(SettingsProvider settings) {
     if (settings.isGoogleSigningIn) {
@@ -808,7 +970,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               CircularProgressIndicator(color: AppTheme.primary),
               SizedBox(height: 12),
               Text(
-                'Connecting to Google Drive...',
+                settings.isSyncing
+                    ? 'Syncing data...'
+                    : 'Connecting to Google Drive...',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -830,7 +994,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.cardShadow,
-        border: hasError ? Border.all(color: AppTheme.danger.withValues(alpha: 0.5), width: 1.5) : null,
+        border: hasError
+            ? Border.all(
+                color: AppTheme.danger.withValues(alpha: 0.5),
+                width: 1.5,
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -840,10 +1009,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Color(0x1A2563EB),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.cloud_sync, color: Color(0xFF2563EB), size: 24),
+                child: Icon(
+                  Icons.cloud_sync,
+                  color: AppTheme.primary,
+                  size: 24,
+                ),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -859,8 +1032,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      user != null ? 'Cloud Backup Active' : 'Keep your clinic data secure',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      user != null
+                          ? 'Cloud Backup Active'
+                          : 'Keep your clinic data secure',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -900,12 +1078,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 20),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppTheme.danger,
+                    size: 20,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       settings.googleAuthError!,
-                      style: TextStyle(fontSize: 12, color: AppTheme.danger, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.danger,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -916,32 +1102,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (user == null) ...[
             Text(
               'Connect your Google Drive to enable automated cloud backups. This ensures your patient records and OPD records are backed up securely and can be restored at any time.',
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+                height: 1.4,
+              ),
             ),
             SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  await settings.signInGoogle();
-                  if (settings.googleAuthError != null) {
-                    _showToast('Google Sign-In failed: ${settings.googleAuthError}', isError: true);
-                  } else {
-                    _showToast('Google Drive connected successfully!');
+                  try {
+                    await settings.signInGoogle();
+                    if (!context.mounted) return;
+                    if (settings.googleAuthError != null) {
+                      _showToast(
+                        'Google Sign-In failed: ${settings.googleAuthError}',
+                        isError: true,
+                      );
+                    } else {
+                      _showToast('Google Drive connected successfully!');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      _showToast('Google Sign-In failed: $e', isError: true);
+                    }
                   }
                 },
                 icon: Image.network(
                   'https://developers.google.com/static/identity/images/g-logo.png',
                   height: 18,
                   width: 18,
-                  errorBuilder: (context, error, stackTrace) => Icon(Icons.login, size: 18),
+                  loadingBuilder: (context, child, loadingProgress) =>
+                      loadingProgress == null
+                          ? child
+                          : const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                            ),
+                  errorBuilder: (context, error, stackTrace) =>
+                      Icon(Icons.login, size: 18),
                 ),
-                label: Text('Connect Google Drive for Backup', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: Text(
+                  'Connect Google Drive for Backup',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.textOnPrimary,
                   padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 2,
                 ),
               ),
@@ -951,12 +1165,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                  backgroundImage: user.photoUrl != null
+                      ? NetworkImage(user.photoUrl!)
+                      : null,
                   backgroundColor: AppTheme.surfaceVariant,
+                  onBackgroundImageError: (_, __) {},
                   child: user.photoUrl == null
                       ? Text(
-                          user.displayName?.isNotEmpty == true ? user.displayName![0].toUpperCase() : 'G',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary),
+                          user.displayName?.isNotEmpty == true
+                              ? user.displayName![0].toUpperCase()
+                              : 'G',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primary,
+                          ),
                         )
                       : null,
                 ),
@@ -967,11 +1189,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         user.displayName ?? 'Google User',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
                       Text(
                         user.email,
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -988,10 +1217,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Last Sync Time', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                  Text(
+                    'Last Sync Time',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                   Text(
                     settings.lastSyncTime,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -1002,20 +1241,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      await settings.triggerSync();
-                      if (settings.googleAuthError != null) {
-                        _showToast(settings.googleAuthError!, isError: true);
-                      } else {
-                        _showToast('Backup synchronised successfully!');
+                      try {
+                        await settings.triggerSync();
+                        if (!context.mounted) return;
+                        if (settings.googleAuthError != null) {
+                          _showToast(settings.googleAuthError!, isError: true);
+                        } else {
+                          _showToast('Backup synchronised successfully!');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          _showToast('Sync failed: $e', isError: true);
+                        }
                       }
                     },
                     icon: Icon(Icons.sync, size: 18),
-                    label: Text('Sync Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(
+                      'Sync Now',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primary,
                       side: BorderSide(color: AppTheme.primary, width: 1.5),
                       padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -1023,16 +1274,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      await settings.signOutGoogle();
-                      _showToast('Google Drive disconnected.');
+                      try {
+                        await settings.signOutGoogle();
+                        if (context.mounted) {
+                          _showToast('Google Drive disconnected.');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          _showToast('Failed to disconnect: $e', isError: true);
+                        }
+                      }
                     },
                     icon: Icon(Icons.power_settings_new, size: 18),
-                    label: Text('Disconnect', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(
+                      'Disconnect',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.danger,
                       side: BorderSide(color: AppTheme.danger, width: 1.5),
                       padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -1044,7 +1308,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-
-
-
-

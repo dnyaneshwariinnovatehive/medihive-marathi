@@ -99,7 +99,7 @@ class GoogleAuthService {
     var account = _signIn.currentUser;
     account ??= await _signIn.signInSilently();
     if (account == null) {
-      throw Exception('User is not signed in to Google.');
+      throw Exception('Session expired. Please reconnect Google Drive in Settings.');
     }
 
     final auth = await account.authentication;

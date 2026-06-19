@@ -90,8 +90,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color.lerp(const Color(0xFF1A1A2E), const Color(0xFF2D2D44), pulse)!,
-                    Color.lerp(const Color(0xFF2D2D44), const Color(0xFF1A1A2E), pulse)!,
+                    Color.lerp(const Color(0xFF103848), const Color(0xFF1A506C), pulse)!,
+                    Color.lerp(const Color(0xFF1A506C), const Color(0xFF2A6E90), pulse)!,
                   ],
                 ),
               ),

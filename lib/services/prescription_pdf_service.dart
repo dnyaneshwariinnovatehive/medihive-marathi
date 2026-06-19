@@ -5,7 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/prescription.dart';
 
 class PrescriptionPdfService {
-  static Future<Uint8List> generatePdf(Prescription rx) async {
+  static Future<Uint8List> generatePdf(Prescription rx, {bool includePatientDetails = true}) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -54,33 +54,34 @@ class PrescriptionPdfService {
                     pw.SizedBox(height: 16),
                     
                     // Patient Info
-                    pw.Container(
-                      padding: const pw.EdgeInsets.all(12),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    if (includePatientDetails)
+                      pw.Container(
+                        padding: const pw.EdgeInsets.all(12),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey100,
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                _infoBlock('Patient Name', rx.patientName),
+                                _infoBlock('Patient ID', rx.patientId),
+                              ],
+                            ),
+                            pw.SizedBox(height: 8),
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                _infoBlock('Age / Gender', '${rx.age} / ${rx.gender}'),
+                                _infoBlock('Diagnosis', rx.diagnosis),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      child: pw.Column(
-                        children: [
-                          pw.Row(
-                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                            children: [
-                              _infoBlock('Patient Name', rx.patientName),
-                              _infoBlock('Patient ID', rx.patientId),
-                            ],
-                          ),
-                          pw.SizedBox(height: 8),
-                          pw.Row(
-                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                            children: [
-                              _infoBlock('Age / Gender', '${rx.age} / ${rx.gender}'),
-                              _infoBlock('Diagnosis', rx.diagnosis),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    pw.SizedBox(height: 24),
+                    if (includePatientDetails) pw.SizedBox(height: 24),
                     
                     // Medicines
                     pw.Text('Medicines Prescribed', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),

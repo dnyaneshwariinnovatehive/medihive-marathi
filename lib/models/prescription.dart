@@ -25,6 +25,7 @@ class Prescription {
   final String clinicAddress;
   final String clinicPhone;
   final String licenseNo;
+  final String patientMobile;
 
   const Prescription({
     required this.date,
@@ -41,5 +42,6 @@ class Prescription {
     required this.clinicAddress,
     required this.clinicPhone,
     required this.licenseNo,
+    this.patientMobile = '',
   });
 }

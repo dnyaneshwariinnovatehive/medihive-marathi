@@ -7,6 +7,7 @@ import '../../providers/settings_provider.dart';
 import '../../models/patient.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/pressable_card.dart';
+import '../../widgets/shimmer_loading.dart';
 
 import 'package:flutter/rendering.dart';
 
@@ -14,7 +15,8 @@ class PatientManagementScreen extends StatefulWidget {
   const PatientManagementScreen({super.key});
 
   @override
-  State<PatientManagementScreen> createState() => _PatientManagementScreenState();
+  State<PatientManagementScreen> createState() =>
+      _PatientManagementScreenState();
 }
 
 class _PatientManagementScreenState extends State<PatientManagementScreen> {
@@ -28,7 +30,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
       context.read<PatientProvider>().loadPatients();
     });
     _scrollController.addListener(() {
-      final show = _scrollController.position.userScrollDirection == ScrollDirection.forward;
+      final show =
+          _scrollController.position.userScrollDirection ==
+          ScrollDirection.forward;
       if (show != _showFab) {
         setState(() => _showFab = show);
       }
@@ -40,7 +44,6 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
 
   Widget _buildInfoChip(String label) {
     return Container(
@@ -77,10 +80,30 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                 padding: const EdgeInsets.only(left: 16, bottom: 16),
                 child: Text('Sort Patients', style: AppTheme.heading),
               ),
-              _buildSortOption(provider, 'Recent Visit First', 'recent_visit', Icons.access_time),
-              _buildSortOption(provider, 'Oldest Visit First', 'oldest_visit', Icons.history),
-              _buildSortOption(provider, 'Name (A-Z)', 'name_asc', Icons.sort_by_alpha),
-              _buildSortOption(provider, 'Name (Z-A)', 'name_desc', Icons.sort_by_alpha),
+              _buildSortOption(
+                provider,
+                'Recent Visit First',
+                'recent_visit',
+                Icons.access_time,
+              ),
+              _buildSortOption(
+                provider,
+                'Oldest Visit First',
+                'oldest_visit',
+                Icons.history,
+              ),
+              _buildSortOption(
+                provider,
+                'Name (A-Z)',
+                'name_asc',
+                Icons.sort_by_alpha,
+              ),
+              _buildSortOption(
+                provider,
+                'Name (Z-A)',
+                'name_desc',
+                Icons.sort_by_alpha,
+              ),
               _buildSortOption(provider, 'Patient ID', 'id_asc', Icons.numbers),
             ],
           ),
@@ -89,10 +112,18 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     );
   }
 
-  Widget _buildSortOption(PatientProvider provider, String title, String value, IconData icon) {
+  Widget _buildSortOption(
+    PatientProvider provider,
+    String title,
+    String value,
+    IconData icon,
+  ) {
     final isSelected = provider.sortFilter == value;
     return ListTile(
-      leading: Icon(icon, color: isSelected ? AppTheme.primary : AppTheme.textSecondary),
+      leading: Icon(
+        icon,
+        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+      ),
       title: Text(
         title,
         style: TextStyle(
@@ -100,7 +131,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
           color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
         ),
       ),
-      trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primary) : null,
+      trailing: isSelected
+          ? const Icon(Icons.check, color: AppTheme.primary)
+          : null,
       onTap: () {
         provider.setSortFilter(value);
         Navigator.pop(context);
@@ -143,7 +176,12 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                     bottomRight: Radius.circular(28),
                   ),
                 ),
-                padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 20),
+                padding: const EdgeInsets.only(
+                  top: 50,
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -160,14 +198,21 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                         GestureDetector(
                           onTap: () => _showSortFilterDialog(context, provider),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.tune_outlined, color: Colors.white, size: 16),
+                                const Icon(
+                                  Icons.tune_outlined,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Filter',
@@ -201,15 +246,25 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                       ),
                       child: TextField(
                         onChanged: provider.onSearchChanged,
-                        style: AppTheme.body.copyWith(color: AppTheme.textPrimary),
+                        style: AppTheme.body.copyWith(
+                          color: AppTheme.textPrimary,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search name, ID, mobile, or diagnosis...',
-                          hintStyle: AppTheme.body.copyWith(color: AppTheme.textHint),
-                          prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary, size: 20),
+                          hintStyle: AppTheme.body.copyWith(
+                            color: AppTheme.textHint,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppTheme.textSecondary,
+                            size: 20,
+                          ),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -230,9 +285,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                   if (provider.isSearching) {
                     return Column(
                       children: const [
-                        ShimmerLoadingCard(),
-                        ShimmerLoadingCard(),
-                        ShimmerLoadingCard(),
+                        ShimmerCard(),
+                        ShimmerCard(),
+                        ShimmerCard(),
                       ],
                     );
                   } else if (provider.filteredPatients.isEmpty) {
@@ -257,12 +312,16 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           const SizedBox(height: 20),
                           Text(
                             'No Patients Yet',
-                            style: AppTheme.heading.copyWith(color: AppTheme.textPrimary),
+                            style: AppTheme.heading.copyWith(
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Add your first patient via OPD Registration',
-                            style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
@@ -272,7 +331,10 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             label: const Text('New OPD'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primary,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -296,7 +358,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           final id = patient.id;
                           final age = patient.age;
                           final gender = patient.gender;
-                          final lastDiagnosis = patient.diagnosis.isNotEmpty ? patient.diagnosis : 'No diagnosis';
+                          final lastDiagnosis = patient.diagnosis.isNotEmpty
+                              ? patient.diagnosis
+                              : 'No diagnosis';
                           final lastVisitDate = patient.lastVisit;
 
                           return AnimatedListItem(
@@ -318,9 +382,14 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                         tag: 'patient_avatar_$id',
                                         child: CircleAvatar(
                                           radius: 24,
-                                          backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                                          backgroundColor: AppTheme.primary
+                                              .withValues(alpha: 0.12),
                                           child: Text(
-                                            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'P',
+                                            name.isNotEmpty
+                                                ? name
+                                                      .substring(0, 1)
+                                                      .toUpperCase()
+                                                : 'P',
                                             style: TextStyle(
                                               color: AppTheme.primary,
                                               fontWeight: FontWeight.bold,
@@ -332,7 +401,8 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                       const SizedBox(width: 14),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               name,
@@ -355,7 +425,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                             const SizedBox(height: 6),
                                             Text(
                                               lastDiagnosis,
-                                              style: AppTheme.caption.copyWith(color: AppTheme.textSecondary),
+                                              style: AppTheme.caption.copyWith(
+                                                color: AppTheme.textSecondary,
+                                              ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -363,7 +435,8 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                         ),
                                       ),
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
                                         children: [
                                           Text(
                                             lastVisitDate,
@@ -377,26 +450,50 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               GestureDetector(
-                                                onTap: () => context.go('/app/patients/$id'),
+                                                onTap: () => context.go(
+                                                  '/app/patients/$id',
+                                                ),
                                                 child: Container(
-                                                  padding: const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.primary.withValues(alpha: 0.1),
-                                                    borderRadius: BorderRadius.circular(8),
+                                                  padding: const EdgeInsets.all(
+                                                    8,
                                                   ),
-                                                  child: Icon(Icons.visibility_outlined, size: 16, color: AppTheme.primary),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.primary
+                                                        .withValues(alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.visibility_outlined,
+                                                    size: 16,
+                                                    color: AppTheme.primary,
+                                                  ),
                                                 ),
                                               ),
                                               const SizedBox(width: 6),
                                               GestureDetector(
-                                                onTap: () => context.go('/app/opd/edit/$id'),
+                                                onTap: () => context.go(
+                                                  '/app/patients/$id/edit',
+                                                ),
                                                 child: Container(
-                                                  padding: const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.warning.withValues(alpha: 0.1),
-                                                    borderRadius: BorderRadius.circular(8),
+                                                  padding: const EdgeInsets.all(
+                                                    8,
                                                   ),
-                                                  child: Icon(Icons.edit_outlined, size: 16, color: AppTheme.warning),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.warning
+                                                        .withValues(alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.edit_outlined,
+                                                    size: 16,
+                                                    color: AppTheme.warning,
+                                                  ),
                                                 ),
                                               ),
                                               const SizedBox(width: 6),
@@ -405,32 +502,68 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                                   final confirmed = await showDialog<bool>(
                                                     context: context,
                                                     builder: (ctx) => AlertDialog(
-                                                      title: const Text('Delete OPD'),
-                                                      content: Text('Delete all OPD records of $name?'),
+                                                      title: const Text(
+                                                        'Delete OPD',
+                                                      ),
+                                                      content: Text(
+                                                        'Delete all OPD records of $name?',
+                                                      ),
                                                       actions: [
                                                         TextButton(
-                                                          onPressed: () => Navigator.pop(ctx, false),
-                                                          child: const Text('Cancel'),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                ctx,
+                                                                false,
+                                                              ),
+                                                          child: const Text(
+                                                            'Cancel',
+                                                          ),
                                                         ),
                                                         TextButton(
-                                                          onPressed: () => Navigator.pop(ctx, true),
-                                                          style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
-                                                          child: const Text('Delete'),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                ctx,
+                                                                true,
+                                                              ),
+                                                          style:
+                                                              TextButton.styleFrom(
+                                                                foregroundColor:
+                                                                    AppTheme
+                                                                        .danger,
+                                                              ),
+                                                          child: const Text(
+                                                            'Delete',
+                                                          ),
                                                         ),
                                                       ],
                                                     ),
                                                   );
-                                                  if (confirmed == true && context.mounted) {
-                                                    await context.read<PatientProvider>().deletePatientAndRecords(id);
+                                                  if (confirmed == true &&
+                                                      context.mounted) {
+                                                    await context
+                                                        .read<PatientProvider>()
+                                                        .deletePatientAndRecords(
+                                                          id,
+                                                        );
                                                   }
                                                 },
                                                 child: Container(
-                                                  padding: const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.danger.withValues(alpha: 0.1),
-                                                    borderRadius: BorderRadius.circular(8),
+                                                  padding: const EdgeInsets.all(
+                                                    8,
                                                   ),
-                                                  child: Icon(Icons.delete_outline, size: 16, color: AppTheme.danger),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.danger
+                                                        .withValues(alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.delete_outline,
+                                                    size: 16,
+                                                    color: AppTheme.danger,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -463,86 +596,6 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
           child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
-    );
-  }
-}
-
-// ─── SHIMMER LOADING CARD FOR SKELETONS ──────────────────────
-class ShimmerLoadingCard extends StatefulWidget {
-  const ShimmerLoadingCard({super.key});
-
-  @override
-  State<ShimmerLoadingCard> createState() => _ShimmerLoadingCardState();
-}
-
-class _ShimmerLoadingCardState extends State<ShimmerLoadingCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    duration: const Duration(milliseconds: 1500),
-    vsync: this,
-  )..repeat();
-
-  late final Animation<double> _slideAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(_controller);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _slideAnimation,
-      builder: (context, child) {
-        return Container(
-          height: 100,
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: AppTheme.cardShadow,
-          ),
-          child: ShaderMask(
-            shaderCallback: (bounds) {
-              return LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.border.withValues(alpha: 0.3),
-                  AppTheme.border.withValues(alpha: 0.8),
-                  AppTheme.border.withValues(alpha: 0.3),
-                ],
-                stops: [
-                  _slideAnimation.value - 0.3,
-                  _slideAnimation.value,
-                  _slideAnimation.value + 0.3,
-                ],
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.srcIn,
-            child: Row(
-              children: [
-                CircleAvatar(radius: 24, backgroundColor: Theme.of(context).cardColor),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(height: 14, width: 140, color: Theme.of(context).cardColor),
-                      const SizedBox(height: 6),
-                      Container(height: 10, width: 80, color: Theme.of(context).cardColor),
-                      const SizedBox(height: 6),
-                      Container(height: 10, width: 110, color: Theme.of(context).cardColor),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

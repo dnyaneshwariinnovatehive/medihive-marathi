@@ -48,7 +48,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 5));
     final data = await _handleResponse(res);
     await saveToken(data['token']);
     return data;
@@ -59,7 +59,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password, 'name': name}),
-    );
+    ).timeout(const Duration(seconds: 5));
     final data = await _handleResponse(res);
     await saveToken(data['token']);
     return data;
@@ -198,6 +198,17 @@ class ApiService {
       }),
     );
     return _handleResponse(res);
+  }
+
+  static Future<void> updateFcmToken(String token) async {
+    try {
+      await _loadToken();
+      await http.post(
+        Uri.parse('$baseUrl/fcm/token'),
+        headers: _headers(),
+        body: jsonEncode({'fcm_token': token}),
+      );
+    } catch (_) {}
   }
 }
 

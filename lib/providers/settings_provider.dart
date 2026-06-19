@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/app_theme.dart';
 import '../services/google_auth_service.dart';
+import '../services/google_drive_sync_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   bool _darkMode = false;
@@ -27,7 +28,7 @@ class SettingsProvider extends ChangeNotifier {
   String _emailSmtp = 'smtp.gmail.com';
   String _emailPort = '587';
   String _emailUser = 'alerts@medihive.com';
-  String _emailPass = 'password123';
+  String _emailPass = '';
 
   // Google Sign-In & Backup state (lazy to avoid web crash)
   GoogleAuthService? _googleAuthServiceInstance;
@@ -40,6 +41,7 @@ class SettingsProvider extends ChangeNotifier {
   String? _googleAuthError;
   String _lastSyncTime = 'Never';
   bool _isSyncEnabled = false;
+  bool _isSyncing = false;
 
   // Getters
   bool get darkMode => _darkMode;
@@ -63,11 +65,13 @@ class SettingsProvider extends ChangeNotifier {
   String get emailPass => _emailPass;
 
   // Google Getters
+  bool get isGoogleConnected => _googleUser != null;
   bool get isGoogleSigningIn => _isGoogleSigningIn;
   GoogleSignInAccount? get googleUser => _googleUser;
   String? get googleAuthError => _googleAuthError;
   String get lastSyncTime => _lastSyncTime;
   bool get isSyncEnabled => _isSyncEnabled;
+  bool get isSyncing => _isSyncing;
 
   SettingsProvider() {
     _loadSettings();
@@ -81,11 +85,13 @@ class SettingsProvider extends ChangeNotifier {
         _googleUser = _googleAuthService.currentUser;
         final prefs = await SharedPreferences.getInstance();
         _lastSyncTime = prefs.getString('lastSyncTime') ?? 'Never';
-        _isSyncEnabled = prefs.getBool('isSyncEnabled') ?? true;
+        _isSyncEnabled = prefs.getBool('isSyncEnabled') ?? false;
       }
+      _googleAuthError = null;
       notifyListeners();
     } catch (e) {
-      _googleAuthError = e.toString();
+      // Silent fail on initial check — user can retry by signing in
+      _googleAuthError = null;
       notifyListeners();
     }
   }
@@ -129,56 +135,60 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> triggerSync() async {
-    if (_googleUser == null) return;
-    
-    _isGoogleSigningIn = true;
+    if (_googleUser == null || _isSyncing) return;
+
+    _isSyncing = true;
+    _googleAuthError = null;
     notifyListeners();
-    
+
     try {
-      // Refresh/verify headers during sync
       await _googleAuthService.getAuthHeaders();
-      
+      final driveService = GoogleDriveSyncService();
+      await driveService.syncPendingRecords();
+      _googleAuthError = null;
+
       final now = DateTime.now();
       final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       final String amPm = now.hour >= 12 ? 'PM' : 'AM';
       final int displayHour = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
       final String minuteStr = now.minute.toString().padLeft(2, '0');
       _lastSyncTime = '${now.day} ${months[now.month - 1]} ${now.year}, ${displayHour.toString().padLeft(2, '0')}:$minuteStr $amPm';
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('lastSyncTime', _lastSyncTime);
-      _googleAuthError = null;
     } catch (e) {
-      _googleAuthError = 'Sync failed: token expired or revoked. Please reconnect Google Drive.';
+      _googleAuthError = 'Sync failed: ${e.toString()}';
     } finally {
-      _isGoogleSigningIn = false;
+      _isSyncing = false;
       notifyListeners();
     }
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    _darkMode = prefs.getBool('darkMode') ?? false;
-    AppTheme.isDarkMode = _darkMode;
-    _doctorName = prefs.getString('doctorName') ?? 'Dr. Rajas Gavas';
-    _doctorSpecialty = prefs.getString('doctorSpecialty') ?? 'General Physician';
-    _doctorLicense = prefs.getString('doctorLicense') ?? 'I-107200-A';
-    _doctorEmail = prefs.getString('doctorEmail') ?? 'dr.rajas@gmail.com';
-    _doctorPhone = prefs.getString('doctorPhone') ?? '+91 98765 43210';
-    _doctorProfileImage = prefs.getString('doctorProfileImage') ?? '';
-
-    _clinicName = prefs.getString('clinicName') ?? 'Shree Clinic';
-    _clinicPhone = prefs.getString('clinicPhone') ?? '+91 22 2345 6789';
-    _clinicAddress = prefs.getString('clinicAddress') ?? 'Suite 101, Medical Plaza, Mumbai';
-    _clinicHours = prefs.getString('clinicHours') ?? '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
-    _clinicWebsite = prefs.getString('clinicWebsite') ?? '';
-
-    _emailSender = prefs.getString('emailSender') ?? 'MediHive Alerts';
-    _emailSmtp = prefs.getString('emailSmtp') ?? 'smtp.gmail.com';
-    _emailPort = prefs.getString('emailPort') ?? '587';
-    _emailUser = prefs.getString('emailUser') ?? 'alerts@medihive.com';
-    _emailPass = prefs.getString('emailPass') ?? 'password123';
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _darkMode = prefs.getBool('darkMode') ?? false;
+      AppTheme.isDarkMode = _darkMode;
+      _doctorName = prefs.getString('doctorName') ?? 'Dr. Rajas Gavas';
+      _doctorSpecialty = prefs.getString('doctorSpecialty') ?? 'General Physician';
+      _doctorLicense = prefs.getString('doctorLicense') ?? 'I-107200-A';
+      _doctorEmail = prefs.getString('doctorEmail') ?? 'dr.rajas@gmail.com';
+      _doctorPhone = prefs.getString('doctorPhone') ?? '+91 98765 43210';
+      _doctorProfileImage = prefs.getString('doctorProfileImage') ?? '';
+      _clinicName = prefs.getString('clinicName') ?? 'Shree Clinic';
+      _clinicPhone = prefs.getString('clinicPhone') ?? '+91 22 2345 6789';
+      _clinicAddress = prefs.getString('clinicAddress') ?? 'Suite 101, Medical Plaza, Mumbai';
+      _clinicHours = prefs.getString('clinicHours') ?? '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
+      _clinicWebsite = prefs.getString('clinicWebsite') ?? '';
+      _emailSender = prefs.getString('emailSender') ?? 'MediHive Alerts';
+      _emailSmtp = prefs.getString('emailSmtp') ?? 'smtp.gmail.com';
+      _emailPort = prefs.getString('emailPort') ?? '587';
+      _emailUser = prefs.getString('emailUser') ?? 'alerts@medihive.com';
+      _emailPass = prefs.getString('emailPass') ?? '';
+      notifyListeners();
+    } catch (_) {
+      // Silently handle — settings will use defaults
+    }
   }
 
   Future<void> toggleDarkMode() async {
