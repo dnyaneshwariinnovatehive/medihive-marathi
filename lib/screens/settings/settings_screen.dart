@@ -16,7 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const _appVersion = 'v1.0.2';
+  static const _appVersion = 'v1.0.3';
 
   @override
   void initState() {

@@ -14,7 +14,7 @@ class AppConstants {
   // ─── Developer / Help Info ────────────────────────────────
   static const String devEmail = 'ashwin.innovatehive@gmail.com';
   static const String devPhone = '8767555945';
-  static const String appVersion = 'v1.0.2';
+  static const String appVersion = 'v1.0.3';
 
   // ─── Blood Groups ────────────────────────────────────────
   static const List<String> bloodGroups = [
