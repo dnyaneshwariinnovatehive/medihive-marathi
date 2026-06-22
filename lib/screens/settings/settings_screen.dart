@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/settings_group_tile.dart';
+import '../../widgets/standard_header.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -47,30 +47,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     return parts[0][0].toUpperCase();
-  }
-
-  Future<void> _pickProfileImage(SettingsProvider settings) async {
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
-        maxWidth: 512,
-        maxHeight: 512,
-      );
-      if (pickedFile != null) {
-        final bytes = await pickedFile.readAsBytes();
-        if (bytes.length > 500 * 1024) {
-          _showToast('Image too large. Max 500KB allowed.', isError: true);
-          return;
-        }
-        final base64Image = base64Encode(bytes);
-        await settings.updateDoctorProfileImage(base64Image);
-        _showToast('Profile image updated successfully!');
-      }
-    } catch (e) {
-      _showToast('Failed to pick image: $e', isError: true);
-    }
   }
 
   Widget _buildTextField(
@@ -624,140 +600,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: AppTheme.primary,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-            ),
-            title: Text(
-              'Settings',
-              style: TextStyle(
-                color: AppTheme.textOnPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
+          const StandardHeader(title: 'Settings'),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.border),
+                  boxShadow: AppTheme.cardShadow,
                 ),
-              ),
-              child: FlexibleSpaceBar(
-                background: SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 76, 16, 16),
-                    child: Container(
-                      padding: EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppTheme.textOnPrimary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
+                child: Row(
+                  children: [
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: AppTheme.surfaceVariant,
+                          backgroundImage:
+                              settings.doctorProfileImage.isNotEmpty
+                              ? MemoryImage(
+                                  base64Decode(
+                                    settings.doctorProfileImage,
+                                  ),
+                                )
+                              : null,
+                          child: settings.doctorProfileImage.isEmpty
+                              ? Text(
+                                  getInitials(settings.doctorName),
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          GestureDetector(
-                            onTap: () => _pickProfileImage(settings),
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 32,
-                                  backgroundColor: AppTheme.surface,
-                                  backgroundImage:
-                                      settings.doctorProfileImage.isNotEmpty
-                                      ? MemoryImage(
-                                          base64Decode(
-                                            settings.doctorProfileImage,
-                                          ),
-                                        )
-                                      : null,
-                                  child: settings.doctorProfileImage.isEmpty
-                                      ? Text(
-                                          getInitials(settings.doctorName),
-                                          style: TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primary,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: AppTheme.textOnPrimary,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.camera_alt,
-                                      size: 12,
-                                      color: AppTheme.textOnPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            settings.doctorName,
+                            style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  settings.doctorName,
-                                  style: TextStyle(
-                                        color: AppTheme.textOnPrimary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '${settings.clinicName} • ${settings.doctorSpecialty}',
-                                  style: TextStyle(
-                                      color: AppTheme.textOnPrimary.withValues(alpha: 0.8),
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'License: ${settings.doctorLicense}',
-                                  style: TextStyle(
-                                      color: AppTheme.textOnPrimary.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                          Text(
+                            '${settings.clinicName} • ${settings.doctorSpecialty}',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                              fontSize: 14,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'License: ${settings.doctorLicense}',
+                            style: TextStyle(
+                                color: AppTheme.textHint,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ), // Row
-                    ), // Container
-                  ), // Padding
-                ), // SafeArea
-              ), // FlexibleSpaceBar
-            ), // flexibleSpace Container
-          ), // SliverAppBar
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.all(16),

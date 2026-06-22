@@ -81,4 +81,5 @@ dev_dependencies:
 flutter:
   assets:
     - shorebird.yaml
+    - assets/images/
   uses-material-design: true

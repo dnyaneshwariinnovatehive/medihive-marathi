@@ -5,16 +5,18 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/patient.dart';
 import '../../models/patient_model.dart';
 import '../../models/opd_record_model.dart';
 import '../../models/prescription.dart';
+import '../../providers/patient_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/standard_header.dart';
 import '../../services/prescription_pdf_service.dart';
 import '../../services/whatsapp_share_helper.dart';
+import '../../utils/helpers.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/visit_timeline_item.dart';
@@ -50,8 +52,16 @@ class PatientDetailsScreen extends StatelessWidget {
 
     if (pModel == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Patient Details')),
-        body: const Center(child: Text('Patient not found')),
+        backgroundColor: AppTheme.background,
+        body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            const StandardHeader(title: 'Patient Details', showBack: true),
+            const SliverFillRemaining(
+              child: Center(child: Text('Patient not found')),
+            ),
+          ],
+        ),
       );
     }
 
@@ -91,34 +101,10 @@ class PatientDetailsScreen extends StatelessWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            toolbarHeight: 56,
-            elevation: 0,
-            backgroundColor: AppTheme.primary,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: GestureDetector(
-                onTap: () => context.go('/app/patients'),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-            title: Text(
-              'Patient Details',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.3,
-              ),
-            ),
+          StandardHeader(
+            title: 'Patient Details',
+            showBack: true,
+            onBack: () => context.go('/app/patients'),
           ),
           SliverToBoxAdapter(
             child: Column(
@@ -284,6 +270,7 @@ class PatientDetailsScreen extends StatelessWidget {
                         child: Row(
                           children: [
                             Expanded(
+                              flex: 3,
                               child: ElevatedButton.icon(
                                 onPressed: () =>
                                     context.go('/app/prescription/$patientId'),
@@ -303,113 +290,179 @@ class PatientDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             SizedBox(width: 12),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                try {
-                                  final opdBox = Hive.box<OPDRecordModel>(
-                                    'opd_records',
-                                  );
-                                  final records = opdBox.values
-                                      .where((r) => r.patientId == patientId)
-                                      .toList();
-                                  records.sort(
-                                    (a, b) => b.visitDate.compareTo(a.visitDate),
-                                  );
-                                  final latest = records.isNotEmpty
-                                      ? records.first
-                                      : null;
-                                  final settings = context.read<SettingsProvider>();
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  try {
+                                    final opdBox = Hive.box<OPDRecordModel>(
+                                      'opd_records',
+                                    );
+                                    final records = opdBox.values
+                                        .where((r) => r.patientId == patientId)
+                                        .toList();
+                                    records.sort(
+                                      (a, b) => b.visitDate.compareTo(a.visitDate),
+                                    );
+                                    final latest = records.isNotEmpty
+                                        ? records.first
+                                        : null;
+                                    final settings = context.read<SettingsProvider>();
 
-                                  List<Medicine> medicines = [];
-                                  if (latest != null && latest.medicines.isNotEmpty) {
-                                    try {
-                                      final decoded = _decodeMedicinesFromJson(latest.medicines);
-                                      if (decoded.isNotEmpty) {
-                                        medicines = decoded.map((m) => Medicine(
-                                          name: m['name'] ?? '',
-                                          dosage: m['dosage'] ?? '',
-                                          duration: m['duration'] ?? '',
-                                        )).toList();
-                                      } else {
+                                    List<Medicine> medicines = [];
+                                    if (latest != null && latest.medicines.isNotEmpty) {
+                                      try {
+                                        final decoded = _decodeMedicinesFromJson(latest.medicines);
+                                        if (decoded.isNotEmpty) {
+                                          medicines = decoded.map((m) => Medicine(
+                                            name: m['name'] ?? '',
+                                            dosage: m['dosage'] ?? '',
+                                            duration: m['duration'] ?? '',
+                                          )).toList();
+                                        } else {
+                                          medicines = latest.medicines.split(',')
+                                              .where((s) => s.trim().isNotEmpty)
+                                              .map((s) => Medicine(name: s.trim(), dosage: '', duration: ''))
+                                              .toList();
+                                        }
+                                      } catch (_) {
                                         medicines = latest.medicines.split(',')
                                             .where((s) => s.trim().isNotEmpty)
                                             .map((s) => Medicine(name: s.trim(), dosage: '', duration: ''))
                                             .toList();
                                       }
-                                    } catch (_) {
-                                      medicines = latest.medicines.split(',')
-                                          .where((s) => s.trim().isNotEmpty)
-                                          .map((s) => Medicine(name: s.trim(), dosage: '', duration: ''))
-                                          .toList();
                                     }
-                                  }
 
-                                  final rx = Prescription(
-                                    date: DateFormat('dd MMM yyyy').format(DateTime.now()),
-                                    patientName: patient.name,
-                                    patientId: patient.id,
-                                    age: patient.age,
-                                    gender: patient.gender,
-                                    diagnosis: latest?.diagnosis ?? '',
-                                    medicines: medicines,
-                                    notes: latest?.clinicalNotes ?? '',
-                                    nextVisit: latest?.nextVisit ?? '',
-                                    doctorName: settings.doctorName,
-                                    clinicName: settings.clinicName,
-                                    clinicAddress: settings.clinicAddress,
-                                    clinicPhone: settings.clinicPhone,
-                                    licenseNo: settings.doctorLicense,
-                                    patientMobile: patient.mobile,
-                                  );
+                                    final rx = Prescription(
+                                      date: DateFormat('dd MMM yyyy').format(DateTime.now()),
+                                      patientName: patient.name,
+                                      patientId: patient.id,
+                                      age: patient.age,
+                                      gender: patient.gender,
+                                      diagnosis: latest?.diagnosis ?? '',
+                                      medicines: medicines,
+                                      notes: latest?.clinicalNotes ?? '',
+                                      nextVisit: latest?.nextVisit ?? '',
+                                      doctorName: settings.doctorName,
+                                      clinicName: settings.clinicName,
+                                      clinicAddress: settings.clinicAddress,
+                                      clinicPhone: settings.clinicPhone,
+                                      licenseNo: settings.doctorLicense,
+                                      patientMobile: patient.mobile,
+                                    );
 
-                                  final pdfData = await PrescriptionPdfService.generatePdf(rx, includePatientDetails: false);
-                                  final tempDir = await getTemporaryDirectory();
-                                  final file = File('${tempDir.path}/Prescription_${patient.id}.pdf');
-                                  await file.writeAsBytes(pdfData);
-                                  if (patient.mobile.isEmpty) {
+                                    final pdfData = await PrescriptionPdfService.generatePdf(rx, includePatientDetails: false);
+                                    final normalizedPhone = Helpers.normalizePhone(patient.mobile);
+                                    if (normalizedPhone.isEmpty) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Patient has no valid phone number'),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    final tempDir = await getTemporaryDirectory();
+                                    final safeName = patient.name.replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(RegExp(r'\s+'), '_');
+                                    final pdfFile = File('${tempDir.path}/${safeName}_${patient.id}.pdf');
+                                    await pdfFile.writeAsBytes(pdfData);
+
+                                    if (!context.mounted) return;
+                                    await WhatsAppShareHelper.shareToWhatsApp(
+                                      pdfFile,
+                                      phoneNumber: normalizedPhone,
+                                    );
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('✓ WhatsApp opened with prescription attached'),
+                                        backgroundColor: AppTheme.success,
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  } catch (e) {
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Patient has no phone number'),
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: AppTheme.danger,
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
-                                    return;
                                   }
-                                  final sent = await WhatsAppShareHelper.shareToWhatsApp(
-                                    file,
-                                    phoneNumber: patient.mobile,
+                                },
+                                icon: Icon(Icons.share, size: 20),
+                                label: Text('Share'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppTheme.textPrimary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  side: BorderSide(
+                                    color: AppTheme.border,
+                                    width: 2,
+                                  ),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              flex: 1,
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Delete Patient'),
+                                      content: Text('Delete ${patient.name} and all associated records?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, true),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: AppTheme.danger,
+                                          ),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
                                   );
-                                  if (!sent) {
-                                    await Share.shareXFiles(
-                                      [XFile(file.path)],
-                                      text: 'Prescription from ${settings.clinicName}',
-                                    );
+                                  if (confirmed == true && context.mounted) {
+                                    await context.read<PatientProvider>().deletePatientAndRecords(patientId);
+                                    if (context.mounted) {
+                                      context.go('/app/patients');
+                                    }
                                   }
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error sharing: $e')),
-                                  );
-                                }
-                              },
-                              icon: Icon(Icons.share, size: 20),
-                              label: Text('Share'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppTheme.textPrimary,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                  horizontal: 20,
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.danger.withValues(alpha: 0.7),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  side: BorderSide(
+                                    color: AppTheme.danger.withValues(alpha: 0.2),
+                                    width: 1.5,
+                                  ),
+                                  elevation: 0,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
                                 ),
-                                side: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 2,
-                                ),
-                                elevation: 0,
                               ),
                             ),
                           ],

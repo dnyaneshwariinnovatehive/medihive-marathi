@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/gradient_app_bar.dart';
+import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
 
 class HelpCenterScreen extends StatefulWidget {
@@ -21,9 +21,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: AppTheme.background, body: SingleChildScrollView(child: Column(children: [
-      GradientAppBar(title: 'Help & Support', subtitle: 'Get assistance and learn more', onBack: () => context.go('/app/settings')),
-      Padding(padding: EdgeInsets.all(16), child: Column(children: [
+    return Scaffold(backgroundColor: AppTheme.background, body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
+      StandardHeader(title: 'Help & Support', showBack: true, onBack: () => context.go('/app/settings')),
+      SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
         _infoCard(Icons.code, Color(0x1A1A506C), AppTheme.primary, 'Developer Information', [
           _row('For Technical queries:', ''),
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
@@ -85,8 +85,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           )),
         ])),
         SizedBox(height: 80),
-      ])),
-    ])));
+      ]))),
+    ]));
   }
 
   Widget _infoCard(IconData icon, Color bg, Color fg, String title, List<Widget> children) => SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

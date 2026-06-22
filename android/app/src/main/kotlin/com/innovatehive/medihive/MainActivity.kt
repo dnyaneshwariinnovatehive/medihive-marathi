@@ -28,7 +28,6 @@ class MainActivity : FlutterActivity() {
 
                 var phoneNumber = call.argument<String>("phoneNumber")?.replace(Regex("[^0-9]"), "") ?: ""
 
-                // Prepend India country code if it's a 10-digit number
                 if (phoneNumber.length == 10) {
                     phoneNumber = "91$phoneNumber"
                 }
@@ -41,43 +40,29 @@ class MainActivity : FlutterActivity() {
                         file
                     )
 
-                    // Save a copy to public Downloads folder for easy manual access
                     saveToDownloads(file)
 
                     val whatsappPkgs = listOf("com.whatsapp", "com.whatsapp.w4b")
                     var launched = false
 
-                    // Step 1: Open specific chat directly via wa.me deep link (WhatsApp's official format)
-                    if (phoneNumber.isNotEmpty()) {
-                        for (pkg in whatsappPkgs) {
-                            try {
-                                packageManager.getPackageInfo(pkg, 0)
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$phoneNumber"))
-                                intent.setPackage(pkg)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                startActivity(intent)
-                                launched = true
-                                break
-                            } catch (_: Exception) { }
-                        }
+                    for (pkg in whatsappPkgs) {
+                        try {
+                            packageManager.getPackageInfo(pkg, 0)
+
+                            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                                type = "application/pdf"
+                                putParcelableArrayListExtra(Intent.EXTRA_STREAM, arrayListOf(uri))
+                                putExtra("jid", "${phoneNumber}@s.whatsapp.net")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                setPackage(pkg)
+                            }
+                            startActivity(intent)
+                            launched = true
+                            break
+                        } catch (_: Exception) { }
                     }
 
-                    // Step 2: Fallback to api.whatsapp.com deep link if wa.me fails
-                    if (!launched && phoneNumber.isNotEmpty()) {
-                        for (pkg in whatsappPkgs) {
-                            try {
-                                packageManager.getPackageInfo(pkg, 0)
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$phoneNumber"))
-                                intent.setPackage(pkg)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                startActivity(intent)
-                                launched = true
-                                break
-                            } catch (_: Exception) { }
-                        }
-                    }
-
-                    // Final fallback: system share sheet
                     if (!launched) {
                         startActivity(Intent.createChooser(
                             Intent(Intent.ACTION_SEND).apply {

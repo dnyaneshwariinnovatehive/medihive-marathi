@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/settings_provider.dart';
-import '../../widgets/gradient_app_bar.dart';
+import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
 
 class AuthSettingsScreen extends StatefulWidget {
@@ -88,9 +88,9 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: AppTheme.background, body: SingleChildScrollView(child: Column(children: [
-      GradientAppBar(title: 'Authentication', subtitle: 'Manage login & security', onBack: () => context.go('/app/settings')),
-      Padding(padding: EdgeInsets.all(16), child: Column(children: [
+    return Scaffold(backgroundColor: AppTheme.background, body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
+      StandardHeader(title: 'Authentication', showBack: true, onBack: () => context.go('/app/settings')),
+      SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
         // Change Password
         SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -191,8 +191,8 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
             ])),
         ])),
         SizedBox(height: 80),
-      ])),
-    ])));
+      ]))),
+    ]));
   }
 
   Widget _pwField(String label, TextEditingController ctrl, bool show, VoidCallback toggle) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

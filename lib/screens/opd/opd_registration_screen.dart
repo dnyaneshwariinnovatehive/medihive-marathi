@@ -8,6 +8,7 @@ import '../../providers/patient_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/appointment_provider.dart';
+import '../../widgets/standard_header.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/chip_selector.dart';
@@ -18,6 +19,7 @@ import '../../widgets/shake_widget.dart';
 import '../../widgets/animated_button.dart';
 import '../../widgets/success_overlay.dart';
 import '../../utils/constants.dart';
+import '../../utils/helpers.dart';
 import '../../utils/medical_data.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
@@ -51,6 +53,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   bool _shakeMobile = false;
   bool _shakeAddress = false;
   bool _isSubmitting = false;
+  bool _hasTriedSubmit = false;
 
   @override
   void initState() {
@@ -118,6 +121,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   bool _validateStep1(OpdProvider opd) {
     bool isValid = true;
     bool shouldScroll = false;
+    _hasTriedSubmit = true;
 
     if (opd.formData.name.trim().isEmpty) {
       isValid = false;
@@ -254,20 +258,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  SliverAppBar(
-                    pinned: true,
-                    toolbarHeight: 56,
-                    elevation: 0,
-                    backgroundColor: AppTheme.primary,
-                    title: Text(
-                      'OPD Registration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  const StandardHeader(title: 'OPD Registration'),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -423,11 +414,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                         _isSubmitting = false;
                                         opd.clearDraft();
                                         if (context.mounted) {
-                                          context.go(
-                                            widget.editPatientId != null
-                                                ? '/app/patients'
-                                                : '/app',
-                                          );
+                                          context.pop();
                                         }
                                       });
                                     },
@@ -509,14 +496,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          _textField(
-            'Patient ID (Search)',
-            'Enter Patient ID',
-            opd.formData.patientId,
-            (v) => opd.updateField('patientId', v),
-            prefixIcon: Icons.search,
           ),
           const SizedBox(height: 16),
           ShakeWidget(
@@ -609,7 +588,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                           'Date of Birth *',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: AppTheme.danger,
+                                            color: _hasTriedSubmit && opd.formData.dob.isEmpty
+                                                ? AppTheme.danger
+                                                : AppTheme.textSecondary,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -721,7 +702,10 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               'Mobile Number',
               'Enter mobile number',
               opd.formData.mobile,
-              (v) => opd.updateField('mobile', v),
+              (v) {
+                final normalized = Helpers.normalizePhone(v);
+                opd.updateField('mobile', normalized.isNotEmpty ? normalized : v);
+              },
               keyboardType: TextInputType.phone,
               isRequired: true,
               prefixIcon: Icons.phone_outlined,
@@ -1220,8 +1204,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 'name': option['name'],
                 'type': option['type'],
                 'dosage': kDosageOptions.first,
-                'frequency': kFrequencyOptions.first,
-                'duration': kDurationOptions.first,
               });
               opd.setPrescribedMedicines(newList);
               _autocompleteController?.clear();
@@ -1279,139 +1261,44 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                initialValue:
-                                    kDosageOptions.contains(item['dosage'])
-                                    ? item['dosage']
-                                    : kDosageOptions.first,
-                                decoration: const InputDecoration(
-                                  labelText: 'Dosage',
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          initialValue:
+                              kDosageOptions.contains(item['dosage'])
+                              ? item['dosage']
+                              : kDosageOptions.first,
+                          decoration: const InputDecoration(
+                            labelText: 'Dosage',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
+                          items: kDosageOptions
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d,
+                                  child: Text(
+                                    d,
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 13,
-                                ),
-                                items: kDosageOptions
-                                    .map(
-                                      (d) => DropdownMenuItem(
-                                        value: d,
-                                        child: Text(
-                                          d,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    final newList =
-                                        List<Map<String, dynamic>>.from(
-                                          opd.prescribedMedicines,
-                                        );
-                                    newList[index]['dosage'] = val;
-                                    opd.setPrescribedMedicines(newList);
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 4,
-                              child: DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                initialValue:
-                                    kFrequencyOptions.contains(
-                                      item['frequency'],
-                                    )
-                                    ? item['frequency']
-                                    : kFrequencyOptions.first,
-                                decoration: const InputDecoration(
-                                  labelText: 'Frequency',
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 13,
-                                ),
-                                items: kFrequencyOptions
-                                    .map(
-                                      (f) => DropdownMenuItem(
-                                        value: f,
-                                        child: Text(
-                                          f,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    final newList =
-                                        List<Map<String, dynamic>>.from(
-                                          opd.prescribedMedicines,
-                                        );
-                                    newList[index]['frequency'] = val;
-                                    opd.setPrescribedMedicines(newList);
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 3,
-                              child: DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                initialValue:
-                                    kDurationOptions.contains(item['duration'])
-                                    ? item['duration']
-                                    : kDurationOptions.first,
-                                decoration: const InputDecoration(
-                                  labelText: 'Duration',
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 12,
-                                ),
-                                items: kDurationOptions
-                                    .map(
-                                      (d) => DropdownMenuItem(
-                                        value: d,
-                                        child: Text(
-                                          d,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    final newList =
-                                        List<Map<String, dynamic>>.from(
-                                          opd.prescribedMedicines,
-                                        );
-                                    newList[index]['duration'] = val;
-                                    opd.setPrescribedMedicines(newList);
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              final newList =
+                                  List<Map<String, dynamic>>.from(
+                                    opd.prescribedMedicines,
+                                  );
+                              newList[index]['dosage'] = val;
+                              opd.setPrescribedMedicines(newList);
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -1529,29 +1416,6 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
-          _textField(
-            'Medicine Fee',
-            '0',
-            opd.formData.medicineFee,
-            (v) => opd.updateField('medicineFee', v),
-            keyboardType: TextInputType.number,
-            validator: (value) {
-              if (value != null && value.trim().isNotEmpty) {
-                if (int.tryParse(value.trim()) == null)
-                  return 'Must be a valid number';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          _textField(
-            'Discount',
-            '0',
-            opd.formData.discount,
-            (v) => opd.updateField('discount', v),
-            keyboardType: TextInputType.number,
-          ),
           const SizedBox(height: 24),
           Container(
             width: double.infinity,
@@ -1644,7 +1508,9 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
       decoration: InputDecoration(
         labelText: isRequired ? '$label *' : label,
         labelStyle: TextStyle(
-          color: isRequired ? AppTheme.danger : AppTheme.textSecondary,
+          color: isRequired && _hasTriedSubmit && value.isEmpty
+              ? AppTheme.danger
+              : AppTheme.textSecondary,
         ),
         hintText: hint,
         hintStyle: TextStyle(color: AppTheme.textTertiary),

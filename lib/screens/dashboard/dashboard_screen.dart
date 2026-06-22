@@ -1,13 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/standard_header.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/notification_provider.dart';
-import '../../providers/appointment_provider.dart';
 import '../../models/patient.dart';
 import '../../widgets/section_card.dart';
 
@@ -24,8 +23,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
   
-  late AnimationController _headerAnim;
-  late AnimationController _statsAnim;
   late AnimationController _chartAnim;
   late AnimationController _listAnim;
 
@@ -40,14 +37,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       }
     });
 
-    _headerAnim = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 600)
-    )..forward();
-
-    _statsAnim = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 700)
-    );
-
     _chartAnim = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 800)
     );
@@ -56,9 +45,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       vsync: this, duration: const Duration(milliseconds: 600)
     );
 
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (mounted) _statsAnim.forward();
-    });
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _chartAnim.forward();
     });
@@ -70,8 +56,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   void dispose() {
     _scrollController.dispose();
-    _headerAnim.dispose();
-    _statsAnim.dispose();
     _chartAnim.dispose();
     _listAnim.dispose();
     super.dispose();
@@ -81,7 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardProvider>();
     final settings = context.watch<SettingsProvider>();
-    final notifications = context.watch<NotificationProvider>();
     final appointments = context.watch<AppointmentProvider>();
 
     // Dynamic greeting based on time of day
@@ -130,145 +113,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           physics: const BouncingScrollPhysics(),
           slivers: [
             // ═══════════════════════════════════════════════════
-          // PREMIUM CLINICAL GRADIENT HEADER (200px)
+          // PREMIUM CLINICAL GRADIENT HEADER
           // ═══════════════════════════════════════════════════
-          SliverAppBar(
-            expandedHeight: 275,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: AppTheme.primary,
-            automaticallyImplyLeading: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: FadeTransition(
-                opacity: _headerAnim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, -0.15),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: _headerAnim,
-                    curve: Curves.easeOutCubic,
-                  )),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(28),
-                        bottomRight: Radius.circular(28),
-                      ),
-                    ),
-                    padding: const EdgeInsets.only(top: 50, left: 16, right: 16, bottom: 12),
-                    child: SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                if (settings.doctorProfileImage.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: CircleAvatar(
-                                      radius: 24,
-                                      backgroundImage: MemoryImage(base64Decode(settings.doctorProfileImage)),
-                                    ),
-                                  ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      greeting,
-                                      style: AppTheme.caption.copyWith(
-                                        color: Colors.white.withValues(alpha: 0.85),
-                                        fontSize: 13,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      settings.doctorName,
-                                      style: AppTheme.heading.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 22,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      formattedDate,
-                                      style: AppTheme.caption.copyWith(
-                                        color: Colors.white.withValues(alpha: 0.65),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            GestureDetector(
-                              onTap: () => context.push('/app/settings/notifications'),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
-                                  if (notifications.unreadCount > 0)
-                                    Positioned(
-                                      top: -2,
-                                      right: -2,
-                                      child: Container(
-                                        width: 16,
-                                        height: 16,
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.danger,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${notifications.unreadCount}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // 2x2 Grid of stat cards inside header
-                        Row(
-                          children: [
-                            Expanded(child: _headerStatCard('Today\'s OPD', dashboard.todaysOpd.toString(), Icons.medical_services_outlined)),
-                            const SizedBox(width: 8),
-                            Expanded(child: _headerStatCard('Today\'s Revenue', dashboard.todaysRevenue, Icons.currency_rupee)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(child: _headerStatCard('Overview', dashboard.totalVisits.toString(), Icons.people_outline)),
-                            const SizedBox(width: 8),
-                            Expanded(child: _headerStatCard('Follow-ups Due', dashboard.followUpsDue.toString(), Icons.calendar_today_outlined)),
-                          ],
-                        ),
-                      ],
-                    ),
-                    ),
-                  ),
+          StandardHeader(
+            title: '$greeting, ${settings.doctorName}',
+          ),
+
+          // DATE SUBTITLE
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Text(
+                formattedDate,
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -283,104 +142,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Quick Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _PressableActionButton(
-                            onTap: () => context.go('/app/opd/new'),
-                            child: Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppTheme.primary, AppTheme.primaryLight],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.primary.withValues(alpha: 0.35),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                  BoxShadow(
-                                    color: AppTheme.primary.withValues(alpha: 0.15),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.add_circle_outline, color: Colors.white, size: 22),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'New OPD',
-                                    style: AppTheme.label.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        _PressableActionButton(
-                          onTap: () => context.go('/app/chatbot'),
-                          child: Container(
-                            height: 56,
-                            width: 64,
-                            decoration: BoxDecoration(
-                              color: AppTheme.cardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppTheme.divider, width: 1.5),
-                              boxShadow: AppTheme.cardShadow,
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.chat_bubble_outline, color: AppTheme.primary, size: 24),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // STAT CARDS ROW (3 cards in a Row — Total Visits, Follow-ups, Revenue)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildPremiumStatCard(
-                            icon: Icons.people_outline,
-                            value: dashboard.totalVisits.toString(),
-                            label: 'Total Visits',
-                            index: 0,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPremiumStatCard(
-                            icon: Icons.repeat,
-                            value: dashboard.newPatients.toString(), // or followUps count
-                            label: 'New Patients',
-                            index: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildPremiumStatCard(
-                            icon: Icons.currency_rupee,
-                            value: dashboard.todaysRevenue.replaceAll('₹', '').replaceAll(',', ''),
-                            label: 'Today Revenue',
-                            index: 2,
-                            isRevenue: true,
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Visits Grid (3 cards)
+                    _buildVisitsGrid(dashboard),
                     const SizedBox(height: 24),
 
                     // CLINIC OVERVIEW SECTION
@@ -391,95 +154,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     _buildRevenueSplit(dashboard),
                     const SizedBox(height: 24),
 
-                    // TODAY'S COLLECTION
-                    _buildTodaysCollection(dashboard),
-                    const SizedBox(height: 24),
-
                     // RECENT PATIENTS
-                    _buildRecentPatients(context, dashboard.recentPatients),
+                    _buildRecentPatients(context, dashboard.recentPatients.take(5).toList()),
 
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Premium stat card generator with stagger animation and number counter
-  Widget _buildPremiumStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required int index,
-    bool isRevenue = false,
-  }) {
-    final double targetValue = double.tryParse(value) ?? 0.0;
-
-    return AnimatedBuilder(
-      animation: _statsAnim,
-      builder: (context, child) {
-        final delay = index * 0.2;
-        final progress = ((_statsAnim.value - delay) / (1.0 - delay)).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(progress);
-        return Opacity(
-          opacity: curve,
-          child: Transform.translate(
-            offset: Offset(0, 30 * (1 - curve)),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppTheme.heavyShadow,
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: AppTheme.primary, size: 20),
-            ),
-            const SizedBox(height: 14),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: targetValue),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutCubic,
-              builder: (context, val, _) {
-                final displayValue = isRevenue
-                    ? '₹${val.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}'
-                    : val.toInt().toString();
-                return Text(
-                  displayValue,
-                  style: AppTheme.display.copyWith(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                );
-              },
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: AppTheme.overline.copyWith(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -548,21 +228,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ],
           ),
           const SizedBox(height: 16),
-          // 3-column stats
-          Row(
-            children: [
-              _overviewStat(dashboard.totalVisits.toString(), 'Total Visits'),
-              Container(width: 1, height: 32, color: AppTheme.border),
-              _overviewStat(dashboard.newPatients.toString(), 'New Patients'),
-              Container(width: 1, height: 32, color: AppTheme.border),
-              _overviewStat(
-                dashboard.followUpRate,
-                'Follow-up Rate',
-                valueColor: AppTheme.success,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           // Line Chart
           SizedBox(
             height: 180,
@@ -669,28 +334,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _overviewStat(String value, String label, {Color? valueColor}) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: AppTheme.heading.copyWith(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTheme.caption.copyWith(color: AppTheme.textSecondary),
           ),
         ],
       ),
@@ -826,83 +469,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // Today's Collection
-  Widget _buildTodaysCollection(DashboardProvider dashboard) {
-    final totalCollection = dashboard.todaysCollection.fold<int>(0, (sum, item) => sum + item.amount);
-
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Today's Collection",
-                style: AppTheme.subHeading.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              Text(
-                '₹$totalCollection',
-                style: AppTheme.subHeading.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (dashboard.todaysCollection.isEmpty)
-            _buildEmptyState('No collections yet today', Icons.receipt_long_outlined),
-          if (dashboard.todaysCollection.isNotEmpty)
-            ...dashboard.todaysCollection.map((item) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.background,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: AppTheme.body.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.mode,
-                        style: AppTheme.caption.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '₹${item.amount}',
-                    style: AppTheme.body.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
         ],
       ),
     );
@@ -1053,46 +619,149 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  Widget _headerStatCard(String label, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 13),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  style: AppTheme.caption.copyWith(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 10,
-                    letterSpacing: 0.3,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+  Widget _buildVisitsGrid(DashboardProvider dashboard) {
+    return Row(
+      children: [
+        Expanded(child: _buildVisitCard(
+          icon: Icons.today_outlined,
+          value: dashboard.todaysOpd.toString(),
+          label: "Today's Visits",
+          onTap: () => _showRevenueSheet(context, 'Today', dashboard.todaysRevenue),
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildVisitCard(
+          icon: Icons.date_range_outlined,
+          value: dashboard.weeklyVisits.toString(),
+          label: 'Weekly Visits',
+          onTap: () => _showRevenueSheet(context, 'This Week', dashboard.weeklyRevenue),
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildVisitCard(
+          icon: Icons.calendar_month_outlined,
+          value: dashboard.monthlyVisits.toString(),
+          label: 'Monthly Visits',
+          onTap: () => _showRevenueSheet(context, 'This Month', dashboard.monthlyRevenue),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildVisitCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppTheme.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTheme.heading.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              letterSpacing: -0.3,
+              child: Icon(icon, color: AppTheme.primary, size: 20),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              value,
+              style: AppTheme.display.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: AppTheme.overline.copyWith(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRevenueSheet(BuildContext context, String period, String revenue) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.textHint.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.currency_rupee, color: AppTheme.primary, size: 32),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$period Revenue',
+              style: AppTheme.subHeading.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              revenue,
+              style: AppTheme.display.copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: AppTheme.textOnPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1138,59 +807,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       default:
         return Colors.orange;
     }
-  }
-}
-
-class _PressableActionButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-
-  const _PressableActionButton({
-    required this.child,
-    required this.onTap,
-  });
-
-  @override
-  State<_PressableActionButton> createState() => _PressableActionButtonState();
-}
-
-class _PressableActionButtonState extends State<_PressableActionButton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (context, child) => Transform.scale(scale: _scaleAnim.value, child: child),
-        child: widget.child,
-      ),
-    );
   }
 }
 

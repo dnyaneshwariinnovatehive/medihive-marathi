@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../theme/app_theme.dart';
-import '../../widgets/gradient_app_bar.dart';
+import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/sync_manager.dart';
@@ -281,15 +281,16 @@ class _BackupScreenState extends State<BackupScreen> {
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                GradientAppBar(
-                  title: 'Backup & Cloud Sync',
-                  subtitle: 'Manage your clinic data',
-                  onBack: () => context.go('/app/settings'),
-                ),
-                Padding(
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              StandardHeader(
+                title: 'Backup & Cloud Sync',
+                showBack: true,
+                onBack: () => context.go('/app/settings'),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
@@ -951,8 +952,8 @@ class _BackupScreenState extends State<BackupScreen> {
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           
           // Restore Screen Progress Modal Overlay

@@ -11,7 +11,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   bool _showPassword = false;
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
@@ -28,11 +29,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       vsync: this,
     )..forward();
 
-    _staggerAnimations = List.generate(6, (i) {
+    _staggerAnimations = List.generate(4, (i) {
       return Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(
           parent: _staggerController,
-          curve: Interval(i * 0.12, 0.4 + (i * 0.08), curve: Curves.easeOutCubic),
+          curve: Interval(i * 0.15, 0.45 + (i * 0.1), curve: Curves.easeOutCubic),
         ),
       );
     });
@@ -100,455 +101,367 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       });
     }
 
-    final isWide = MediaQuery.of(context).size.width > 700;
-
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 850, minHeight: 450),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: isWide
-                ? IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(48),
-                            decoration: const BoxDecoration(
-                              gradient: AppTheme.headerGradient,
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(20),
-                                bottomLeft: Radius.circular(20),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                RichText(
-                                  text: const TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: 'HELLO',
-                                        style: TextStyle(
-                                          fontSize: 56,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                          letterSpacing: 2.0,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text: '!',
-                                        style: TextStyle(
-                                          fontSize: 56,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppTheme.primaryLighter,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'Welcome to your professional\nHealthcare Management System.',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    height: 1.4,
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildLoginForm(auth, context),
-                        ),
-                      ],
-                    ),
-                  )
-                : Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(32),
-                        decoration: const BoxDecoration(
-                          gradient: AppTheme.headerGradient,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            RichText(
-                              text: const TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'HELLO',
-                                    style: TextStyle(
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                      letterSpacing: 2.0,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '!',
-                                    style: TextStyle(
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppTheme.primaryLighter,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Welcome to your professional\nHealthcare Management System.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                height: 1.4,
-                                color: Colors.white.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildLoginForm(auth, context),
-                    ],
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
                   ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildHeader(),
+                  _buildDivider(),
+                  _buildForm(auth),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLoginForm(AuthProvider auth, BuildContext context) {
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppTheme.headerGradient,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
+      child: Column(
+        children: [
+          Image.asset(
+            'assets/images/logo2.jpeg',
+            width: 150,
+            height: 150,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Welcome to Medihive',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white.withValues(alpha: 0.95),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Professional Healthcare Management',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.65),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Container(
+      height: 1,
+      color: AppTheme.border,
+    );
+  }
+
+  Widget _buildForm(AuthProvider auth) {
     return Padding(
-      padding: const EdgeInsets.all(48),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Form(
         key: _formKey,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-          _staggeredItem(0, Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceVariant,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.medical_services_outlined,
-              size: 40,
-              color: AppTheme.primary,
-            ),
-          )),
-          const SizedBox(height: 16),
-          _staggeredItem(1, const Text(
-            'MediHive',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.0,
-              color: AppTheme.primary,
-            ),
-          )),
-          const SizedBox(height: 6),
-          _staggeredItem(2, Text(
-            'Sign in to your account',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textSecondary,
-            ),
-          )),
-          const SizedBox(height: 40),
-
-          _staggeredItem(3, TextFormField(
-            controller: _usernameController,
-            enabled: !auth.isLoading,
-            textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.username],
-            onChanged: (value) {
-              _lastSyncedUsername = value;
-              auth.setUsername(value);
-            },
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Enter your username';
-              }
-              return null;
-            },
-            style: const TextStyle(fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              labelText: 'Username',
-              labelStyle: TextStyle(color: AppTheme.textSecondary),
-              filled: true,
-              fillColor: AppTheme.surfaceVariant,
-              prefixIcon: const Icon(Icons.person_outline, color: AppTheme.primary),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
+            _staggeredItem(0, const Text(
+              'Sign in to your account',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primary,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
+            )),
+            const SizedBox(height: 24),
+            _staggeredItem(1, TextFormField(
+              controller: _usernameController,
+              enabled: !auth.isLoading,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.username],
+              onChanged: (value) {
+                _lastSyncedUsername = value;
+                auth.setUsername(value);
+              },
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Enter your username';
+                }
+                return null;
+              },
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            ),
-          )),
-          const SizedBox(height: 24),
-
-          _staggeredItem(3, TextFormField(
-            controller: _passwordController,
-            enabled: !auth.isLoading,
-            obscureText: !_showPassword,
-            onChanged: auth.setPassword,
-            onFieldSubmitted: (_) => _submitLogin(auth),
-            textInputAction: TextInputAction.done,
-            autofillHints: const [AutofillHints.password],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Enter your password';
-              }
-              return null;
-            },
-            style: const TextStyle(fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              labelText: 'Password',
-              labelStyle: TextStyle(color: AppTheme.textSecondary),
-              filled: true,
-              fillColor: AppTheme.surfaceVariant,
-              prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primary),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              suffixIcon: GestureDetector(
-                onTap: () => setState(() => _showPassword = !_showPassword),
-                child: Icon(
-                  _showPassword ? Icons.visibility_off : Icons.visibility,
+              decoration: InputDecoration(
+                labelText: 'Username',
+                labelStyle: TextStyle(
                   color: AppTheme.textSecondary,
+                  fontSize: 14,
                 ),
-              ),
-            ),
-          )),
-          const SizedBox(height: 18),
-
-          _staggeredItem(4, Row(
-            children: [
-              Checkbox(
-                value: auth.rememberMe,
-                onChanged: auth.isLoading
-                    ? null
-                    : (value) => auth.setRememberMe(value ?? false),
-                activeColor: AppTheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-              GestureDetector(
-                onTap: auth.isLoading
-                    ? null
-                    : () => auth.setRememberMe(!auth.rememberMe),
-                child: Text(
-                  'Remember me',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                filled: true,
+                fillColor: AppTheme.surfaceVariant,
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 16, right: 8),
+                  child: Icon(
+                    Icons.person_outline,
+                    size: 22,
                     color: AppTheme.primary,
                   ),
                 ),
-              ),
-            ],
-          )),
-          const SizedBox(height: 22),
-
-          _staggeredItem(5, Container(
-            width: double.infinity,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
                 ),
-              ],
-            ),
-            child: ElevatedButton(
-              onPressed: auth.isLoading
-                  ? null
-                  : () => _submitLogin(auth),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primary,
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
                 ),
               ),
-              child: auth.isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      'LOG IN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                        color: Colors.white,
-                      ),
+            )),
+            const SizedBox(height: 14),
+            _staggeredItem(1, TextFormField(
+              controller: _passwordController,
+              enabled: !auth.isLoading,
+              obscureText: !_showPassword,
+              onChanged: auth.setPassword,
+              onFieldSubmitted: (_) => _submitLogin(auth),
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.password],
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Enter your password';
+                }
+                return null;
+              },
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Password',
+                labelStyle: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                ),
+                filled: true,
+                fillColor: AppTheme.surfaceVariant,
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 16, right: 8),
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 22,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primary,
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: IconButton(
+                    icon: Icon(
+                      _showPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      size: 22,
+                      color: AppTheme.textSecondary,
                     ),
-            ),
-          )),
-          const SizedBox(height: 24),
-
-          _staggeredItem(5, Container(
-            width: double.infinity,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ElevatedButton.icon(
-              onPressed: auth.isLoading
-                  ? null
-                  : () async {
-                      final success = await auth.signInWithGoogle();
-                      if (success && mounted) {
-                        context.go('/app');
-                      } else if (!success && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Google Sign-In failed')),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: const Center(
-                  child: Text(
-                    'G',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4285F4),
-                    ),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
               ),
-              label: const Text(
-                'SIGN IN WITH GOOGLE',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: Colors.black87,
+            )),
+            const SizedBox(height: 8),
+            _staggeredItem(2, Row(
+              children: [
+                SizedBox(
+                  height: 24,
+                  child: Checkbox(
+                    value: auth.rememberMe,
+                    onChanged: auth.isLoading
+                        ? null
+                        : (value) =>
+                            auth.setRememberMe(value ?? false),
+                    activeColor: AppTheme.primary,
+                    materialTapTargetSize:
+                        MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
-              ),
-            ),
-          )),
-          const SizedBox(height: 16),
-
-          _staggeredItem(5, Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.fingerprint, size: 18, color: AppTheme.textHint),
-              const SizedBox(width: 6),
-              Text(
-                'Quick Login',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textHint,
+                GestureDetector(
+                  onTap: auth.isLoading
+                      ? null
+                      : () =>
+                          auth.setRememberMe(!auth.rememberMe),
+                  child: Text(
+                    'Remember Me',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                 ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {},
+                  child: const Text(
+                    'Forgot Password',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            )),
+            const SizedBox(height: 20),
+            _staggeredItem(3, SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: auth.isLoading
+                    ? null
+                    : () => _submitLogin(auth),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                child: auth.isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('LOG IN'),
               ),
-            ],
-          )),
+            )),
+            const SizedBox(height: 12),
+            _staggeredItem(3, SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: auth.isLoading
+                    ? null
+                    : () async {
+                        final success =
+                            await auth.signInWithGoogle();
+                        if (success && mounted) {
+                          context.go('/app');
+                        } else if (!success && mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Google Sign-In failed'),
+                            ),
+                          );
+                        }
+                      },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black87,
+                  side: BorderSide(
+                    color: Colors.grey.shade300,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                icon: const Text(
+                  'G',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4285F4),
+                  ),
+                ),
+                label: const Text('SIGN IN WITH GOOGLE'),
+              ),
+            )),
           ],
         ),
       ),

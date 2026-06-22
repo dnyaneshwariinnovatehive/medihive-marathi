@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/standard_header.dart';
 import '../../services/import_service.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -78,28 +79,30 @@ class _ImportScreenState extends State<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import from Desktop'),
-        backgroundColor: AppTheme.surface,
-        foregroundColor: AppTheme.textPrimary,
-        elevation: 0,
-      ),
       backgroundColor: AppTheme.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoCard(),
-            const SizedBox(height: 16),
-            _buildFilePickerCard(),
-            const SizedBox(height: 16),
-            if (_status == ImportStatus.importing) _buildProgressCard(),
-            if (_status == ImportStatus.done && _result != null)
-              _buildResultCard(),
-            if (_status == ImportStatus.error) _buildErrorCard(),
-          ],
-        ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          const StandardHeader(title: 'Import from Desktop', showBack: true),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoCard(),
+                  const SizedBox(height: 16),
+                  _buildFilePickerCard(),
+                  const SizedBox(height: 16),
+                  if (_status == ImportStatus.importing) _buildProgressCard(),
+                  if (_status == ImportStatus.done && _result != null)
+                    _buildResultCard(),
+                  if (_status == ImportStatus.error) _buildErrorCard(),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

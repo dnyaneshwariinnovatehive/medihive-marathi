@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import '../models/appointment.dart';
 import '../models/appointment_model.dart';
 import 'notification_provider.dart';
-import '../services/local_notification_service.dart';
+import '../services/notification_service.dart';
 
 class AppointmentProvider extends ChangeNotifier {
   DateTime _currentDate = DateTime.now();
@@ -61,16 +61,15 @@ class AppointmentProvider extends ChangeNotifier {
     final now = DateTime.now();
     for (final apt in _appointments) {
       final remindAt = apt.dateTime.subtract(const Duration(minutes: 10));
-      if (remindAt.isAfter(now)) {
-        try {
-          await LocalNotificationService().scheduleAppointmentReminder(
-            id: apt.id,
-            patientName: apt.patient,
-            appointmentTime: apt.dateTime,
-          );
-        } catch (e) {
-          debugPrint('Notification reschedule error for ${apt.id}: $e');
-        }
+      if (!remindAt.isAfter(now)) continue;
+      try {
+        await NotificationService().scheduleAppointment(
+          id: apt.id,
+          patientName: apt.patient,
+          appointmentTime: apt.dateTime,
+        );
+      } catch (e) {
+        debugPrint('Notification reschedule error for ${apt.id}: $e');
       }
     }
   }
@@ -136,6 +135,14 @@ class AppointmentProvider extends ChangeNotifier {
       return !aptDate.isBefore(today);
     }).toList();
   }
+
+  List<Appointment> get selectedDayFollowUps =>
+      _appointments.where((a) =>
+          a.type == 'Follow-up' &&
+          a.dateTime.day == _selectedDay &&
+          a.dateTime.month == _currentDate.month &&
+          a.dateTime.year == _currentDate.year,
+      ).toList();
 
   final Map<String, List<String>> _dayReminders = {};
 
@@ -276,11 +283,13 @@ class AppointmentProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
       ));
     } catch (_) {}
-    LocalNotificationService().scheduleAppointmentReminder(
+    NotificationService().scheduleAppointment(
       id: id,
       patientName: patient,
       appointmentTime: dateTime,
-    );
+    ).catchError((e) {
+      debugPrint('scheduleAppointment error for $id: $e');
+    });
     notifyListeners();
   }
 
@@ -290,7 +299,7 @@ class AppointmentProvider extends ChangeNotifier {
       final box = Hive.box<AppointmentModel>('appointments');
       box.delete(id);
     } catch (_) {}
-    LocalNotificationService().cancelAppointmentReminder(id);
+    NotificationService().cancelAppointment(id);
     notifyListeners();
   }
 

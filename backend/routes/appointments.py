@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from models.appointment import Appointment
+from services.fcm_service import send_push_to_all_users
 
 appointments_bp = Blueprint('appointments', __name__)
 
@@ -29,6 +30,17 @@ def create_appointment():
     if not data or not data.get('id') or not data.get('date_time'):
         return jsonify({'error': 'id and date_time required'}), 400
     appt = Appointment.create(data)
+
+    patient_name = data.get('patient_name', 'A patient')
+    try:
+        send_push_to_all_users(
+            title='New Appointment Created',
+            body=f'{patient_name} has a new appointment scheduled',
+            data={'route': '/app/calendar', 'type': 'appointment'},
+        )
+    except Exception:
+        pass
+
     return jsonify({'appointment': appt}), 201
 
 

@@ -180,6 +180,13 @@ class GradientAppBar extends StatelessWidget {
                       ],
                     ),
                   ),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 60,
+                    width: 60,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
                   const SyncCloudStatusIcon(),
                   if (trailing != null) trailing!,
                 ],
@@ -255,6 +262,13 @@ class SliverGradientAppBar extends StatelessWidget {
             )
           : null,
       actions: [
+        Image.asset(
+          'assets/images/logo.png',
+          height: 60,
+          width: 60,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        ),
         const SyncCloudStatusIcon(),
         if (trailing != null) trailing!,
         if (trailing != null) const SizedBox(width: 8),

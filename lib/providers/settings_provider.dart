@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -42,6 +43,8 @@ class SettingsProvider extends ChangeNotifier {
   String _lastSyncTime = 'Never';
   bool _isSyncEnabled = false;
   bool _isSyncing = false;
+  StreamSubscription? _googleAuthSub;
+  int _authRefreshAttempts = 0;
 
   // Getters
   bool get darkMode => _darkMode;
@@ -76,6 +79,23 @@ class SettingsProvider extends ChangeNotifier {
   SettingsProvider() {
     _loadSettings();
     _checkGoogleSignInStatus();
+    _listenToAuthChanges();
+  }
+
+  void _listenToAuthChanges() {
+    try {
+      _googleAuthSub = _googleAuthService.onAuthStateChanged.listen((account) {
+        _googleUser = account;
+        if (account == null) {
+          _isSyncEnabled = false;
+          _isSyncing = false;
+          _googleAuthError = null;
+        } else {
+          _isSyncEnabled = true;
+        }
+        notifyListeners();
+      });
+    } catch (_) {}
   }
 
   Future<void> _checkGoogleSignInStatus() async {
@@ -90,7 +110,6 @@ class SettingsProvider extends ChangeNotifier {
       _googleAuthError = null;
       notifyListeners();
     } catch (e) {
-      // Silent fail on initial check — user can retry by signing in
       _googleAuthError = null;
       notifyListeners();
     }
@@ -104,13 +123,14 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final account = await _googleAuthService.signInWithGoogle();
       _googleUser = account;
+      _authRefreshAttempts = 0;
       if (account != null) {
         _isSyncEnabled = true;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isSyncEnabled', true);
       }
     } catch (e) {
-      _googleAuthError = e.toString();
+      _googleAuthError = 'Sign-in failed: $e';
     } finally {
       _isGoogleSigningIn = false;
       notifyListeners();
@@ -125,27 +145,40 @@ class SettingsProvider extends ChangeNotifier {
       await _googleAuthService.signOut();
       _googleUser = null;
       _isSyncEnabled = false;
+      _authRefreshAttempts = 0;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isSyncEnabled', false);
+      await prefs.remove('lastSyncTime');
+      _lastSyncTime = 'Never';
     } catch (e) {
-      _googleAuthError = e.toString();
+      _googleAuthError = 'Disconnect failed. Please try again.';
     } finally {
       notifyListeners();
     }
   }
 
   Future<void> triggerSync() async {
-    if (_googleUser == null || _isSyncing) return;
+    if (_isSyncing) return;
 
     _isSyncing = true;
     _googleAuthError = null;
     notifyListeners();
 
     try {
+      final signedIn = await _googleAuthService.isSignedIn();
+      if (!signedIn) {
+        _googleAuthError = 'Please connect Google Drive first.';
+        _isSyncing = false;
+        notifyListeners();
+        return;
+      }
+      _googleUser = _googleAuthService.currentUser;
+
       await _googleAuthService.getAuthHeaders();
       final driveService = GoogleDriveSyncService();
       await driveService.syncPendingRecords();
       _googleAuthError = null;
+      _authRefreshAttempts = 0;
 
       final now = DateTime.now();
       final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -157,7 +190,31 @@ class SettingsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('lastSyncTime', _lastSyncTime);
     } catch (e) {
-      _googleAuthError = 'Sync failed: ${e.toString()}';
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('auth') || errorMsg.contains('session') || errorMsg.contains('sign')) {
+        if (_authRefreshAttempts < 2) {
+          _authRefreshAttempts++;
+          try {
+            await _googleAuthService.signOut();
+            final account = await _googleAuthService.signInWithGoogle();
+            if (account != null) {
+              _googleUser = account;
+              _isSyncEnabled = true;
+              _isSyncing = false;
+              _googleAuthError = null;
+              notifyListeners();
+              return;
+            }
+          } catch (_) {}
+        }
+        _googleAuthError = 'Session expired. Please reconnect Google Drive.';
+      } else if (errorMsg.contains('quota')) {
+        _googleAuthError = 'Google Drive storage full. Please free up space.';
+      } else if (errorMsg.contains('network') || errorMsg.contains('socket')) {
+        _googleAuthError = 'Network error. Sync will retry automatically when connected.';
+      } else {
+        _googleAuthError = 'Sync failed. Please try again.';
+      }
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -248,6 +305,12 @@ class SettingsProvider extends ChangeNotifier {
     await prefs.setString('clinicAddress', address);
     await prefs.setString('clinicHours', hours);
     await prefs.setString('clinicWebsite', website);
+  }
+
+  @override
+  void dispose() {
+    _googleAuthSub?.cancel();
+    super.dispose();
   }
 
   Future<void> updateEmailConfig({

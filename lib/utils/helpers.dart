@@ -19,4 +19,16 @@ class Helpers {
           (m) => '${m[1]},',
         )}';
   }
+
+  /// Normalize phone number to 10 digits (strips non-digits, removes leading 0/91).
+  /// Returns the clean 10-digit number or empty string if invalid.
+  static String normalizePhone(String phone) {
+    String cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleaned.startsWith('91') && cleaned.length == 12) {
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith('0') && cleaned.length == 11) {
+      cleaned = cleaned.substring(1);
+    }
+    return cleaned.length == 10 ? cleaned : '';
+  }
 }

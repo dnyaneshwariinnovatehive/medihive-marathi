@@ -46,6 +46,7 @@ class SyncManager extends ChangeNotifier {
   StreamSubscription? _apptSubscription;
 
   bool _isSignedIn = false;
+  StreamSubscription? _googleAuthSub;
 
   SyncState get syncState => _syncState;
   bool get isSyncing => _syncState == SyncState.syncing;
@@ -67,6 +68,14 @@ class SyncManager extends ChangeNotifier {
         _syncState = SyncState.offline;
         notifyListeners();
       } else {
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(seconds: 3), _trySync);
+      }
+    });
+
+    _googleAuthSub = _authService.onAuthStateChanged.listen((account) {
+      _isSignedIn = account != null;
+      if (_isSignedIn && _connectivityService.currentStatus) {
         _debounceTimer?.cancel();
         _debounceTimer = Timer(const Duration(seconds: 3), _trySync);
       }
@@ -355,6 +364,7 @@ class SyncManager extends ChangeNotifier {
     _patientSubscription?.cancel();
     _opdSubscription?.cancel();
     _apptSubscription?.cancel();
+    _googleAuthSub?.cancel();
     _debounceTimer?.cancel();
     _pollTimer?.cancel();
     super.dispose();

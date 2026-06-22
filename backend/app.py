@@ -9,6 +9,8 @@ from routes.patients import patients_bp
 from routes.opd import opd_bp
 from routes.appointments import appointments_bp
 from routes.sync import sync_bp
+from routes.fcm import fcm_bp
+from routes.whatsapp import whatsapp_bp
 
 
 def create_app():
@@ -26,6 +28,8 @@ def create_app():
     app.register_blueprint(opd_bp, url_prefix='/api/opd')
     app.register_blueprint(appointments_bp, url_prefix='/api/appointments')
     app.register_blueprint(sync_bp, url_prefix='/api/sync')
+    app.register_blueprint(fcm_bp, url_prefix='/api/fcm')
+    app.register_blueprint(whatsapp_bp, url_prefix='/api/whatsapp')
 
     @app.route('/api/health', methods=['GET'])
     def health():

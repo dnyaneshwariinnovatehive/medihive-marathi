@@ -4,11 +4,12 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'shared_notification_plugin.dart';
 
-class LocalNotificationService {
-  static final LocalNotificationService _instance =
-      LocalNotificationService._internal();
-  factory LocalNotificationService() => _instance;
-  LocalNotificationService._internal();
+int _positiveId(String id) => id.hashCode & 0x7FFFFFFF;
+
+class NotificationService {
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
 
   bool _initialized = false;
 
@@ -26,37 +27,34 @@ class LocalNotificationService {
       android: androidSettings,
       iOS: iosSettings,
     );
-    await initializePluginOnce(initSettings);
-    _initialized = true;
-  }
+    await initializePluginOnce(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+    );
 
-  Future<bool> _requestPermissions() async {
     final android = sharedNotificationPlugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (android != null) {
       await android.requestNotificationsPermission();
-      await android.requestExactAlarmsPermission();
     }
-    final ios = sharedNotificationPlugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    if (ios != null) {
-      await ios.requestPermissions(alert: true, badge: true, sound: true);
-    }
-    return true;
+
+    _initialized = true;
   }
 
-  Future<bool> _checkExactAlarmPermission() async {
+  void _onNotificationTap(NotificationResponse response) {
+    debugPrint(
+        'NotificationService: tapped notification id=${response.id} payload=${response.payload}');
+  }
+
+  Future<void> _requestExactAlarm() async {
     final android = sharedNotificationPlugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    if (android == null) return false;
-    try {
-      return await android.requestExactAlarmsPermission() ?? false;
-    } catch (_) {
-      return false;
+    if (android != null) {
+      await android.requestExactAlarmsPermission();
     }
   }
 
-  Future<void> scheduleAppointmentReminder({
+  Future<void> scheduleAppointment({
     required String id,
     required String patientName,
     required DateTime appointmentTime,
@@ -65,9 +63,12 @@ class LocalNotificationService {
 
     final remindAt = appointmentTime.subtract(const Duration(minutes: 10));
     final now = DateTime.now();
-    if (remindAt.isBefore(now)) return;
+    if (remindAt.isBefore(now)) {
+      debugPrint('NotificationService: reminder time already past for $id');
+      return;
+    }
 
-    await _requestPermissions();
+    await _requestExactAlarm();
 
     final diff = remindAt.difference(now);
     final tzNow = tz.TZDateTime.now(tz.UTC);
@@ -89,21 +90,24 @@ class LocalNotificationService {
 
     try {
       await sharedNotificationPlugin.zonedSchedule(
-        id.hashCode,
-        'Appointment Reminder',
-        'You have an appointment with $patientName in 10 minutes',
+        _positiveId(id),
+        'Upcoming Appointment',
+        'You have an appointment with $patientName in 10 minutes.',
         tzRemindAt,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
+      debugPrint(
+          'NotificationService: scheduled for $id at ${appointmentTime.toIso8601String()}');
     } catch (e) {
-      debugPrint('LocalNotificationService: exact schedule failed, fallback: $e');
+      debugPrint(
+          'NotificationService: exact schedule failed for $id: $e, falling back to inexact');
       await sharedNotificationPlugin.zonedSchedule(
-        id.hashCode,
-        'Appointment Reminder',
-        'You have an appointment with $patientName in 10 minutes',
+        _positiveId(id),
+        'Upcoming Appointment',
+        'You have an appointment with $patientName in 10 minutes.',
         tzRemindAt,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -113,34 +117,8 @@ class LocalNotificationService {
     }
   }
 
-  Future<void> cancelAppointmentReminder(String id) async {
-    await sharedNotificationPlugin.cancel(id.hashCode);
-  }
-
-  Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    if (!_initialized) await init();
-
-    const androidDetails = AndroidNotificationDetails(
-      'push_notifications',
-      'Push Notifications',
-      channelDescription: 'Push notifications from server',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-    const iosDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await sharedNotificationPlugin.show(id, title, body, details,
-        payload: payload);
+  Future<void> cancelAppointment(String id) async {
+    await sharedNotificationPlugin.cancel(_positiveId(id));
   }
 
   Future<void> cancelAll() async {

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../models/patient.dart';
+import '../../models/opd_record_model.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/pressable_card.dart';
-import '../../widgets/shimmer_loading.dart';
-
-import 'package:flutter/rendering.dart';
+import '../../widgets/standard_header.dart';
 
 class PatientManagementScreen extends StatefulWidget {
   const PatientManagementScreen({super.key});
@@ -22,10 +24,12 @@ class PatientManagementScreen extends StatefulWidget {
 class _PatientManagementScreenState extends State<PatientManagementScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
+  late DateTime _selectedDate;
 
   @override
   void initState() {
     super.initState();
+    _selectedDate = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PatientProvider>().loadPatients();
     });
@@ -63,88 +67,51 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     );
   }
 
-  void _showSortFilterDialog(BuildContext context, PatientProvider provider) {
-    showModalBottomSheet(
+  bool get _isToday {
+    final now = DateTime.now();
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 16, bottom: 16),
-                child: Text('Sort Patients', style: AppTheme.heading),
-              ),
-              _buildSortOption(
-                provider,
-                'Recent Visit First',
-                'recent_visit',
-                Icons.access_time,
-              ),
-              _buildSortOption(
-                provider,
-                'Oldest Visit First',
-                'oldest_visit',
-                Icons.history,
-              ),
-              _buildSortOption(
-                provider,
-                'Name (A-Z)',
-                'name_asc',
-                Icons.sort_by_alpha,
-              ),
-              _buildSortOption(
-                provider,
-                'Name (Z-A)',
-                'name_desc',
-                Icons.sort_by_alpha,
-              ),
-              _buildSortOption(provider, 'Patient ID', 'id_asc', Icons.numbers),
-            ],
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppTheme.primary,
+              onPrimary: Colors.white,
+            ),
           ),
+          child: child!,
         );
       },
     );
-  }
-
-  Widget _buildSortOption(
-    PatientProvider provider,
-    String title,
-    String value,
-    IconData icon,
-  ) {
-    final isSelected = provider.sortFilter == value;
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
-        ),
-      ),
-      trailing: isSelected
-          ? const Icon(Icons.check, color: AppTheme.primary)
-          : null,
-      onTap: () {
-        provider.setSortFilter(value);
-        Navigator.pop(context);
-      },
-    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
     final provider = context.watch<PatientProvider>();
+    final opdBox = Hive.box<OPDRecordModel>('opd_records');
+    final dateRecords = opdBox.values.where((r) =>
+      r.visitDate.year == _selectedDate.year &&
+      r.visitDate.month == _selectedDate.month &&
+      r.visitDate.day == _selectedDate.day
+    ).toList();
+    final datePatientIds = dateRecords.map((r) => r.patientId).toSet();
+    final allPatients = provider.filteredPatients;
+    final dateFilteredPatients = allPatients.where((p) =>
+      datePatientIds.contains(p.id)
+    ).toList();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -153,122 +120,90 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           // ═══════════════════════════════════════════════════
-          // PREMIUM GRADIENT HEADER WITH SEARCH
+          // PREMIUM GRADIENT HEADER
           // ═══════════════════════════════════════════════════
-          SliverAppBar(
-            expandedHeight: 160,
-            pinned: true,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            backgroundColor: AppTheme.primary,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
+          const StandardHeader(title: 'Patient Management'),
+
+          // PATIENT COUNT
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Text(
+                '${dateFilteredPatients.length} Patient${dateFilteredPatients.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(28),
-                    bottomRight: Radius.circular(28),
+          ),
+
+          // ═══════════════════════════════════════════════════
+          // DATE PICKER
+          // ═══════════════════════════════════════════════════
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
                   ),
-                ),
-                padding: const EdgeInsets.only(
-                  top: 50,
-                  left: 16,
-                  right: 16,
-                  bottom: 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Patient Management',
-                          style: AppTheme.heading.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.border),
+                    boxShadow: AppTheme.cardShadow,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        GestureDetector(
-                          onTap: () => _showSortFilterDialog(context, provider),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.tune_outlined,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Filter',
-                                  style: AppTheme.caption.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${provider.displayedPatients.length} Patients Registered',
-                      style: AppTheme.caption.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Embedded search bar just before curve ends
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardBg,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: AppTheme.cardShadow,
-                      ),
-                      child: TextField(
-                        onChanged: provider.onSearchChanged,
-                        style: AppTheme.body.copyWith(
-                          color: AppTheme.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search name, ID, mobile, or diagnosis...',
-                          hintStyle: AppTheme.body.copyWith(
-                            color: AppTheme.textHint,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: AppTheme.textSecondary,
-                            size: 20,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14,
-                          ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('EEEE, d MMMM yyyy').format(
+                                _selectedDate,
+                              ),
+                              style: AppTheme.body.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _isToday ? 'Today' : 'Selected date',
+                              style: AppTheme.caption.copyWith(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -282,16 +217,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
               padding: const EdgeInsets.all(16),
               child: Builder(
                 builder: (context) {
-                  if (provider.isSearching) {
-                    return Column(
-                      children: const [
-                        ShimmerCard(),
-                        ShimmerCard(),
-                        ShimmerCard(),
-                      ],
-                    );
-                  } else if (provider.filteredPatients.isEmpty) {
-                    // Premium consistent empty state
+                  if (dateFilteredPatients.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 60),
                       child: Column(
@@ -311,40 +237,42 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            'No Patients Yet',
+                            _isToday ? 'No Patients Yet' : 'No Patients on This Date',
                             style: AppTheme.heading.copyWith(
                               color: AppTheme.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'Add your first patient via OPD Registration',
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () => context.go('/app/opd'),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('New OPD'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
+                          if (_isToday) ...[
+                            Text(
+                              'Add your first patient via OPD Registration',
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.textSecondary,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () => context.go('/app/opd'),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('New OPD'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     );
                   } else {
-                    final patientList = provider.filteredPatients;
+                    final patientList = dateFilteredPatients;
                     return AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: ListView.builder(
@@ -496,76 +424,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 6),
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  final confirmed = await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (ctx) => AlertDialog(
-                                                      title: const Text(
-                                                        'Delete OPD',
-                                                      ),
-                                                      content: Text(
-                                                        'Delete all OPD records of $name?',
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                ctx,
-                                                                false,
-                                                              ),
-                                                          child: const Text(
-                                                            'Cancel',
-                                                          ),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                ctx,
-                                                                true,
-                                                              ),
-                                                          style:
-                                                              TextButton.styleFrom(
-                                                                foregroundColor:
-                                                                    AppTheme
-                                                                        .danger,
-                                                              ),
-                                                          child: const Text(
-                                                            'Delete',
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (confirmed == true &&
-                                                      context.mounted) {
-                                                    await context
-                                                        .read<PatientProvider>()
-                                                        .deletePatientAndRecords(
-                                                          id,
-                                                        );
-                                                  }
-                                                },
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(
-                                                    8,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.danger
-                                                        .withValues(alpha: 0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.delete_outline,
-                                                    size: 16,
-                                                    color: AppTheme.danger,
-                                                  ),
-                                                ),
-                                              ),
+
                                             ],
                                           ),
                                         ],
@@ -586,16 +445,18 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
           ),
         ],
       ),
-      floatingActionButton: AnimatedSlide(
-        offset: _showFab ? Offset.zero : const Offset(0, 2.5),
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        child: FloatingActionButton(
-          onPressed: () => context.go('/app/opd'),
-          backgroundColor: AppTheme.primary,
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
-        ),
-      ),
+      floatingActionButton: _isToday
+          ? AnimatedSlide(
+              offset: _showFab ? Offset.zero : const Offset(0, 2.5),
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: FloatingActionButton(
+                onPressed: () => context.go('/app/opd'),
+                backgroundColor: AppTheme.primary,
+                child: const Icon(Icons.add, color: Colors.white, size: 28),
+              ),
+            )
+          : null,
     );
   }
 }

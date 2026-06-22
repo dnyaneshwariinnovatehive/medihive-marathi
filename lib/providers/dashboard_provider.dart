@@ -209,6 +209,64 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  int get weeklyVisits {
+    try {
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
+      final today = DateTime.now();
+      final startOfWeek = today.subtract(Duration(days: today.weekday));
+      return opdBox.values.where((r) => !r.visitDate.isBefore(startOfWeek)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  int get monthlyVisits {
+    try {
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
+      final today = DateTime.now();
+      return opdBox.values.where((r) =>
+        r.visitDate.year == today.year &&
+        r.visitDate.month == today.month
+      ).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  String get weeklyRevenue {
+    try {
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
+      final today = DateTime.now();
+      final startOfWeek = today.subtract(Duration(days: today.weekday));
+      final records = opdBox.values.where((r) => !r.visitDate.isBefore(startOfWeek));
+      double total = 0;
+      for (final r in records) {
+        total += _extractRecordFee(r);
+      }
+      return '₹${total.toInt().toString()}';
+    } catch (_) {
+      return '₹0';
+    }
+  }
+
+  String get monthlyRevenue {
+    try {
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
+      final today = DateTime.now();
+      final records = opdBox.values.where((r) =>
+        r.visitDate.year == today.year &&
+        r.visitDate.month == today.month
+      );
+      double total = 0;
+      for (final r in records) {
+        total += _extractRecordFee(r);
+      }
+      return '₹${total.toInt().toString()}';
+    } catch (_) {
+      return '₹0';
+    }
+  }
+
   String get followUpRate {
     try {
       final opdBox = Hive.box<OPDRecordModel>('opd_records');

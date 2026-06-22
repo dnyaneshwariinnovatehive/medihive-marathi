@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/patient_model.dart';
 import '../../providers/patient_provider.dart';
+import '../../utils/helpers.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/standard_header.dart';
 
 class PatientEditScreen extends StatefulWidget {
   final String patientId;
@@ -76,7 +78,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
       final updated = _patient!.copyWith(
         name: _nameController.text.trim(),
         age: int.tryParse(_ageController.text.trim()) ?? _patient!.age,
-        mobile: _mobileController.text.trim(),
+        mobile: Helpers.normalizePhone(_mobileController.text.trim()),
         address: _addressController.text.trim(),
         dob: _dobController.text.trim(),
         gender: _gender,
@@ -113,34 +115,9 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            toolbarHeight: 56,
-            elevation: 0,
-            backgroundColor: AppTheme.primary,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: GestureDetector(
-                onTap: () => context.pop(),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-            title: Text(
-              'Edit Patient',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.3,
-              ),
-            ),
+          StandardHeader(
+            title: 'Edit Patient',
+            showBack: true,
           ),
           if (_isLoading)
             const SliverFillRemaining(
@@ -180,7 +157,12 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
                             const SizedBox(height: 16),
                             _buildDropdown('Gender', _gender, _genders, (v) => setState(() => _gender = v!)),
                             const SizedBox(height: 16),
-                            _buildField('Mobile', _mobileController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+                            _buildField('Mobile', _mobileController, Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'Mobile number is required';
+                                final cleaned = v.replaceAll(RegExp(r'[^0-9]'), '');
+                                if (cleaned.length < 10) return 'Enter at least 10 digits';
+                                return null;
+                              }),
                             const SizedBox(height: 16),
                             _buildField('Address', _addressController, Icons.location_on_outlined, maxLines: 2),
                             const SizedBox(height: 16),

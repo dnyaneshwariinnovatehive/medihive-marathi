@@ -74,6 +74,16 @@ def init_db():
             created_at  TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS fcm_tokens (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            fcm_token   TEXT NOT NULL,
+            user_id     TEXT DEFAULT '',
+            created_at  TEXT NOT NULL,
+            updated_at  TEXT NOT NULL
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_fcm_token ON fcm_tokens(fcm_token);
+
         CREATE INDEX IF NOT EXISTS idx_opd_patient ON opd_records(patient_id);
         CREATE INDEX IF NOT EXISTS idx_opd_visit   ON opd_records(visit_date);
         CREATE INDEX IF NOT EXISTS idx_appt_date   ON appointments(date_time);

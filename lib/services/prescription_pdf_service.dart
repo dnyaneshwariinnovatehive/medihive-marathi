@@ -99,7 +99,7 @@ class PrescriptionPdfService {
                                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                                 children: [
                                   pw.Text(e.value.name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                                  pw.Text('Dosage: ${e.value.dosage}  |  Duration: ${e.value.duration}', style: const pw.TextStyle(color: PdfColors.grey700)),
+                                  pw.Text('Dosage: ${e.value.dosage}', style: const pw.TextStyle(color: PdfColors.grey700)),
                                 ],
                               ),
                             ),

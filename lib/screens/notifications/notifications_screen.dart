@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/animated_list_item.dart';
+import '../../widgets/standard_header.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -35,29 +36,22 @@ class NotificationsScreen extends StatelessWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 110,
-            floating: false,
-            centerTitle: true,
-            actions: [
-              if (notifications.isNotEmpty) ...[
-                IconButton(
-                  tooltip: 'Mark all as read',
-                  icon: const Icon(Icons.mark_chat_read_outlined),
-                  onPressed: () => provider.markAllAsRead(),
-                ),
-                IconButton(
-                  tooltip: 'Clear all',
-                  icon: const Icon(Icons.delete_sweep_outlined),
-                  onPressed: () => provider.clearNotifications(),
-                ),
-              ],
-            ],
-            flexibleSpace: const FlexibleSpaceBar(
-              title: Text('Notifications'),
-              titlePadding: EdgeInsetsDirectional.only(start: 16, bottom: 12),
-            ),
+          StandardHeader(
+            title: 'Notifications',
+            trailingActions: notifications.isNotEmpty
+                ? [
+                    IconButton(
+                      tooltip: 'Mark all as read',
+                      icon: const Icon(Icons.mark_chat_read_outlined),
+                      onPressed: () => provider.markAllAsRead(),
+                    ),
+                    IconButton(
+                      tooltip: 'Clear all',
+                      icon: const Icon(Icons.delete_sweep_outlined),
+                      onPressed: () => provider.clearNotifications(),
+                    ),
+                  ]
+                : null,
           ),
           SliverFillRemaining(
             hasScrollBody: notifications.isNotEmpty,

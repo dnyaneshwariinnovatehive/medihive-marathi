@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -31,16 +32,25 @@ class FirebaseMessagingService {
     _initialized = true;
   }
 
+  Future<void> refreshToken() async {
+    _fcmToken = await _messaging?.getToken();
+    if (_fcmToken != null) {
+      await ApiService.updateFcmToken(_fcmToken!);
+    }
+  }
+
   Future<void> _requestPermission() async {
     final messaging = _messaging;
     if (messaging == null) return;
 
-    await messaging.requestPermission(
+    final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
       provisional: false,
+      criticalAlert: true,
     );
+    debugPrint('FCM permission: ${settings.authorizationStatus}');
   }
 
   Future<void> _getToken() async {
@@ -50,14 +60,18 @@ class FirebaseMessagingService {
     try {
       _fcmToken = await messaging.getToken();
       if (_fcmToken != null) {
+        debugPrint('FCM token obtained: ${_fcmToken!.substring(0, 20)}...');
         await ApiService.updateFcmToken(_fcmToken!);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('FCM getToken error: $e');
+    }
   }
 
   void _listenToTokenRefresh() {
     _messaging?.onTokenRefresh.listen((token) {
       _fcmToken = token;
+      debugPrint('FCM token refreshed');
       ApiService.updateFcmToken(token);
     });
   }
@@ -76,27 +90,30 @@ class FirebaseMessagingService {
 
   Future<void> _handleMessage(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) return;
+    final data = message.data;
 
-    await LocalNotificationService().showNotification(
-      id: message.hashCode,
-      title: notification.title ?? '',
-      body: notification.body ?? '',
-      payload: message.data['route'],
-    );
+    if (notification != null) {
+      await LocalNotificationService().showNotification(
+        id: message.hashCode,
+        title: notification.title ?? '',
+        body: notification.body ?? '',
+        payload: data['route'],
+      );
+    } else if (data.containsKey('title') && data.containsKey('body')) {
+      await LocalNotificationService().showNotification(
+        id: message.hashCode,
+        title: data['title'] ?? '',
+        body: data['body'] ?? '',
+        payload: data['route'],
+      );
+    }
+
+    debugPrint('FCM message received: ${notification?.title ?? data['title']}');
   }
 
   Future<void> _handleTerminatedMessage(RemoteMessage? message) async {
     if (message == null) return;
-    final notification = message.notification;
-    if (notification == null) return;
-
-    await LocalNotificationService().showNotification(
-      id: message.hashCode,
-      title: notification.title ?? '',
-      body: notification.body ?? '',
-      payload: message.data['route'],
-    );
+    await _handleMessage(message);
   }
 }
 
@@ -104,7 +121,7 @@ class FirebaseMessagingService {
 Future<void> _backgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   final notification = message.notification;
-  if (notification == null) return;
+  final data = message.data;
 
   final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -114,6 +131,9 @@ Future<void> _backgroundHandler(RemoteMessage message) async {
     iOS: iosSettings,
   );
   await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+  final title = notification?.title ?? data['title'] ?? 'MediHive';
+  final body = notification?.body ?? data['body'] ?? '';
 
   const androidDetails = AndroidNotificationDetails(
     'push_notifications',
@@ -131,9 +151,9 @@ Future<void> _backgroundHandler(RemoteMessage message) async {
 
   await flutterLocalNotificationsPlugin.show(
     message.hashCode,
-    notification.title ?? '',
-    notification.body ?? '',
+    title,
+    body,
     details,
-    payload: message.data['route'],
+    payload: data['route'],
   );
 }

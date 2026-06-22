@@ -18,6 +18,7 @@ import 'providers/settings_provider.dart';
 import 'providers/notification_provider.dart';
 import 'services/sync_manager.dart';
 import 'services/local_notification_service.dart';
+import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
 
 import 'models/patient_model.dart';
@@ -119,11 +120,14 @@ void main() async {
     debugPrint('Hive initialization error: $e');
   }
 
-  // Initialize local notification service
+  // Initialize local notification services
   if (!kIsWeb) {
     try {
       await LocalNotificationService().init();
-    } catch (_) {}
+      await NotificationService().init();
+    } catch (e) {
+      debugPrint('Notification service init error: $e');
+    }
   }
 
   // Schedule daily background backup at default 2:00 AM (native only)

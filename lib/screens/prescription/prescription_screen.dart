@@ -1,20 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../../theme/app_theme.dart';
 import '../../models/prescription.dart';
 import '../../models/patient_model.dart';
 import '../../models/opd_record_model.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/standard_header.dart';
 import '../../services/prescription_pdf_service.dart';
-import '../../services/whatsapp_share_helper.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/section_card.dart';
 
@@ -54,7 +53,8 @@ class PrescriptionScreen extends StatefulWidget {
 class _PrescriptionScreenState extends State<PrescriptionScreen> {
   bool _isEditing = false;
   bool _dataLoaded = false;
-  String _patientPhone = '';
+  bool _hasError = false;
+  String _errorMessage = '';
   late TextEditingController _diagnosisController;
   late TextEditingController _notesController;
   late TextEditingController _nextVisitController;
@@ -65,99 +65,119 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadData();
+      setState(() {});
+    });
   }
 
   void _loadData() {
-    final patientBox = Hive.box<PatientModel>('patients');
-    final pModel = patientBox.values.cast<PatientModel?>().firstWhere(
-      (p) => p?.id == widget.patientId,
-      orElse: () => null,
-    );
+    try {
+      final patientBox = Hive.box<PatientModel>('patients');
+      final pModel = patientBox.values.cast<PatientModel?>().firstWhere(
+        (p) => p?.id == widget.patientId,
+        orElse: () => null,
+      );
 
-    if (pModel == null) return;
-    _patientPhone = pModel.mobile;
+      if (pModel == null) {
+        _hasError = true;
+        _errorMessage = 'Patient not found';
+        _dataLoaded = true;
+        return;
+      }
 
-    final opdBox = Hive.box<OPDRecordModel>('opd_records');
-    final records = opdBox.values
-        .where((r) => r.patientId == widget.patientId)
-        .toList();
-    records.sort((a, b) => b.visitDate.compareTo(a.visitDate));
-    if (records.isEmpty) return;
-    _latestRecord = records.first;
+      final opdBox = Hive.box<OPDRecordModel>('opd_records');
+      final records = opdBox.values
+          .where((r) => r.patientId == widget.patientId)
+          .toList();
+      records.sort((a, b) => b.visitDate.compareTo(a.visitDate));
 
-    final settings = context.read<SettingsProvider>();
+      if (records.isEmpty) {
+        _hasError = true;
+        _errorMessage = 'No prescription records found for this patient';
+        _dataLoaded = true;
+        return;
+      }
 
-    final List<Medicine> medList = [];
-    if (_latestRecord.medicines.isNotEmpty) {
-      try {
-        final decoded = _decodeMedicines(_latestRecord.medicines);
-        if (decoded.isNotEmpty) {
-          medList.addAll(decoded);
-        } else {
+      _latestRecord = records.first;
+
+      final settings = context.read<SettingsProvider>();
+
+      final List<Medicine> medList = [];
+      if (_latestRecord.medicines.isNotEmpty) {
+        try {
+          final decoded = _decodeMedicines(_latestRecord.medicines);
+          if (decoded.isNotEmpty) {
+            medList.addAll(decoded);
+          } else {
+            final parts = _latestRecord.medicines.split(',');
+            for (var part in parts) {
+              if (part.trim().isNotEmpty) {
+                medList.add(
+                  Medicine(
+                    name: part.trim(),
+                    dosage: 'As directed',
+                    duration: '-',
+                  ),
+                );
+              }
+            }
+          }
+        } catch (_) {
           final parts = _latestRecord.medicines.split(',');
           for (var part in parts) {
             if (part.trim().isNotEmpty) {
               medList.add(
-                Medicine(
-                  name: part.trim(),
-                  dosage: 'As directed',
-                  duration: '-',
-                ),
+                Medicine(name: part.trim(), dosage: 'As directed', duration: '-'),
               );
             }
           }
         }
-      } catch (_) {
-        final parts = _latestRecord.medicines.split(',');
-        for (var part in parts) {
-          if (part.trim().isNotEmpty) {
-            medList.add(
-              Medicine(name: part.trim(), dosage: 'As directed', duration: '-'),
-            );
-          }
-        }
       }
+
+      _rx = Prescription(
+        date: DateFormat('dd MMM yyyy').format(_latestRecord.visitDate),
+        patientName: pModel.name,
+        patientId: pModel.id,
+        age: pModel.age,
+        gender: pModel.gender.isNotEmpty ? pModel.gender : 'Unknown',
+        diagnosis: _latestRecord.diagnosis.isNotEmpty
+            ? _latestRecord.diagnosis
+            : 'Consultation',
+        medicines: medList,
+        notes: _latestRecord.symptoms.isNotEmpty
+            ? _latestRecord.symptoms
+            : 'No specific instructions.',
+        nextVisit: _latestRecord.nextVisit.isNotEmpty
+            ? _latestRecord.nextVisit
+            : 'As required',
+        doctorName: settings.doctorName.isNotEmpty
+            ? settings.doctorName
+            : 'Dr. Rajas Gavas',
+        clinicName: settings.clinicName.isNotEmpty
+            ? settings.clinicName
+            : 'Shree Clinic',
+        clinicAddress: settings.clinicAddress.isNotEmpty
+            ? settings.clinicAddress
+            : 'Nirman bhavan, near Milagris school, Sawantwadi',
+        clinicPhone: settings.clinicPhone.isNotEmpty
+            ? settings.clinicPhone
+            : '9067251670',
+        licenseNo: settings.doctorLicense.isNotEmpty
+            ? settings.doctorLicense
+            : 'I-107200-A',
+        patientMobile: pModel.mobile.isNotEmpty ? pModel.mobile : '',
+      );
+
+      _diagnosisController = TextEditingController(text: _rx.diagnosis);
+      _notesController = TextEditingController(text: _rx.notes);
+      _nextVisitController = TextEditingController(text: _rx.nextVisit);
+      _initMedicineFields();
+    } catch (e) {
+      _hasError = true;
+      _errorMessage = 'Failed to load prescription: $e';
     }
-
-    _rx = Prescription(
-      date: DateFormat('dd MMM yyyy').format(_latestRecord.visitDate),
-      patientName: pModel.name,
-      patientId: pModel.id,
-      age: pModel.age,
-      gender: pModel.gender.isNotEmpty ? pModel.gender : 'Unknown',
-      diagnosis: _latestRecord.diagnosis.isNotEmpty
-          ? _latestRecord.diagnosis
-          : 'Consultation',
-      medicines: medList,
-      notes: _latestRecord.symptoms.isNotEmpty
-          ? _latestRecord.symptoms
-          : 'No specific instructions.',
-      nextVisit: _latestRecord.nextVisit.isNotEmpty
-          ? _latestRecord.nextVisit
-          : 'As required',
-      doctorName: settings.doctorName.isNotEmpty
-          ? settings.doctorName
-          : 'Dr. Rajas Gavas',
-      clinicName: settings.clinicName.isNotEmpty
-          ? settings.clinicName
-          : 'Shree Clinic',
-      clinicAddress: settings.clinicAddress.isNotEmpty
-          ? settings.clinicAddress
-          : 'Nirman bhavan, near Milagris school, Sawantwadi',
-      clinicPhone: settings.clinicPhone.isNotEmpty
-          ? settings.clinicPhone
-          : '9067251670',
-      licenseNo: settings.doctorLicense.isNotEmpty
-          ? settings.doctorLicense
-          : 'I-107200-A',
-      patientMobile: pModel.mobile.isNotEmpty ? pModel.mobile : '',
-    );
-
-    _diagnosisController = TextEditingController(text: _rx.diagnosis);
-    _notesController = TextEditingController(text: _rx.notes);
-    _nextVisitController = TextEditingController(text: _rx.nextVisit);
-    _initMedicineFields();
     _dataLoaded = true;
   }
 
@@ -207,7 +227,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
   void _toggleEdit() {
     if (_isEditing) {
-      _saveChanges();
+      setState(() => _isEditing = false);
     } else {
       _initMedicineFields();
       setState(() => _isEditing = true);
@@ -283,8 +303,54 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   Widget build(BuildContext context) {
     if (!_dataLoaded) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Prescription')),
-        body: const Center(child: Text('Patient not found')),
+        backgroundColor: AppTheme.background,
+        body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            const StandardHeader(title: 'Prescription', showBack: true),
+            const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_hasError) {
+      return Scaffold(
+        backgroundColor: AppTheme.background,
+        body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            const StandardHeader(title: 'Prescription', showBack: true),
+            SliverFillRemaining(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.description_outlined,
+                        size: 64,
+                        color: AppTheme.textHint,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        _errorMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -293,51 +359,20 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            toolbarHeight: 56,
-            elevation: 0,
-            backgroundColor: AppTheme.primary,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: GestureDetector(
-                onTap: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/app/patients');
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.arrow_back, color: Colors.white, size: 20),
+          StandardHeader(
+            title: 'Prescription',
+            showBack: true,
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Text(
+                _rx.date,
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
                 ),
               ),
-            ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Prescription',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                Text(
-                  _rx.date,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
             ),
           ),
           SliverToBoxAdapter(
@@ -462,35 +497,17 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                   : Colors.transparent,
                                               borderRadius:
                                                   BorderRadius.circular(12),
-                                              border: _isEditing
-                                                  ? null
-                                                  : Border.all(
-                                                      color: AppTheme.border,
-                                                    ),
+                                              border: Border.all(
+                                                color: _isEditing
+                                                    ? AppTheme.primary
+                                                        .withValues(alpha: 0.3)
+                                                    : AppTheme.border,
+                                              ),
                                             ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  _isEditing
-                                                      ? Icons.check
-                                                      : Icons.edit_outlined,
-                                                  color: AppTheme.primary,
-                                                  size: 20,
-                                                ),
-                                                if (_isEditing) ...[
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    'Save',
-                                                    style: TextStyle(
-                                                      color: AppTheme.primary,
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
+                                            child: Icon(
+                                              Icons.edit_outlined,
+                                              color: AppTheme.primary,
+                                              size: 20,
                                             ),
                                           ),
                                         ),
@@ -507,22 +524,28 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                         children: [
                                           Row(
                                             children: [
-                                              _infoCol(
-                                                'Patient Name',
-                                                _rx.patientName,
+                                              Expanded(
+                                                child: _infoCol(
+                                                  'Patient Name',
+                                                  _rx.patientName,
+                                                ),
                                               ),
-                                              _infoCol(
-                                                'Patient ID',
-                                                _rx.patientId,
+                                              Expanded(
+                                                child: _infoCol(
+                                                  'Patient ID',
+                                                  _rx.patientId,
+                                                ),
                                               ),
                                             ],
                                           ),
                                           SizedBox(height: 12),
                                           Row(
                                             children: [
-                                              _infoCol(
-                                                'Age / Gender',
-                                                '${_rx.age} / ${_rx.gender}',
+                                              Expanded(
+                                                child: _infoCol(
+                                                  'Age / Gender',
+                                                  '${_rx.age} / ${_rx.gender}',
+                                                ),
                                               ),
                                               Expanded(
                                                 child: _isEditing
@@ -693,31 +716,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              SizedBox(width: 8),
-                                              Expanded(
-                                                child: TextField(
-                                                  controller: e.value.duration,
-                                                  style: TextStyle(
-                                                    color: AppTheme.textPrimary,
-                                                    fontSize: 13,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    labelText: 'Duration',
-                                                    isDense: true,
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 8,
-                                                        ),
-                                                    border: OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
+
                                             ],
                                           ),
                                         ],
@@ -746,15 +745,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                           ),
                                         ),
                                         SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            _infoCol('Dosage', e.value.dosage),
-                                            _infoCol(
-                                              'Duration',
-                                              e.value.duration,
-                                            ),
-                                          ],
-                                        ),
+                                        _infoCol('Dosage', e.value.dosage),
                                       ],
                                     ),
                                   ),
@@ -881,9 +872,9 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                       Text(
                                         _rx.nextVisit,
                                         style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 18,
-                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 13,
+                                          color: AppTheme.textPrimary,
                                         ),
                                       ),
                                     ],
@@ -904,7 +895,6 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                       top: BorderSide(
                         color: AppTheme.border,
                         width: 2,
-                        strokeAlign: BorderSide.strokeAlignCenter,
                       ),
                     ),
                   ),
@@ -921,90 +911,63 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                   child: Column(
                     children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            try {
-                              final pdfData =
-                                  await PrescriptionPdfService.generatePdf(_rx, includePatientDetails: false);
-                              final tempDir = await getTemporaryDirectory();
-                              final file = File(
-                                '${tempDir.path}/Prescription_${_rx.patientId}.pdf',
-                              );
-                              await file.writeAsBytes(pdfData);
-                              if (_patientPhone.isEmpty) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Patient has no phone number'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              }
-                              final sent = await WhatsAppShareHelper.shareToWhatsApp(
-                                file,
-                                phoneNumber: _patientPhone,
-                              );
-                              if (!sent) {
-                                await Share.shareXFiles(
-                                  [XFile(file.path)],
-                                  text: 'Prescription from ${_rx.clinicName}',
-                                );
-                              }
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Error sharing prescription: $e',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          icon: Icon(Icons.send, size: 20),
-                          label: Text('Share via WhatsApp'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.whatsapp,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 2,
-                            shadowColor: AppTheme.whatsapp.withValues(
-                              alpha: 0.3,
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
+                            flex: 1,
+                            child: OutlinedButton.icon(
+                              onPressed: _isEditing
+                                  ? _saveChanges
+                                  : () {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Tap the edit icon to make changes',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                              icon: Icon(Icons.save_outlined, size: 18),
+                              label: Text('Save'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                side: BorderSide(
+                                  color: AppTheme.primary,
+                                  width: 1.5,
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            flex: 1,
                             child: OutlinedButton.icon(
                               onPressed: () async {
                                 try {
                                   final pdfData =
-                                      await PrescriptionPdfService.generatePdf(
-                                        _rx,
-                                      );
-                                  final dir = getApplicationDocumentsDirectory();
+                                      await PrescriptionPdfService
+                                          .generatePdf(_rx);
+                                  final dir =
+                                      await getApplicationDocumentsDirectory();
                                   final docDir = Directory(
-                                    '${(await dir).path}/Prescriptions',
+                                    '${dir.path}/Prescriptions',
                                   );
                                   if (!await docDir.exists()) {
                                     await docDir.create(recursive: true);
                                   }
+                                  final safeName = _rx.patientName.replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(RegExp(r'\s+'), '_');
                                   final file = File(
-                                    '${docDir.path}/Prescription_${_rx.patientId}_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+                                    '${docDir.path}/${safeName}_${_rx.patientId}.pdf',
                                   );
                                   await file.writeAsBytes(pdfData);
                                   if (!context.mounted) return;
@@ -1028,32 +991,33 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   );
                                 }
                               },
-                              icon: Icon(Icons.download, size: 20),
-                              label: Text('Download / Save'),
+                              icon: Icon(Icons.download, size: 18),
+                              label: Text('Download'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                  vertical: 16,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 side: BorderSide(
                                   color: AppTheme.primary,
-                                  width: 2,
+                                  width: 1.5,
                                 ),
+                                elevation: 0,
                               ),
                             ),
                           ),
-                          SizedBox(width: 12),
+                          SizedBox(width: 10),
                           Expanded(
+                            flex: 1,
                             child: OutlinedButton.icon(
                               onPressed: () async {
                                 try {
                                   final pdfData =
-                                      await PrescriptionPdfService.generatePdf(
-                                        _rx,
-                                      );
+                                      await PrescriptionPdfService
+                                          .generatePdf(_rx);
                                   await Printing.layoutPdf(
                                     onLayout: (_) => pdfData,
                                   );
@@ -1068,20 +1032,21 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   );
                                 }
                               },
-                              icon: Icon(Icons.print, size: 20),
+                              icon: Icon(Icons.print, size: 18),
                               label: Text('Print'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.textPrimary,
+                                foregroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                  vertical: 16,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 side: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 2,
+                                  color: AppTheme.primary,
+                                  width: 1.5,
                                 ),
+                                elevation: 0,
                               ),
                             ),
                           ),
@@ -1099,24 +1064,22 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
     );
   }
 
-  Widget _infoCol(String label, String value) => Expanded(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+  Widget _infoCol(String label, String value) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+      ),
+      SizedBox(height: 2),
+      Text(
+        value,
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: AppTheme.textPrimary,
         ),
-        SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 
   Widget _sectionTitle(String title) => Row(

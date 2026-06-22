@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/patient.dart';
 
-/// Visit timeline item matching the web app's timeline dot + visit record pattern.
 class VisitTimelineItem extends StatelessWidget {
   final VisitRecord visit;
   final bool isLast;
@@ -19,90 +18,93 @@ class VisitTimelineItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline line + dot
           SizedBox(
             width: 24,
             child: Column(
               children: [
                 Container(
-                  width: 16,
-                  height: 16,
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(top: 12),
                   decoration: BoxDecoration(
                     color: AppTheme.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                      ),
-                    ],
                   ),
                 ),
                 if (!isLast)
                   Expanded(
                     child: Container(
-                      width: 2,
-                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      width: 1.5,
+                      color: AppTheme.primary.withValues(alpha: 0.2),
                     ),
                   ),
               ],
             ),
           ),
-          SizedBox(width: 12),
-          // Visit card
+          const SizedBox(width: 10),
           Expanded(
             child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        visit.date,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: visit.type == 'Follow-up'
-                              ? AppTheme.success.withValues(alpha: 0.15)
-                              : AppTheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                      Expanded(
                         child: Text(
-                          visit.type,
+                          visit.date,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: visit.type == 'Follow-up'
-                                ? AppTheme.success
-                                : AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
                       ),
+                      _buildTypeCapsule(visit.type),
                     ],
                   ),
-                  SizedBox(height: 12),
-                  _buildInfoRow('Diagnosis', visit.diagnosis),
-                  SizedBox(height: 8),
-                  _buildInfoRow('Clinical Notes', visit.notes),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Diagnosis',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    visit.diagnosis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Clinical Notes',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    visit.notes,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Divider(height: 1, color: AppTheme.border),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -110,7 +112,7 @@ class VisitTimelineItem extends StatelessWidget {
                         'Total Fees',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                       Text(
@@ -118,6 +120,7 @@ class VisitTimelineItem extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primary,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -131,24 +134,25 @@ class VisitTimelineItem extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+  Widget _buildTypeCapsule(String type) {
+    final isFollowUp = type == 'Follow-up' || type == 'follow_up';
+    final label = isFollowUp ? 'FOLLOW-UP' : 'CONSULTATION';
+    final color = isFollowUp ? AppTheme.warning : AppTheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 9,
+          letterSpacing: 0.3,
         ),
-        SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary,
-            fontSize: 14,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

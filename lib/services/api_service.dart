@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -203,12 +204,42 @@ class ApiService {
   static Future<void> updateFcmToken(String token) async {
     try {
       await _loadToken();
-      await http.post(
+      final res = await http.post(
         Uri.parse('$baseUrl/fcm/token'),
         headers: _headers(),
         body: jsonEncode({'fcm_token': token}),
       );
-    } catch (_) {}
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        debugPrint('FCM token registered successfully');
+      } else {
+        debugPrint('FCM token registration failed: ${res.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('FCM token registration error: $e');
+    }
+  }
+
+  /// Sends a prescription PDF directly to a patient's WhatsApp via the
+  /// WhatsApp Cloud API running on the backend. The backend uploads the
+  /// file to WhatsApp's servers and delivers it to the patient's chat
+  /// with the PDF already attached.
+  static Future<Map<String, dynamic>> sendPrescriptionViaWhatsApp({
+    required String phone,
+    required List<int> fileBytes,
+    String fileName = 'Prescription.pdf',
+  }) async {
+    await _loadToken();
+    final base64Data = base64Encode(fileBytes);
+    final res = await http.post(
+      Uri.parse('$baseUrl/whatsapp/send-prescription'),
+      headers: _headers(),
+      body: jsonEncode({
+        'phone': phone,
+        'file_base64': base64Data,
+        'file_name': fileName,
+      }),
+    ).timeout(const Duration(seconds: 60));
+    return jsonDecode(res.body) as Map<String, dynamic>;
   }
 }
 
