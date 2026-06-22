@@ -6,6 +6,7 @@ class StandardHeader extends StatelessWidget {
   final List<Widget>? trailingActions;
   final bool showBack;
   final VoidCallback? onBack;
+  final bool roundedCorners;
 
   const StandardHeader({
     super.key,
@@ -13,6 +14,7 @@ class StandardHeader extends StatelessWidget {
     this.trailingActions,
     this.showBack = false,
     this.onBack,
+    this.roundedCorners = true,
   });
 
   @override
@@ -24,12 +26,14 @@ class StandardHeader extends StatelessWidget {
       elevation: 0,
       automaticallyImplyLeading: false,
       backgroundColor: AppTheme.primary,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
+      shape: roundedCorners
+          ? const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+            )
+          : const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       leadingWidth: showBack ? 100 : 66,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -78,12 +82,14 @@ class StandardHeader extends StatelessWidget {
         ...?trailingActions,
       ],
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(24),
-          ),
+          borderRadius: roundedCorners
+              ? const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                )
+              : BorderRadius.zero,
         ),
       ),
     );

@@ -56,7 +56,7 @@ class PatientDetailsScreen extends StatelessWidget {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const StandardHeader(title: 'Patient Details', showBack: true),
+            const StandardHeader(title: 'Patient Details', roundedCorners: false),
             const SliverFillRemaining(
               child: Center(child: Text('Patient not found')),
             ),
@@ -101,10 +101,9 @@ class PatientDetailsScreen extends StatelessWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          StandardHeader(
+          const StandardHeader(
             title: 'Patient Details',
-            showBack: true,
-            onBack: () => context.go('/app/patients'),
+            roundedCorners: false,
           ),
           SliverToBoxAdapter(
             child: Column(
