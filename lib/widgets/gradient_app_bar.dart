@@ -182,8 +182,8 @@ class GradientAppBar extends StatelessWidget {
                   ),
                   Image.asset(
                     'assets/images/logo.png',
-                    height: 80,
-                    width: 80,
+                    height: 40,
+                    width: 40,
                     fit: BoxFit.contain,
                   ),
                   const SyncCloudStatusIcon(),
@@ -263,8 +263,8 @@ class SliverGradientAppBar extends StatelessWidget {
       actions: [
         Image.asset(
           'assets/images/logo.png',
-          height: 80,
-          width: 80,
+          height: 40,
+          width: 40,
           fit: BoxFit.contain,
         ),
         const SyncCloudStatusIcon(),

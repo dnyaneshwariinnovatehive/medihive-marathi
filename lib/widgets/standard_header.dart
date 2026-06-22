@@ -57,8 +57,8 @@ class StandardHeader extends StatelessWidget {
             padding: EdgeInsets.only(left: showBack ? 4 : 16),
             child: Image.asset(
               'assets/images/logo.png',
-              height: 80,
-              width: 80,
+              height: 40,
+              width: 40,
               fit: BoxFit.contain,
             ),
           ),
