@@ -623,21 +623,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return Row(
       children: [
         Expanded(child: _buildVisitCard(
-          icon: Icons.today_outlined,
+          icon: Icons.calendar_today,
           value: dashboard.todaysOpd.toString(),
           label: "Today's Visits",
           onTap: () => _showRevenueSheet(context, 'Today', dashboard.todaysRevenue),
         )),
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
-          icon: Icons.date_range_outlined,
+          icon: Icons.date_range,
           value: dashboard.weeklyVisits.toString(),
           label: 'Weekly Visits',
           onTap: () => _showRevenueSheet(context, 'This Week', dashboard.weeklyRevenue),
         )),
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
-          icon: Icons.calendar_month_outlined,
+          icon: Icons.calendar_month,
           value: dashboard.monthlyVisits.toString(),
           label: 'Monthly Visits',
           onTap: () => _showRevenueSheet(context, 'This Month', dashboard.monthlyRevenue),
