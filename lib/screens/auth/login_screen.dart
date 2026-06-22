@@ -418,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen>
             _staggeredItem(3, SizedBox(
               width: double.infinity,
               height: 50,
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: auth.isLoading
                     ? null
                     : () async {
@@ -436,9 +436,11 @@ class _LoginScreenState extends State<LoginScreen>
                           );
                         }
                       },
-                style: OutlinedButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black87,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
                   side: BorderSide(
                     color: Colors.grey.shade300,
                   ),

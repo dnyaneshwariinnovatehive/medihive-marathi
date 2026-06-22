@@ -278,6 +278,7 @@ class PatientDetailsScreen extends StatelessWidget {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
+                                  surfaceTintColor: Colors.transparent,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
                                   ),
@@ -398,6 +399,7 @@ class PatientDetailsScreen extends StatelessWidget {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
+                                  surfaceTintColor: Colors.transparent,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
                                   ),
