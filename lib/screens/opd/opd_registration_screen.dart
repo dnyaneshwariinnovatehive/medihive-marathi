@@ -385,6 +385,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 appointmentProvider: context
                                     .read<AppointmentProvider>(),
                                 existingRecordId: existingId,
+                                documentBytes: _documentBytes,
                               );
                               context.read<NotificationProvider>().addNotification(
                                 'OPD Record Saved',

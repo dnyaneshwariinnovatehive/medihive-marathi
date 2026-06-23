@@ -110,6 +110,23 @@ class GoogleAuthService {
     return headers;
   }
 
+  Future<bool> tryRefreshAuth() async {
+    if (kIsWeb) return false;
+    try {
+      final account = await _signIn.signInSilently();
+      if (account == null) return false;
+      final auth = await account.authentication;
+      if (auth.accessToken != null) {
+        await _secureStorage.write(key: _keyAccessToken, value: auth.accessToken);
+      }
+      _authController.add(account);
+      return true;
+    } catch (e) {
+      debugPrint('GoogleAuthService.tryRefreshAuth error: $e');
+      return false;
+    }
+  }
+
   Future<String?> getCachedAccessToken() async {
     return await _secureStorage.read(key: _keyAccessToken);
   }

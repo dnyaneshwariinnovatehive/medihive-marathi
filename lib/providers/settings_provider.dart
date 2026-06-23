@@ -24,13 +24,6 @@ class SettingsProvider extends ChangeNotifier {
   String _clinicHours = '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
   String _clinicWebsite = '';
 
-  // Email Config
-  String _emailSender = 'MediHive Alerts';
-  String _emailSmtp = 'smtp.gmail.com';
-  String _emailPort = '587';
-  String _emailUser = 'alerts@medihive.com';
-  String _emailPass = '';
-
   // Google Sign-In & Backup state (lazy to avoid web crash)
   GoogleAuthService? _googleAuthServiceInstance;
   GoogleAuthService get _googleAuthService {
@@ -60,12 +53,6 @@ class SettingsProvider extends ChangeNotifier {
   String get clinicAddress => _clinicAddress;
   String get clinicHours => _clinicHours;
   String get clinicWebsite => _clinicWebsite;
-
-  String get emailSender => _emailSender;
-  String get emailSmtp => _emailSmtp;
-  String get emailPort => _emailPort;
-  String get emailUser => _emailUser;
-  String get emailPass => _emailPass;
 
   // Google Getters
   bool get isGoogleConnected => _googleUser != null;
@@ -131,6 +118,7 @@ class SettingsProvider extends ChangeNotifier {
       }
     } catch (e) {
       _googleAuthError = 'Sign-in failed: $e';
+      rethrow;
     } finally {
       _isGoogleSigningIn = false;
       notifyListeners();
@@ -237,11 +225,6 @@ class SettingsProvider extends ChangeNotifier {
       _clinicAddress = prefs.getString('clinicAddress') ?? 'Suite 101, Medical Plaza, Mumbai';
       _clinicHours = prefs.getString('clinicHours') ?? '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
       _clinicWebsite = prefs.getString('clinicWebsite') ?? '';
-      _emailSender = prefs.getString('emailSender') ?? 'MediHive Alerts';
-      _emailSmtp = prefs.getString('emailSmtp') ?? 'smtp.gmail.com';
-      _emailPort = prefs.getString('emailPort') ?? '587';
-      _emailUser = prefs.getString('emailUser') ?? 'alerts@medihive.com';
-      _emailPass = prefs.getString('emailPass') ?? '';
       notifyListeners();
     } catch (_) {
       // Silently handle — settings will use defaults
@@ -313,25 +296,4 @@ class SettingsProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> updateEmailConfig({
-    required String sender,
-    required String smtp,
-    required String port,
-    required String user,
-    required String pass,
-  }) async {
-    _emailSender = sender;
-    _emailSmtp = smtp;
-    _emailPort = port;
-    _emailUser = user;
-    _emailPass = pass;
-    notifyListeners();
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('emailSender', sender);
-    await prefs.setString('emailSmtp', smtp);
-    await prefs.setString('emailPort', port);
-    await prefs.setString('emailUser', user);
-    await prefs.setString('emailPass', pass);
-  }
 }

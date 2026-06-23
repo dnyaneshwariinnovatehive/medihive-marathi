@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../services/backup_code_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -13,6 +14,9 @@ class AuthProvider extends ChangeNotifier {
   String _username = '';
   String _password = '';
   AppUser? _currentUser;
+  bool _needs2FA = false;
+  String _pendingUsername = '';
+  String _loginError = '';
 
   AuthProvider() {
     loadSavedCredentials();
@@ -25,17 +29,20 @@ class AuthProvider extends ChangeNotifier {
   String get username => _username;
   String get password => _password;
   AppUser? get currentUser => _currentUser;
+  bool get needs2FA => _needs2FA;
+  String get loginError => _loginError;
 
-  // Keep compatibility alias
   bool get isLoggedIn => _isAuthenticated;
 
   void setUsername(String value) {
     _username = value;
+    _loginError = '';
     notifyListeners();
   }
 
   void setPassword(String value) {
     _password = value;
+    _loginError = '';
     notifyListeners();
   }
 
@@ -54,11 +61,22 @@ class AuthProvider extends ChangeNotifier {
     final password = _password.trim();
 
     _isLoading = true;
+    _loginError = '';
     notifyListeners();
 
     final user = await _authService.login(username, password);
 
     if (user != null) {
+      _needs2FA = await BackupCodeService.is2FAEnabled();
+
+      if (_needs2FA) {
+        _pendingUsername = username;
+        _currentUser = user;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
       _isAuthenticated = true;
       _currentUser = user;
       await _storageService.setLoggedIn(_rememberMe);
@@ -68,11 +86,38 @@ class AuthProvider extends ChangeNotifier {
       } else {
         await _storageService.clearAuth();
       }
+    } else {
+      _loginError = 'Invalid username or password';
     }
 
     _isLoading = false;
     notifyListeners();
     return user != null;
+  }
+
+  Future<bool> verify2FACode(String code) async {
+    final valid = await BackupCodeService.verifyAndConsumeCode(code);
+    if (!valid) return false;
+
+    _needs2FA = false;
+    _isAuthenticated = true;
+    if (_rememberMe) {
+      await _storageService.setRememberMe(true);
+      await _storageService.setUsername(_pendingUsername);
+    } else {
+      await _storageService.clearAuth();
+    }
+    await _storageService.setLoggedIn(true);
+    _pendingUsername = '';
+    notifyListeners();
+    return true;
+  }
+
+  void cancel2FA() {
+    _needs2FA = false;
+    _pendingUsername = '';
+    _currentUser = null;
+    notifyListeners();
   }
 
   Future<bool> signInWithGoogle() async {
@@ -97,28 +142,27 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     _username = '';
     _password = '';
+    _needs2FA = false;
+    _pendingUsername = '';
     await _authService.logout();
     await _storageService.clearAuth();
     notifyListeners();
   }
 
-  // Alias for backward compatibility
   Future<bool> login() => signIn();
   Future<void> logout() => signOut();
 
   Future<void> loadSavedCredentials() async {
     _rememberMe = await _storageService.getRememberMe();
     final wasLoggedIn = await _storageService.getLoggedIn();
-    
+
     if (wasLoggedIn) {
-      // Try silent sign in
       final user = await _authService.signInSilently();
       if (user != null) {
         _isAuthenticated = true;
         _currentUser = user;
       } else if (_rememberMe) {
         _username = await _storageService.getUsername();
-        // Since we mock login, just let them in if remember me
         _isAuthenticated = true;
         _currentUser = AppUser(id: '1', name: 'Dr. $_username', email: '$_username@medihive.com');
       }

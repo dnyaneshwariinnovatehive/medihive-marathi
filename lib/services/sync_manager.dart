@@ -10,7 +10,8 @@ import 'google_drive_sync_service.dart';
 import '../models/patient_model.dart';
 import '../models/opd_record_model.dart';
 import '../models/appointment_model.dart';
-import '../providers/notification_provider.dart';
+import 'event_notification_service.dart';
+import 'background_backup_handler.dart';
 import '../theme/app_theme.dart';
 
 enum SyncState {
@@ -93,7 +94,9 @@ class SyncManager extends ChangeNotifier {
       _patientSubscription = Hive.box<PatientModel>('patients').watch().listen((_) => _onLocalChange());
       _opdSubscription = Hive.box<OPDRecordModel>('opd_records').watch().listen((_) => _onLocalChange());
       _apptSubscription = Hive.box<AppointmentModel>('appointments').watch().listen((_) => _onLocalChange());
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('SyncManager._initBoxWatchers failed: $e');
+    }
   }
 
   void _initPolling() {
@@ -113,20 +116,8 @@ class SyncManager extends ChangeNotifier {
       return patientsBox.values.where((p) => !p.isSynced).length +
           opdBox.values.where((r) => !r.isSynced).length +
           apptBox.values.where((a) => !a.isSynced).length;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  int _getUnsyncedCount() {
-    try {
-      final patientsBox = Hive.box<PatientModel>('patients');
-      final opdBox = Hive.box<OPDRecordModel>('opd_records');
-      final apptBox = Hive.box<AppointmentModel>('appointments');
-      return patientsBox.values.where((p) => !p.isSynced).length +
-          opdBox.values.where((r) => !r.isSynced).length +
-          apptBox.values.where((a) => !a.isSynced).length;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SyncManager.getUnsyncedCount failed: $e');
       return 0;
     }
   }
@@ -157,14 +148,15 @@ class SyncManager extends ChangeNotifier {
 
       _syncState = SyncState.synced;
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SyncManager._trySync failed: $e');
       _syncState = SyncState.error;
       notifyListeners();
     }
   }
 
   Future<void> _syncWithFlask() async {
-    final unsyncedCount = _getUnsyncedCount();
+    final unsyncedCount = getUnsyncedCount();
 
     // Push local changes to Flask
     if (unsyncedCount > 0) {
@@ -280,9 +272,8 @@ class SyncManager extends ChangeNotifier {
     notifyListeners();
 
     if (driveOk) {
-      await NotificationProvider.addNotificationSilently(
-        'Sync Complete',
-        'Data synced to server and Google Drive',
+      await EventNotificationService.notifySyncComplete(
+        recordCount: getUnsyncedCount(),
       );
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
@@ -314,10 +305,7 @@ class SyncManager extends ChangeNotifier {
       await _driveService.syncPendingRecords();
       _syncState = SyncState.synced;
       notifyListeners();
-      await NotificationProvider.addNotificationSilently(
-        'Drive Backup Complete',
-        'Data backed up to Google Drive',
-      );
+      await EventNotificationService.notifyBackupComplete(success: true);
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: const Text('✓ Backed up to Google Drive'),
@@ -329,6 +317,10 @@ class SyncManager extends ChangeNotifier {
     } catch (e) {
       _syncState = SyncState.error;
       notifyListeners();
+      await EventNotificationService.notifyBackupComplete(
+        success: false,
+        details: 'Backup failed: $e',
+      );
       scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text('✗ Backup failed: $e'),
@@ -356,6 +348,12 @@ class SyncManager extends ChangeNotifier {
   }
 
   Future<void> scheduleDailyBackup(TimeOfDay time) async {
+    if (kIsWeb) return;
+    try {
+      await scheduleDailyBackupTask(time);
+    } catch (e) {
+      debugPrint('scheduleDailyBackup error: $e');
+    }
   }
 
   @override

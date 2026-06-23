@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
 import '../models/opd_form_data.dart';
 import '../models/opd_record_model.dart';
 import '../services/local_storage_service.dart';
+import '../services/event_notification_service.dart';
 import 'dashboard_provider.dart';
 import 'appointment_provider.dart';
 
@@ -527,6 +529,7 @@ class OpdProvider extends ChangeNotifier {
     DashboardProvider? dashboardProvider,
     AppointmentProvider? appointmentProvider,
     String? existingRecordId,
+    Uint8List? documentBytes,
   }) async {
     try {
       final nextVisit = _formData.nextVisit;
@@ -571,6 +574,15 @@ class OpdProvider extends ChangeNotifier {
       );
       await LocalStorageService().saveOPDRecord(record);
 
+      if (documentBytes != null && documentBytes.isNotEmpty) {
+        try {
+          final docBox = Hive.box('opd_documents');
+          await docBox.put(recordId, base64Encode(documentBytes));
+        } catch (_) {
+          debugPrint('Failed to save document for record $recordId');
+        }
+      }
+
       // 2. Create calendar appointment for the current visit
       if (appointmentProvider != null && patientId.isNotEmpty) {
         final now = DateTime.now();
@@ -610,8 +622,15 @@ class OpdProvider extends ChangeNotifier {
         await dashboardProvider.loadDashboardData();
       }
 
+      // 7. Trigger notification
+      await EventNotificationService.notifyOpdRegistered(
+        patientName: patientName,
+        type: _formData.opdType == 'Follow-up' ? 'Follow-up' : 'Consultation',
+      );
+
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('OpdProvider.submitRecord failed: $e');
       return false;
     }
   }

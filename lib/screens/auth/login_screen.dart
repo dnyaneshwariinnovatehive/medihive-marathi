@@ -69,7 +69,11 @@ class _LoginScreenState extends State<LoginScreen>
 
     final success = await auth.login();
     if (success && mounted) {
-      context.go('/app');
+      if (auth.needs2FA) {
+        context.push('/2fa-verify');
+      } else {
+        context.go('/app');
+      }
     }
   }
 
@@ -369,7 +373,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => context.push('/forgot-password'),
                   child: const Text(
                     'Forgot Password',
                     style: TextStyle(
@@ -381,6 +385,19 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ],
             )),
+            if (auth.loginError.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  auth.loginError,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             const SizedBox(height: 20),
             _staggeredItem(3, SizedBox(
               width: double.infinity,
@@ -425,7 +442,11 @@ class _LoginScreenState extends State<LoginScreen>
                         final success =
                             await auth.signInWithGoogle();
                         if (success && mounted) {
-                          context.go('/app');
+                          if (auth.needs2FA) {
+                            context.push('/2fa-verify');
+                          } else {
+                            context.go('/app');
+                          }
                         } else if (!success && mounted) {
                           ScaffoldMessenger.of(context)
                               .showSnackBar(
@@ -458,6 +479,18 @@ class _LoginScreenState extends State<LoginScreen>
                 label: const Text('SIGN IN WITH GOOGLE'),
               ),
             )),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => context.push('/register'),
+              child: Text(
+                "Don't have an account? Create one",
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ],
         ),
       ),

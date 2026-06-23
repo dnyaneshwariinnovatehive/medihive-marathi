@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:workmanager/workmanager.dart'; // Workmanager plugin
+import 'package:workmanager/workmanager.dart';
 import 'package:flutter/services.dart'; // for SystemNavigator
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'theme/app_theme.dart'; // app theme definitions
 
@@ -20,6 +21,7 @@ import 'services/sync_manager.dart';
 import 'services/local_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
+import 'services/background_backup_handler.dart';
 
 import 'models/patient_model.dart';
 import 'models/opd_record_model.dart';
@@ -27,6 +29,9 @@ import 'models/appointment_model.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/two_factor_verify_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
+import 'screens/auth/registration_screen.dart';
 import 'screens/app_shell.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'package:medihive/screens/opd/opd_registration_screen.dart';
@@ -46,6 +51,8 @@ import 'screens/chatbot/chatbot_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: "assets/.env");
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return MaterialApp(
@@ -74,15 +81,15 @@ void main() async {
   };
   
   // Initialize Workmanager - only on non‑web platforms
-  // if (!kIsWeb) {
-  //   try {
-  //     await Workmanager().initialize(
-  //       callbackDispatcher,
-  //     );
-  //   } catch (_) {
-  //     // Workmanager initialization failure is non-fatal
-  //   }
-  // }
+  if (!kIsWeb) {
+    try {
+      await Workmanager().initialize(
+        callbackDispatcher,
+      );
+    } catch (e) {
+      debugPrint('main: Workmanager init failed: $e');
+    }
+  }
 
   // Initialize Firebase Cloud Messaging (native only)
   if (!kIsWeb) {
@@ -106,6 +113,7 @@ void main() async {
     await Hive.openBox<AppointmentModel>('appointments');
     await Hive.openBox('drafts');
     await Hive.openBox('day_notes');
+    await Hive.openBox('opd_documents');
     // One-time data reset (runs only on first launch after this patch)
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('data_reset_done') != true) {
@@ -130,13 +138,25 @@ void main() async {
     }
   }
 
-  // Schedule daily background backup at default 2:00 AM (native only)
+  // Schedule background tasks (native only)
   if (!kIsWeb) {
     try {
       final syncManager = SyncManager();
       await syncManager.scheduleDailyBackup(const TimeOfDay(hour: 2, minute: 0));
-    } catch (_) {
-      // Background scheduling failure is non-fatal
+    } catch (e) {
+      debugPrint('main: scheduleDailyBackup failed: $e');
+    }
+
+    try {
+      await scheduleMorningSummaryTask();
+    } catch (e) {
+      debugPrint('main: scheduleMorningSummaryTask failed: $e');
+    }
+
+    try {
+      await scheduleEveningSummaryTask();
+    } catch (e) {
+      debugPrint('main: scheduleEveningSummaryTask failed: $e');
     }
   }
 
@@ -193,17 +213,21 @@ final _router = GoRouter(
     final auth = context.read<AuthProvider>();
     final isGoingToLogin = state.matchedLocation == '/login';
     final isGoingToSplash = state.matchedLocation == '/';
+    final isGoingTo2FA = state.matchedLocation == '/2fa-verify';
 
-    // Wait for credentials to load if starting on a protected route
     if (!auth.hasLoadedCredentials && !isGoingToSplash) {
-      return '/'; // Go to splash to wait for credentials
+      return '/';
     }
 
-    if (auth.hasLoadedCredentials && !auth.isAuthenticated && !isGoingToLogin && !isGoingToSplash) {
+    if (auth.hasLoadedCredentials && !auth.isAuthenticated && !isGoingToLogin && !isGoingToSplash && !isGoingTo2FA) {
       return '/login';
     }
 
-    if (auth.isAuthenticated && (isGoingToLogin || isGoingToSplash)) {
+    if (auth.needs2FA && !isGoingTo2FA) {
+      return '/2fa-verify';
+    }
+
+    if (!auth.needs2FA && auth.isAuthenticated && (isGoingToLogin || isGoingToSplash || isGoingTo2FA)) {
       return '/app';
     }
 
@@ -220,6 +244,24 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+
+    // Forgot Password → /forgot-password
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+
+    // Registration → /register
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegistrationScreen(),
+    ),
+
+    // 2FA Verification → /2fa-verify
+    GoRoute(
+      path: '/2fa-verify',
+      builder: (context, state) => const TwoFactorVerifyScreen(),
     ),
 
     // App shell with bottom navigation → /app/*

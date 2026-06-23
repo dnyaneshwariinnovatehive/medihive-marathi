@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,6 +82,9 @@ class GoogleDriveSyncService {
   factory GoogleDriveSyncService() => _instance;
   GoogleDriveSyncService._internal();
 
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+
   /// Gets authenticated drive API instance
   Future<drive.DriveApi> _getDriveApi() async {
     final headers = await _googleAuthService.getAuthHeaders();
@@ -89,11 +92,29 @@ class GoogleDriveSyncService {
     return drive.DriveApi(client);
   }
 
+  /// Attempts to refresh auth and retry
+  Future<drive.DriveApi> _getDriveApiWithRetry({bool reset = false}) async {
+    _retryCount = reset ? 0 : _retryCount;
+    try {
+      return await _getDriveApi();
+    } catch (e) {
+      if (_retryCount < _maxRetries) {
+        _retryCount++;
+        debugPrint('DriveApi retry $_retryCount: ${e.runtimeType}');
+        final refreshed = await _googleAuthService.tryRefreshAuth();
+        if (refreshed) {
+          return await _getDriveApi();
+        }
+      }
+      rethrow;
+    }
+  }
+
   /// Recursively retrieves or creates the "MediHive Backups" folder ID on Drive
   Future<String> _getOrCreateFolderId(drive.DriveApi driveApi) async {
     final prefs = await SharedPreferences.getInstance();
     final cachedId = prefs.getString('google_drive_folder_id');
-    
+
     if (cachedId != null && cachedId.isNotEmpty) {
       try {
         // Validate folder existence and status
@@ -131,7 +152,7 @@ class GoogleDriveSyncService {
   /// Uploads or updates a backup file in the Google Drive folder
   Future<String> uploadBackup(Uint8List fileBytes, String fileName) async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry(reset: true);
       final folderId = await _getOrCreateFolderId(driveApi);
 
       // Parse date string from fileName (e.g. DD-MM-YYYY) or check current date
@@ -148,7 +169,7 @@ class GoogleDriveSyncService {
         // Overwrite existing file
         final existingFileId = list.files!.first.id!;
         final fileMetadata = drive.File()..name = fileName;
-        
+
         final updatedFile = await driveApi.files.update(
           fileMetadata,
           existingFileId,
@@ -160,7 +181,7 @@ class GoogleDriveSyncService {
         final fileMetadata = drive.File()
           ..name = fileName
           ..parents = [folderId];
-          
+
         final createdFile = await driveApi.files.create(
           fileMetadata,
           uploadMedia: media,
@@ -187,6 +208,8 @@ class GoogleDriveSyncService {
 
   /// Two-way sync: download latest backup, merge with local, then upload merged result
   Future<void> syncPendingRecords() async {
+    _retryCount = 0;
+
     final patientsBox = Hive.box<PatientModel>('patients');
     final opdBox = Hive.box<OPDRecordModel>('opd_records');
     final apptBox = Hive.box<AppointmentModel>('appointments');
@@ -195,7 +218,7 @@ class GoogleDriveSyncService {
 
     try {
       // Step 1: Download the latest backup and merge it into local data
-      final folderId = await _getOrCreateFolderId(await _getDriveApi());
+      final folderId = await _getOrCreateFolderId(await _getDriveApiWithRetry());
       final backupBytes = await _downloadLatestBackup(folderId);
       if (backupBytes != null) {
         await ExcelMergeService().mergeFromExcel(backupBytes);
@@ -229,7 +252,7 @@ class GoogleDriveSyncService {
   /// Downloads the latest backup file from the MediHive Backups folder, or null if none exist
   Future<Uint8List?> _downloadLatestBackup(String folderId) async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry();
       final query = "'$folderId' in parents and trashed = false";
       final list = await driveApi.files.list(
         q: query,
@@ -243,7 +266,8 @@ class GoogleDriveSyncService {
 
       final latestFileId = list.files!.first.id!;
       return await downloadBackupBytes(latestFileId);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('GoogleDriveSyncService._downloadLatestBackup error: $e');
       return null;
     }
   }
@@ -251,7 +275,7 @@ class GoogleDriveSyncService {
   /// Lists all backup files in the "MediHive Backups" folder
   Future<List<DriveBackupInfo>> listBackups() async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry(reset: true);
       final folderId = await _getOrCreateFolderId(driveApi);
 
       final query = "'$folderId' in parents and trashed = false";
@@ -283,7 +307,7 @@ class GoogleDriveSyncService {
   /// Downloads a backup file and saves it locally
   Future<void> downloadBackup(String fileId) async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry();
 
       // Retrieve metadata to get the original filename
       final metadata = await driveApi.files.get(
@@ -336,7 +360,7 @@ class GoogleDriveSyncService {
   /// Downloads a backup file as raw bytes from Google Drive
   Future<Uint8List> downloadBackupBytes(String fileId) async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry();
       final media = await driveApi.files.get(
         fileId,
         downloadOptions: drive.DownloadOptions.fullMedia,
@@ -364,7 +388,7 @@ class GoogleDriveSyncService {
   /// Retrieves Google Drive storage usage in MBs
   Future<String> getDriveUsage() async {
     try {
-      final driveApi = await _getDriveApi();
+      final driveApi = await _getDriveApiWithRetry(reset: true);
       final about = await driveApi.about.get($fields: 'storageQuota');
       if (about.storageQuota != null) {
         final usageBytes = int.tryParse(about.storageQuota!.usage ?? '0') ?? 0;
@@ -390,7 +414,7 @@ class GoogleDriveSyncService {
   Future<void> _retryPendingSyncs() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPending = prefs.getBool('google_drive_pending_sync') ?? false;
-    
+
     if (hasPending) {
       try {
         await syncPendingRecords();
