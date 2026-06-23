@@ -37,7 +37,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               _detailRow('App Name:', 'MediHive', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow('Version:', 'v1.0.3', AppTheme.textPrimary), SizedBox(height: 8),
+              _detailRow('Version:', 'v1.0.7', AppTheme.textPrimary), SizedBox(height: 8),
               _detailRow('Platform:', 'Mobile (Android/iOS)', AppTheme.textPrimary), SizedBox(height: 8),
               _detailRow('Last Updated:', 'May 2026', AppTheme.textPrimary),
             ])),
