@@ -39,8 +39,8 @@ class OPDRecord:
             INSERT INTO opd_records (id, patient_id, type, symptoms, diagnosis, medicines,
                 visit_date, clinical_notes, consultation_fee, medicine_fee, discount,
                 payment_mode, charge_type, previous_visit_date, follow_up_reason,
-                next_visit, blood_group, image_links, created_at, updated_at, is_synced)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                next_visit, blood_group, image_links, created_at, updated_at, is_synced, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
         """, (
             data['id'], data['patient_id'], data.get('type', 'consultation'),
             data.get('symptoms', ''), data.get('diagnosis', ''),
@@ -51,7 +51,8 @@ class OPDRecord:
             data.get('previous_visit_date', ''), data.get('follow_up_reason', ''),
             data.get('next_visit', ''), data.get('blood_group', ''),
             data.get('image_links', ''),
-            now, now
+            now, now,
+            data.get('user_id', '')
         ))
         db.commit()
         db.close()
@@ -64,7 +65,7 @@ class OPDRecord:
                    'clinical_notes', 'consultation_fee', 'medicine_fee', 'discount',
                    'payment_mode', 'charge_type', 'previous_visit_date',
                    'follow_up_reason', 'next_visit', 'blood_group',
-                   'image_links')
+                   'image_links', 'user_id')
         fields = []
         values = []
         for k in allowed:
@@ -84,6 +85,8 @@ class OPDRecord:
 
     @staticmethod
     def delete(record_id):
+        from models.deleted_entity import DeletedEntity
+        DeletedEntity.record('opd_visit', record_id)
         db = get_db()
         db.execute("DELETE FROM opd_records WHERE id = ?", (record_id,))
         db.commit()
@@ -108,11 +111,17 @@ class OPDRecord:
         db.close()
 
     @staticmethod
-    def updated_since(timestamp):
+    def updated_since(timestamp, user_id=None):
         db = get_db()
-        rows = db.execute(
-            "SELECT * FROM opd_records WHERE updated_at > ? ORDER BY updated_at",
-            (timestamp,)
-        ).fetchall()
+        if user_id:
+            rows = db.execute(
+                "SELECT * FROM opd_records WHERE updated_at > ? AND (user_id = ? OR user_id = '') ORDER BY updated_at",
+                (timestamp, user_id)
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM opd_records WHERE updated_at > ? ORDER BY updated_at",
+                (timestamp,)
+            ).fetchall()
         db.close()
         return [OPDRecord.dict_from_row(r) for r in rows]

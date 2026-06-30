@@ -37,12 +37,13 @@ class Appointment:
         db = get_db()
         db.execute("""
             INSERT INTO appointments (id, patient_id, patient_name, date_time, notes,
-                                      created_at, updated_at, is_synced)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+                                      created_at, updated_at, is_synced, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
         """, (
             data['id'], data.get('patient_id', ''),
             data.get('patient_name', ''), data['date_time'],
-            data.get('notes', ''), now, now
+            data.get('notes', ''), now, now,
+            data.get('user_id', '')
         ))
         db.commit()
         db.close()
@@ -51,7 +52,7 @@ class Appointment:
     @staticmethod
     def update(appt_id, data):
         now = datetime.utcnow().isoformat()
-        allowed = ('patient_id', 'patient_name', 'date_time', 'notes')
+        allowed = ('patient_id', 'patient_name', 'date_time', 'notes', 'user_id')
         fields = []
         values = []
         for k in allowed:
@@ -71,6 +72,8 @@ class Appointment:
 
     @staticmethod
     def delete(appt_id):
+        from models.deleted_entity import DeletedEntity
+        DeletedEntity.record('appointment', appt_id)
         db = get_db()
         db.execute("DELETE FROM appointments WHERE id = ?", (appt_id,))
         db.commit()
@@ -84,11 +87,17 @@ class Appointment:
         return Appointment.create(data)
 
     @staticmethod
-    def updated_since(timestamp):
+    def updated_since(timestamp, user_id=None):
         db = get_db()
-        rows = db.execute(
-            "SELECT * FROM appointments WHERE updated_at > ? ORDER BY updated_at",
-            (timestamp,)
-        ).fetchall()
+        if user_id:
+            rows = db.execute(
+                "SELECT * FROM appointments WHERE updated_at > ? AND (user_id = ? OR user_id = '') ORDER BY updated_at",
+                (timestamp, user_id)
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM appointments WHERE updated_at > ? ORDER BY updated_at",
+                (timestamp,)
+            ).fetchall()
         db.close()
         return [Appointment.dict_from_row(r) for r in rows]

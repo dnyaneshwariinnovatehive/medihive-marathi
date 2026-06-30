@@ -4,9 +4,9 @@ from models.opd_record import OPDRecord
 from models.patient import Patient
 from datetime import datetime
 from pathlib import Path
-from config import IMAGE_STORAGE_PATH
-from desktop_google.drive_service import upload_images_to_drive
-from desktop_google.sheets_service import append_row_to_sheet
+from config import IMAGE_STORAGE_PATH, GOOGLE_SHEET_ID, IS_CLOUD
+from desktop_google.drive_service import upload_images_to_drive, upload_image_fileobj_to_drive
+from desktop_google.sheets_service import upsert_opd_row_in_sheet
 from services.log_service import get_logger
 
 logger = get_logger(__name__)
@@ -154,9 +154,22 @@ def upload_opd_images(opd_id):
         logger.warning("No valid image files for OPD %s", opd_id)
         return jsonify({'error': 'No valid image files provided'}), 400
 
-    logger.info("Saving %d image(s) locally for OPD %s", len(files), opd_id)
-    saved_paths = save_images_locally(opd_id, files)
-    logger.info("Saved %d image(s) at %s", len(saved_paths), IMAGE_STORAGE_PATH)
+    if IS_CLOUD:
+        logger.info("Cloud mode: uploading %d image(s) directly to Drive for OPD %s", len(files), opd_id)
+        drive_urls = []
+        for i, f in enumerate(files, 1):
+            url = upload_image_fileobj_to_drive(opd_id, f, i)
+            if url:
+                drive_urls.append(url)
+        logger.info("Uploaded %d image(s) to Drive for OPD %s", len(drive_urls), opd_id)
+    else:
+        logger.info("Saving %d image(s) locally for OPD %s", len(files), opd_id)
+        saved_paths = save_images_locally(opd_id, files)
+        logger.info("Saved %d image(s) at %s", len(saved_paths), IMAGE_STORAGE_PATH)
+        image_records = [_ImageRecord(p) for p in saved_paths]
+        logger.info("Uploading %d image(s) to Google Drive for OPD %s", len(image_records), opd_id)
+        drive_urls = upload_images_to_drive(opd_id, image_records, visit_date)
+        logger.info("Uploaded %d image(s) to Drive for OPD %s", len(drive_urls), opd_id)
 
     try:
         visit_date = datetime.fromisoformat(opd['visit_date'])
@@ -164,28 +177,41 @@ def upload_opd_images(opd_id):
         logger.warning("Could not parse visit_date '%s', using current time", opd.get('visit_date'))
         visit_date = datetime.utcnow()
 
-    image_records = [_ImageRecord(p) for p in saved_paths]
-    logger.info("Uploading %d image(s) to Google Drive for OPD %s", len(image_records), opd_id)
-    drive_urls = upload_images_to_drive(opd_id, image_records, visit_date)
-    logger.info("Uploaded %d image(s) to Drive for OPD %s", len(drive_urls), opd_id)
-
     patient = Patient.get(opd['patient_id'])
     if patient is None:
         logger.error("Patient not found for OPD %s (patient_id=%s)", opd_id, opd['patient_id'])
         return jsonify({'error': 'Patient not found'}), 404
 
-    logger.info("Appending row to Google Sheets for OPD %s", opd_id)
-    row_data = build_sheet_row_data(opd, patient, drive_urls)
-    append_row_to_sheet(**row_data)
-    logger.info("Sheet append complete for OPD %s", opd_id)
-
     urls_text = "\n".join(drive_urls)
     OPDRecord.set_image_links(opd_id, urls_text)
     logger.info("Image links persisted in opd_records for OPD %s", opd_id)
 
-    return jsonify({
-        'message': 'Images synced successfully',
+    sheet_update_ok = True
+    row_data = build_sheet_row_data(opd, patient, drive_urls)
+    try:
+        upsert_opd_row_in_sheet(opd_id, row_data)
+        logger.info("Sheet append complete for OPD %s", opd_id)
+    except RuntimeError as e:
+        logger.error("Sheet write blocked (no new sheet created): %s", e)
+        sheet_update_ok = False
+
+    response = {
         'opd_id': opd_id,
         'image_count': len(drive_urls),
         'drive_urls': drive_urls,
-    }), 200
+    }
+
+    if sheet_update_ok:
+        response['message'] = 'Images synced successfully'
+        return jsonify(response), 200
+    else:
+        response['message'] = (
+            'Images uploaded to Drive, but the Google Sheet was not updated. '
+            'Grant the service account Editor access to the sheet, then re-sync.'
+        )
+        response['error'] = (
+            f'Sheet ID {GOOGLE_SHEET_ID} is not accessible. '
+            f'Add medihive-service@medihive-500611.iam.gserviceaccount.com '
+            f'as Editor on the sheet.'
+        )
+        return jsonify(response), 207

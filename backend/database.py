@@ -28,7 +28,8 @@ def init_db():
             last_visit_date  TEXT DEFAULT '',
             created_at  TEXT NOT NULL,
             updated_at  TEXT NOT NULL,
-            is_synced   INTEGER DEFAULT 0
+            is_synced   INTEGER DEFAULT 0,
+            user_id     TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS opd_records (
@@ -53,6 +54,7 @@ def init_db():
             created_at          TEXT NOT NULL,
             updated_at          TEXT NOT NULL,
             is_synced           INTEGER DEFAULT 0,
+            user_id             TEXT DEFAULT '',
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
         );
 
@@ -64,7 +66,8 @@ def init_db():
             notes       TEXT DEFAULT '',
             created_at  TEXT NOT NULL,
             updated_at  TEXT NOT NULL,
-            is_synced   INTEGER DEFAULT 0
+            is_synced   INTEGER DEFAULT 0,
+            user_id     TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS users (
@@ -95,6 +98,46 @@ def init_db():
         cursor.execute("ALTER TABLE opd_records ADD COLUMN image_links TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass  # column already exists
+
+    # Migration: add user_id columns for multi-device sync
+    try:
+        cursor.execute("ALTER TABLE patients ADD COLUMN user_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE opd_records ADD COLUMN user_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN user_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
+    cursor.executescript("""
+        CREATE TABLE IF NOT EXISTS deleted_entities (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_type TEXT NOT NULL,
+            entity_id   TEXT NOT NULL,
+            deleted_at  TEXT NOT NULL,
+            user_id     TEXT DEFAULT ''
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_deleted_at ON deleted_entities(deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_deleted_type_id ON deleted_entities(entity_type, entity_id);
+
+        CREATE TABLE IF NOT EXISTS last_sync (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     TEXT NOT NULL UNIQUE,
+            last_sync   TEXT NOT NULL,
+            created_at  TEXT NOT NULL,
+            updated_at  TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key         TEXT PRIMARY KEY,
+            value       TEXT NOT NULL
+        );
+    """)
 
     conn.commit()
     conn.close()

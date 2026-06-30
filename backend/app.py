@@ -3,6 +3,7 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import SECRET_KEY, JWT_SECRET_KEY, JWT_ACCESS_TOKEN_EXPIRES
 from database import init_db
+from services.log_service import get_logger
 
 from routes.auth import auth_bp
 from routes.patients import patients_bp
@@ -11,6 +12,8 @@ from routes.appointments import appointments_bp
 from routes.sync import sync_bp
 from routes.fcm import fcm_bp
 from routes.whatsapp import whatsapp_bp
+
+logger = get_logger(__name__)
 
 
 def create_app():
@@ -38,7 +41,34 @@ def create_app():
     return app
 
 
+def initialize_google_services():
+    """
+    Run startup validation for Google Sheets and Drive ONCE.
+    This verifies the existing sheet and folder are accessible
+    before the server starts accepting requests.
+    If validation fails, a clear error is logged so the admin
+    can fix permissions — no new sheet or folder is ever created.
+    """
+    try:
+        from desktop_google.sheets_service import validate_sheet_access, validate_drive_folder_access
+        validate_sheet_access()
+        validate_drive_folder_access()
+        logger.info("Google setup validation PASSED — sheet and folder are accessible")
+    except ImportError as e:
+        logger.warning("Google validation dependencies not available: %s", e)
+    except RuntimeError as e:
+        logger.critical(
+            "GOOGLE SETUP VALIDATION FAILED — sync will NOT work:\n%s\n\n"
+            "Fix: Grant the service account EDITOR access to the sheet, "
+            "then restart the server.",
+            e
+        )
+    except Exception as e:
+        logger.critical("Google setup validation error: %s", e)
+
+
 if __name__ == '__main__':
     init_db()
+    initialize_google_services()
     app = create_app()
     app.run(host='0.0.0.0', port=5000, debug=True)
