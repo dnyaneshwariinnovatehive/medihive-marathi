@@ -18,7 +18,7 @@ class OpdQueueScreen extends StatefulWidget {
 }
 
 class _OpdQueueScreenState extends State<OpdQueueScreen> {
-  late DateTime _selectedDate;
+  DateTime? _selectedDate;
   List<Map<String, dynamic>> _records = [];
   Map<int, Map<String, dynamic>> _patientMap = {};
   bool _loaded = false;
@@ -28,7 +28,6 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
@@ -40,12 +39,19 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
       _patientMap = {
         for (final p in allPatients) (p['id'] as int): p,
       };
-      _records = await opdRepo.getByDate(_selectedDate);
+      if (_selectedDate != null) {
+        _records = await opdRepo.getByDate(_selectedDate!);
+      } else {
+        _records = await opdRepo.getAll();
+      }
     } catch (_) {
       _records = [];
       _patientMap = {};
     }
-    if (mounted) setState(() => _loaded = true);
+    if (mounted) {
+      _lastRefresh = DateTime.now();
+      setState(() => _loaded = true);
+    }
   }
 
   void _scheduleRefreshIfStale() {
@@ -53,19 +59,16 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
     _refreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshScheduled = false;
-      if (DateTime.now().difference(_lastRefresh).inSeconds > 3) {
-        _lastRefresh = DateTime.now();
-        _loadData();
-      }
+      _loadData();
     });
   }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -84,11 +87,17 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
     }
   }
 
+  void _clearDateFilter() {
+    setState(() => _selectedDate = null);
+    _loadData();
+  }
+
   bool get _isToday {
+    if (_selectedDate == null) return false;
     final now = DateTime.now();
-    return _selectedDate.year == now.year &&
-        _selectedDate.month == now.month &&
-        _selectedDate.day == now.day;
+    return _selectedDate!.year == now.year &&
+        _selectedDate!.month == now.month &&
+        _selectedDate!.day == now.day;
   }
 
   Widget _buildTypeCapsule(Map<String, dynamic> record) {
@@ -128,71 +137,91 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
         slivers: [
           const StandardHeader(title: 'OPD Queue'),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.border),
-                    boxShadow: AppTheme.cardShadow,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.calendar_month_rounded,
-                          color: AppTheme.primary,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              DateFormat('EEEE, d MMMM yyyy').format(
-                                _selectedDate,
-                              ),
-                              style: AppTheme.body.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textPrimary,
-                                fontSize: 14,
-                              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: AppTheme.cardShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _clearDateFilter,
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            const SizedBox(height: 1),
-                            Text(
-                              _isToday ? 'Today' : 'Selected date',
-                              style: AppTheme.caption.copyWith(
+                            child: Icon(
+                              _selectedDate != null
+                                  ? Icons.calendar_month_rounded
+                                  : Icons.list_rounded,
+                              color: AppTheme.primary,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _selectedDate != null ? _clearDateFilter : null,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _selectedDate != null
+                                      ? DateFormat('EEEE, d MMMM yyyy').format(
+                                          _selectedDate!,
+                                        )
+                                      : 'All Records',
+                                  style: AppTheme.body.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  _selectedDate != null
+                                      ? (_isToday ? 'Today — tap to show all' : 'Tap to show all')
+                                      : 'Tap calendar icon to filter by date',
+                                  style: AppTheme.caption.copyWith(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_selectedDate != null)
+                          GestureDetector(
+                            onTap: _clearDateFilter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Icon(
+                                Icons.close,
+                                size: 18,
                                 color: AppTheme.textSecondary,
-                                fontSize: 11,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -228,24 +257,24 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text(
-                              _isToday
-                                  ? 'No patients in the queue today'
-                                  : 'No appointments scheduled for this day.',
-                              style: AppTheme.body.copyWith(
-                                color: AppTheme.textSecondary,
+                              Text(
+                                _selectedDate != null
+                                    ? 'No appointments scheduled for this day.'
+                                    : 'No OPD records found.',
+                                style: AppTheme.body.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _isToday
-                                  ? 'New registrations will appear here'
-                                  : 'Select a different date to view records',
-                              style: AppTheme.caption.copyWith(
-                                color: AppTheme.textHint,
+                              const SizedBox(height: 4),
+                              Text(
+                                _selectedDate != null
+                                    ? 'Tap the calendar icon to show all records'
+                                    : 'New registrations will appear here',
+                                style: AppTheme.caption.copyWith(
+                                  color: AppTheme.textHint,
+                                ),
                               ),
-                            ),
-                            if (_isToday) ...[
+                            if (_selectedDate == null || _isToday) ...[
                               const SizedBox(height: 24),
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.add, size: 18),
@@ -354,12 +383,16 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                             const SizedBox(height: 4),
                                             Row(
                                               children: [
-                                                Text(
-                                                  'ID: P${record['patient_id']}',
-                                                  style: AppTheme.caption.copyWith(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: AppTheme.textSecondary,
+                                                Flexible(
+                                                  child: Text(
+                                                    'ID: P${record['patient_id']}',
+                                                    style: AppTheme.caption.copyWith(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: AppTheme.textSecondary,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 Container(
@@ -372,12 +405,16 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                                     shape: BoxShape.circle,
                                                   ),
                                                 ),
-                                                Text(
-                                                  '$patientAge Years',
-                                                  style: AppTheme.caption.copyWith(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: AppTheme.textSecondary,
+                                                Flexible(
+                                                  child: Text(
+                                                    '$patientAge Years',
+                                                    style: AppTheme.caption.copyWith(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: AppTheme.textSecondary,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 Container(
@@ -390,12 +427,16 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                                     shape: BoxShape.circle,
                                                   ),
                                                 ),
-                                                Text(
-                                                  patientGender ?? 'Not Specified',
-                                                  style: AppTheme.caption.copyWith(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: AppTheme.textSecondary,
+                                                Flexible(
+                                                  child: Text(
+                                                    patientGender ?? 'Not Specified',
+                                                    style: AppTheme.caption.copyWith(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: AppTheme.textSecondary,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               ],
@@ -454,8 +495,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
           ),
         ],
       ),
-      floatingActionButton: _isToday
-          ? FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
               backgroundColor: AppTheme.primary,
               elevation: 4,
               onPressed: () {
@@ -474,8 +514,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-            )
-          : null,
+            ),
     );
   }
 }

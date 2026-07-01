@@ -42,36 +42,60 @@ class MainActivity : FlutterActivity() {
 
                     saveToDownloads(file)
 
-                    val whatsappPkgs = listOf("com.whatsapp", "com.whatsapp.w4b")
                     var launched = false
 
+                    // Strategy 1 (Primary): Open WhatsApp directly to the contact's chat
+                    // via whatsapp://send scheme. This is the most reliable approach and
+                    // works on all WhatsApp versions for any number (saved or unsaved).
+                    if (phoneNumber.isNotBlank()) {
+                        val whatsappSchemes = listOf(
+                            "whatsapp://send?phone=$phoneNumber",
+                            "https://wa.me/$phoneNumber"
+                        )
+                        for (scheme in whatsappSchemes) {
+                            try {
+                                val chatIntent = Intent(Intent.ACTION_VIEW, Uri.parse(scheme)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(chatIntent)
+                                launched = true
+                                break
+                            } catch (_: Exception) { }
+                        }
+                    }
+
+                    // Strategy 2: Also share the PDF file to WhatsApp.
+                    // Tries ACTION_SEND with jid targeting for direct chat + file,
+                    // falls back to ACTION_SEND without jid for just the file.
+                    val whatsappPkgs = listOf("com.whatsapp", "com.whatsapp.w4b")
                     for (pkg in whatsappPkgs) {
                         try {
                             packageManager.getPackageInfo(pkg, 0)
-
-                            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "application/pdf"
-                                putParcelableArrayListExtra(Intent.EXTRA_STREAM, arrayListOf(uri))
+                                putExtra(Intent.EXTRA_STREAM, uri)
                                 putExtra("jid", "${phoneNumber}@s.whatsapp.net")
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 setPackage(pkg)
                             }
-                            startActivity(intent)
-                            launched = true
+                            startActivity(shareIntent)
                             break
                         } catch (_: Exception) { }
                     }
 
+                    // Strategy 3: If nothing worked, offer generic file share chooser
                     if (!launched) {
-                        startActivity(Intent.createChooser(
-                            Intent(Intent.ACTION_SEND).apply {
-                                type = "application/pdf"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            },
-                            "Share Prescription"
-                        ))
+                        try {
+                            startActivity(Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/pdf"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                },
+                                "Share Prescription"
+                            ))
+                        } catch (_: Exception) { }
                     }
 
                     result.success(true)

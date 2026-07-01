@@ -16,6 +16,8 @@ class DailySummaryService {
   static const _eveningSummaryId = 9002;
   static const int _clinicalStartHour = 8;
   static const int _clinicalEndHour = 19;
+  static const int _morningHour = 8;
+  static const int _eveningHour = 19;
 
   static int _todayFollowUpCount() {
     try {
@@ -148,13 +150,13 @@ class DailySummaryService {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // Only schedule for today's date
-    if (targetDate != today) return;
+    // Schedule for today AND future dates
+    if (targetDate.isBefore(today)) return;
 
-    // Collect all notes for today
+    // Collect all notes for this date
     final allNotes = await _notesForDate(year, month, day);
 
-    // Cancel existing reminders for today to avoid duplicates
+    // Cancel existing reminders for this date to avoid duplicates
     await cancelNoteReminder(year, month, day);
 
     tz_data.initializeTimeZones();
@@ -167,13 +169,15 @@ class DailySummaryService {
           ? allNotes.join('\n')
           : noteText;
 
-      if (hour == now.hour) {
+      final isForToday = targetDate == today;
+
+      if (isForToday && hour == now.hour) {
         await _showNotification(
           id: notifId,
           title: 'Clinical Reminder ($hour:00)',
           body: body,
         );
-      } else if (scheduleTime.isBefore(now)) {
+      } else if (isForToday && scheduleTime.isBefore(now)) {
         continue;
       } else {
         final tzTarget = tz.TZDateTime.from(scheduleTime, tz.local);

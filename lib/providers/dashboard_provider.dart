@@ -24,9 +24,6 @@ class DashboardProvider extends ChangeNotifier {
   String _todaysRevenue = '₹0';
   String get todaysRevenue => _todaysRevenue;
 
-  int _followUpsDue = 0;
-  int get followUpsDue => _followUpsDue;
-
   List<Patient> _recentPatients = [];
   List<Patient> get recentPatients => _recentPatients;
 
@@ -42,11 +39,6 @@ class DashboardProvider extends ChangeNotifier {
     await loadDashboardData();
   }
 
-  void setFollowUpsDue(int count) {
-    _followUpsDue = count;
-    notifyListeners();
-  }
-
   /// Calculates dynamic clinic summaries and charts from SQLite
   Future<void> loadDashboardData() async {
     try {
@@ -60,9 +52,7 @@ class DashboardProvider extends ChangeNotifier {
         return vd != null && _isSameDay(vd, today);
       }).length;
 
-      // 2. Follow-ups due — set externally via setFollowUpsDue
-
-      // 3. Today's revenue
+      // 2. Today's revenue
       final todayRecords = _allOpdRows.where((r) {
         final vd = _parseDateTime(r['visit_datetime']);
         return vd != null && _isSameDay(vd, today);

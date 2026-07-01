@@ -24,15 +24,20 @@ class WhatsAppShareHelper {
     }
   }
 
-  /// Normalize phone number to 10 digits before sending to native side.
-  /// Strips non-digits, removes leading 0 or 91 country code.
+  /// Normalize phone number to include country code before sending to native side.
+  /// Strips non-digits, ensures "91" prefix for 10-digit numbers.
+  /// Passes through numbers that already have country codes intact.
   static String _normalizePhone(String phone) {
     String cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleaned.startsWith('91') && cleaned.length == 12) {
-      cleaned = cleaned.substring(2);
+    if (cleaned.length == 10) {
+      return '91$cleaned';
+    } else if (cleaned.startsWith('91') && cleaned.length == 12) {
+      return cleaned;
     } else if (cleaned.startsWith('0') && cleaned.length == 11) {
-      cleaned = cleaned.substring(1);
+      return '91${cleaned.substring(1)}';
+    } else if (cleaned.length > 10 && cleaned.length <= 15) {
+      return cleaned;
     }
-    return cleaned.length == 10 ? cleaned : '';
+    return cleaned;
   }
 }

@@ -27,6 +27,7 @@ class LocalNotificationService {
       iOS: iosSettings,
     );
     await initializePluginOnce(initSettings);
+    await _requestPermissions();
     _initialized = true;
   }
 
@@ -124,6 +125,7 @@ class LocalNotificationService {
     String? payload,
   }) async {
     if (!_initialized) await init();
+    await _requestPermissions();
 
     const androidDetails = AndroidNotificationDetails(
       'push_notifications',

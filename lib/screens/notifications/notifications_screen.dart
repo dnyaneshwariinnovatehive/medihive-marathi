@@ -152,6 +152,8 @@ class NotificationsScreen extends StatelessWidget {
                                                     fontWeight: note.isRead ? FontWeight.w500 : FontWeight.w700,
                                                     fontSize: 14,
                                                   ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
                                               if (!note.isRead)

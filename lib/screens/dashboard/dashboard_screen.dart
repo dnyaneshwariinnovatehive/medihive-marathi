@@ -7,6 +7,7 @@ import '../../widgets/standard_header.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/cloud_sync_manager.dart';
 import '../../models/patient.dart';
 import '../../widgets/section_card.dart';
 
@@ -22,7 +23,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
-  
+  int _lastSyncCount = 0;
+
   late AnimationController _chartAnim;
   late AnimationController _listAnim;
 
@@ -51,10 +53,23 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) _listAnim.forward();
     });
+
+    CloudSyncManager().addListener(_onCloudSyncChanged);
+  }
+
+  void _onCloudSyncChanged() {
+    final sync = CloudSyncManager();
+    if (sync.syncCount > _lastSyncCount) {
+      _lastSyncCount = sync.syncCount;
+      if (mounted) {
+        context.read<DashboardProvider>().loadDashboardData();
+      }
+    }
   }
 
   @override
   void dispose() {
+    CloudSyncManager().removeListener(_onCloudSyncChanged);
     _scrollController.dispose();
     _chartAnim.dispose();
     _listAnim.dispose();
@@ -77,11 +92,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final formattedDate = '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
 
-    // Calculate upcoming follow-ups from calendar appointments
-    final upcomingFollowUps = appointments.upcomingFollowUps.length;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      dashboard.setFollowUpsDue(upcomingFollowUps);
-    });
+    // Follow-ups due today
+    final today = DateTime(now.year, now.month, now.day);
+    final followUpsDue = appointments.upcomingFollowUps.where((a) {
+      final aptDate = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day);
+      return aptDate == today;
+    }).length;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -143,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Visits Grid (3 cards)
-                    _buildVisitsGrid(dashboard),
+                    _buildVisitsGrid(dashboard, followUpsDue: followUpsDue),
                     const SizedBox(height: 24),
 
                     // CLINIC OVERVIEW SECTION
@@ -426,25 +442,33 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: colors[e.key % colors.length],
-                                    shape: BoxShape.circle,
+                            Flexible(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: colors[e.key % colors.length],
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(e.value.name,
-                                    style: AppTheme.caption.copyWith(color: AppTheme.textSecondary)),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(e.value.name,
+                                        style: AppTheme.caption.copyWith(color: AppTheme.textSecondary),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ],
+                              ),
                             ),
                             Text(formatted,
                                 style: AppTheme.caption.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimary)),
+                                    color: AppTheme.textPrimary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
                           ],
                         ),
                       );
@@ -593,6 +617,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                     fontWeight: FontWeight.bold,
                                     fontSize: 10,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -602,6 +628,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                   color: AppTheme.textSecondary,
                                   fontSize: 11,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -619,7 +647,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildVisitsGrid(DashboardProvider dashboard) {
+  Widget _buildVisitsGrid(DashboardProvider dashboard, {required int followUpsDue}) {
     return Row(
       children: [
         Expanded(child: _buildVisitCard(
@@ -645,7 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
           icon: Icons.repeat,
-          value: dashboard.followUpsDue.toString(),
+          value: followUpsDue.toString(),
           label: 'Follow-ups Due',
           onTap: () => context.go('/app/calendar'),
         )),

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 import '../theme/app_theme.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_drive_sync_service.dart';
+import '../services/sync_manager.dart';
 import '../repositories/clinic_settings_repository.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -156,18 +158,28 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. ALWAYS run Flask API sync first (writes OPD data to Google Sheet
+      //    via the service account — does NOT require user's Google Drive).
+      //    This ensures OPD records are synced regardless of Drive connection.
+      if (!kIsWeb) {
+        try {
+          await SyncManager().triggerManualSync();
+        } catch (e) {
+          debugPrint('SettingsProvider.triggerSync: SyncManager error: $e');
+        }
+      }
+
+      // 2. Check Google Drive connection for backup features (optional).
+      //    If not connected, the Flask sync above still succeeded.
       final signedIn = await _googleAuthService.isSignedIn();
       if (!signedIn) {
-        _googleAuthError = 'Please connect Google Drive first.';
+        _googleAuthError = 'Google Drive not connected — OPD data was synced to sheet, but Drive backup skipped.';
         _isSyncing = false;
         notifyListeners();
         return;
       }
       _googleUser = _googleAuthService.currentUser;
 
-      await _googleAuthService.getAuthHeaders();
-      final driveService = GoogleDriveSyncService();
-      await driveService.syncPendingRecords();
       _googleAuthError = null;
       _authRefreshAttempts = 0;
 
@@ -181,31 +193,7 @@ class SettingsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('lastSyncTime', _lastSyncTime);
     } catch (e) {
-      final errorMsg = e.toString().toLowerCase();
-      if (errorMsg.contains('auth') || errorMsg.contains('session') || errorMsg.contains('sign')) {
-        if (_authRefreshAttempts < 2) {
-          _authRefreshAttempts++;
-          try {
-            await _googleAuthService.signOut();
-            final account = await _googleAuthService.signInWithGoogle();
-            if (account != null) {
-              _googleUser = account;
-              _isSyncEnabled = true;
-              _isSyncing = false;
-              _googleAuthError = null;
-              notifyListeners();
-              return;
-            }
-          } catch (_) {}
-        }
-        _googleAuthError = 'Session expired. Please reconnect Google Drive.';
-      } else if (errorMsg.contains('quota')) {
-        _googleAuthError = 'Google Drive storage full. Please free up space.';
-      } else if (errorMsg.contains('network') || errorMsg.contains('socket')) {
-        _googleAuthError = 'Network error. Sync will retry automatically when connected.';
-      } else {
-        _googleAuthError = 'Sync failed. Please try again.';
-      }
+      _googleAuthError = 'Sync failed. Please try again.';
     } finally {
       _isSyncing = false;
       notifyListeners();

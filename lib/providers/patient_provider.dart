@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/opd_form_data.dart';
@@ -8,6 +9,7 @@ import '../repositories/patient_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 import '../utils/sync_id_generator.dart';
 import '../services/sync_manager.dart';
+import '../services/cloud_sync_manager.dart';
 import '../repositories/opd_record_repository.dart';
 
 class PatientProvider extends ChangeNotifier {
@@ -173,14 +175,22 @@ class PatientProvider extends ChangeNotifier {
 
   Future<void> deletePatientAndRecords(String patientId) async {
     try {
-      final sqliteId = _toSqliteId(patientId);
-      final opdRepo = OpdRecordRepository();
-      final records = await opdRepo.getByPatientId(sqliteId);
-      for (final record in records) {
-        await opdRepo.delete(record['id'] as int);
+      final patient = await _repo.getBySyncId(patientId);
+      if (patient != null) {
+        final sqliteId = patient['id'] as int;
+        final opdRepo = OpdRecordRepository();
+        final records = await opdRepo.getByPatientId(sqliteId);
+        for (final record in records) {
+          await opdRepo.delete(record['id'] as int);
+        }
+        await _repo.delete(sqliteId);
       }
-      await _repo.delete(sqliteId);
-      await _addSyncQueueEntry('patient', patientId);
+      await _addSyncQueueEntry('patient', patientId, operation: 'delete');
+      CloudSyncManager().notifyChange(
+        tableName: 'patients',
+        operation: 'delete',
+        recordId: patientId,
+      );
       Future.microtask(() {
         print('FORCING IMMEDIATE SYNC');
         SyncManager().forceSyncNow();
@@ -193,16 +203,14 @@ class PatientProvider extends ChangeNotifier {
     onSearchChanged(query);
   }
 
+  String _generateTempId() {
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final random = Random().nextInt(99999).toString().padLeft(5, '0');
+    return 'TEMP_$timestamp$random';
+  }
+
   Future<String> generateNextPatientId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final maxId = await _repo.getMaxId();
-    int counter = prefs.getInt('patient_id_counter') ?? 0;
-    if (counter < maxId) {
-      counter = maxId;
-    }
-    counter++;
-    await prefs.setInt('patient_id_counter', counter);
-    return 'P${counter.toString().padLeft(3, '0')}';
+    return _generateTempId();
   }
 
   int _calculateAgeFromDob(String dobStr) {
@@ -220,10 +228,9 @@ class PatientProvider extends ChangeNotifier {
     final ageFromDob = _calculateAgeFromDob(formData.dob);
 
     if (formData.patientId.isNotEmpty) {
-      final existingId = _toSqliteId(formData.patientId);
-      final existing = await _repo.getById(existingId);
+      final existing = await _repo.getBySyncId(formData.patientId);
       if (existing != null) {
-        await _repo.update(existingId, {
+        await _repo.update(existing['id'] as int, {
           'full_name': formData.name.isNotEmpty ? formData.name : existing['full_name'],
           'mobile_number': formData.mobile.isNotEmpty ? formData.mobile : existing['mobile_number'],
           'gender': formData.gender.isNotEmpty ? formData.gender : existing['gender'],
@@ -233,6 +240,11 @@ class PatientProvider extends ChangeNotifier {
           'address': formData.address.isNotEmpty ? formData.address : existing['address'],
         });
         await _addSyncQueueEntry('patient', formData.patientId);
+        CloudSyncManager().notifyChange(
+          tableName: 'patients',
+          operation: 'update',
+          recordId: formData.patientId,
+        );
         await loadPatients();
         return;
       }
@@ -240,10 +252,12 @@ class PatientProvider extends ChangeNotifier {
 
     final nextId = await generateNextPatientId();
     formData.patientId = nextId;
-    final sqliteId = _toSqliteId(nextId);
+    final maxId = await _repo.getMaxId();
+    final sqliteId = maxId + 1;
 
     await _repo.insert({
       'id': sqliteId,
+      'sync_id': nextId,
       'full_name': formData.name.isEmpty ? 'Unknown' : formData.name,
       'mobile_number': formData.mobile,
       'alternate_mobile': null,
@@ -256,15 +270,21 @@ class PatientProvider extends ChangeNotifier {
     });
 
     await _addSyncQueueEntry('patient', nextId);
+    CloudSyncManager().notifyChange(
+      tableName: 'patients',
+      operation: 'insert',
+      recordId: nextId,
+    );
     await loadPatients();
   }
 
-  Future<void> _addSyncQueueEntry(String entityType, String entityId) async {
+  Future<void> _addSyncQueueEntry(String entityType, String entityId, {String? operation}) async {
     try {
       await _syncQueueRepo.insert({
         'id': SyncIdGenerator.nextId(),
         'entity_type': entityType,
         'entity_id': entityId,
+        'operation': operation ?? 'upsert',
         'status': 'pending',
         'retry_count': 0,
         'created_at': DateTime.now().toIso8601String(),
@@ -292,9 +312,15 @@ class PatientProvider extends ChangeNotifier {
       _lastVisitCache.clear();
       _lastDiagCache.clear();
       for (final entry in latestByPatient.entries) {
-        final hiveId = _toStringId(entry.key);
-        _lastVisitCache[hiveId] = DateTime.tryParse(entry.value['visit_datetime'] as String? ?? '');
-        _lastDiagCache[hiveId] = entry.value['diagnosis'] as String?;
+        final patientRow = _allPatientRows.cast<Map<String, dynamic>?>().firstWhere(
+          (r) => r?['id'] == entry.key,
+          orElse: () => null,
+        );
+        if (patientRow != null) {
+          final hiveId = patientRow['sync_id'] as String? ?? _toStringId(entry.key);
+          _lastVisitCache[hiveId] = DateTime.tryParse(entry.value['visit_datetime'] as String? ?? '');
+          _lastDiagCache[hiveId] = entry.value['diagnosis'] as String?;
+        }
       }
     } catch (_) {}
   }
@@ -311,7 +337,7 @@ class PatientProvider extends ChangeNotifier {
 
   PatientModel _rowToModel(Map<String, dynamic> row) {
     return PatientModel(
-      id: _toStringId(row['id'] as int),
+      id: row['sync_id'] as String? ?? _toStringId(row['id'] as int),
       name: row['full_name'] as String? ?? '',
       dob: row['dob'] as String? ?? '',
       age: row['age'] as int? ?? 0,

@@ -5,14 +5,18 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../theme/app_theme.dart';
 import '../../models/patient.dart';
 import '../../models/prescription.dart';
+import '../../models/appointment_model.dart';
 import '../../providers/patient_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../repositories/patient_repository.dart';
 import '../../repositories/opd_record_repository.dart';
+import '../../repositories/patient_images_repository.dart';
 import '../../widgets/standard_header.dart';
+import '../../services/cloud_sync_manager.dart';
 import '../../services/prescription_pdf_service.dart';
 import '../../services/whatsapp_share_helper.dart';
 import '../../utils/helpers.dart';
@@ -111,6 +115,77 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       );
     }).toList();
     if (mounted) setState(() => _loaded = true);
+  }
+
+  Future<void> _confirmDeleteOpd(int index) async {
+    if (index >= _opdRows.length) return;
+    final row = _opdRows[index];
+    final opdId = row['opd_id'] as String? ?? '';
+    final visitDate = row['visit_datetime'] as String? ?? '';
+    if (opdId.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete OPD Record'),
+        content: Text('Delete OPD record from $visitDate?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final opdRepo = OpdRecordRepository();
+    final localRow = await opdRepo.getByOpdId(opdId);
+    if (localRow == null) return;
+
+    final localId = localRow['id'] as int;
+
+    // Clean up images
+    final imagesRepo = PatientImagesRepository();
+    await imagesRepo.deleteByOpdVisitId(localId);
+
+    // Clean up Hive appointment
+    final nextVisit = localRow['next_visit_date']?.toString() ?? '';
+    if (nextVisit.isNotEmpty) {
+      try {
+        final apptBox = Hive.box<AppointmentModel>('appointments');
+        final apptId = 'followup_${opdId}_$nextVisit';
+        if (apptBox.containsKey(apptId)) {
+          await apptBox.delete(apptId);
+        }
+      } catch (_) {}
+    }
+
+    // Clean up Hive document
+    try {
+      final docBox = Hive.box('opd_documents');
+      if (docBox.containsKey(opdId)) {
+        await docBox.delete(opdId);
+      }
+    } catch (_) {}
+
+    // Delete from SQLite
+    await opdRepo.delete(localId);
+
+    // Notify cloud sync
+    CloudSyncManager().notifyChange(
+      tableName: 'opd_visits',
+      operation: 'delete',
+      recordId: opdId,
+    );
+
+    // Reload data
+    await _loadData();
   }
 
   @override
@@ -306,6 +381,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                 (e) => VisitTimelineItem(
                                   visit: e.value,
                                   isLast: e.key == visits.length - 1,
+                                  onDelete: () => _confirmDeleteOpd(e.key),
                                 ),
                               ),
                             ],

@@ -5,11 +5,13 @@ import '../models/patient.dart';
 class VisitTimelineItem extends StatelessWidget {
   final VisitRecord visit;
   final bool isLast;
+  final VoidCallback? onDelete;
 
   const VisitTimelineItem({
     super.key,
     required this.visit,
     this.isLast = false,
+    this.onDelete,
   });
 
   @override
@@ -115,13 +117,35 @@ class VisitTimelineItem extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
-                      Text(
-                        '₹${visit.fees}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primary,
-                          fontSize: 13,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onDelete != null)
+                            GestureDetector(
+                              onTap: onDelete,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.danger.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: AppTheme.danger,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            '₹${visit.fees}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

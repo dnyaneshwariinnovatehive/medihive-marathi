@@ -16,6 +16,22 @@ import '../repositories/patient_repository.dart';
 import '../repositories/opd_record_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 
+// ────────────────────────────────────────────────────────────────
+// ⚠ PERMANENT LOCK: This service MUST NEVER be called during
+//    automatic sync (Sync Now, auto-sync, background sync).
+//    The syncPendingRecords() method creates .xlsx backup files
+//    in Google Drive which should only happen via the explicit
+//    "Upload to Drive" button (backupToDriveOnly()).
+//
+//    OPD data sync uses the Flask API path, which writes directly
+//    to the existing Google Sheet and existing "MediHive Images"
+//    folder — no new files, sheets, or folders are ever created.
+//
+//    If any future code adds a call to syncPendingRecords() in
+//    _trySync() or triggerManualSync(), it will be rejected.
+// ────────────────────────────────────────────────────────────────
+const bool PERMANENTLY_DISABLE_AUTO_XLSX_CREATION = true;
+
 // ─── Custom Exceptions ─────────────────────────────────────────
 
 class DriveQuotaExceededException implements Exception {

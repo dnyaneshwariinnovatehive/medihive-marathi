@@ -18,6 +18,7 @@ import 'providers/appointment_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/notification_provider.dart';
 import 'services/sync_manager.dart';
+import 'services/cloud_sync_manager.dart';
 import 'services/local_notification_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
@@ -64,6 +65,15 @@ void main() async {
   }
 
   await dotenv.load(fileName: "assets/.env");
+
+  // Start cloud sync manager (runs in background, polls every 20s)
+  if (!kIsWeb) {
+    try {
+      CloudSyncManager().start();
+    } catch (e) {
+      debugPrint('CloudSyncManager start failed: $e');
+    }
+  }
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return MaterialApp(

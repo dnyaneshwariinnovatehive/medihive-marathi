@@ -24,18 +24,30 @@ class OpdRecordRepository {
   }
 
   Future<int> insert(Map<String, dynamic> row) async {
+    final now = DateTime.now().toIso8601String();
     final db = await _db;
-    return db.insert(tableOpdVisits, row);
+    return db.insert(tableOpdVisits, {
+      ...row,
+      'updated_at': row['updated_at'] ?? row['created_at'] ?? now,
+    });
   }
 
   Future<int> update(int id, Map<String, dynamic> row) async {
     final db = await _db;
-    return db.update(tableOpdVisits, row, where: 'id = ?', whereArgs: [id]);
+    return db.update(tableOpdVisits, {
+      ...row,
+      'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> delete(int id) async {
     final db = await _db;
     return db.delete(tableOpdVisits, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteByPatientId(int patientId) async {
+    final db = await _db;
+    return db.delete(tableOpdVisits, where: 'patient_id = ?', whereArgs: [patientId]);
   }
 
   Future<List<Map<String, dynamic>>> getByPatientId(int patientId) async {

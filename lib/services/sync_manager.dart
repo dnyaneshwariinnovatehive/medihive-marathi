@@ -17,6 +17,7 @@ import '../repositories/patient_repository.dart';
 import '../repositories/opd_record_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 import '../repositories/patient_images_repository.dart';
+import '../database/database_helper.dart';
 
 enum SyncState {
   offline,
@@ -172,23 +173,27 @@ class SyncManager extends ChangeNotifier {
     _syncState = SyncState.syncing;
     notifyListeners();
 
+    // ── Ensure we have a valid API token ────────────────
+    // If the token is missing (e.g. app started in offline/local-auth mode),
+    // try to re-login so sync push/pull don't fail with 401.
+    try {
+      await ApiService.ensureToken();
+    } catch (e) {
+      debugPrint('SYNC token check failed: $e');
+    }
+
     try {
       // 1. Sync with Flask API
       debugPrint('SYNC ENTER _syncWithFlask');
       await _syncWithFlask();
       debugPrint('SYNC EXIT _syncWithFlask (success)');
 
-      // 2. Also backup to Google Drive if signed in
-      if (!_isSignedIn) {
-        _isSignedIn = await _authService.isSignedIn();
-      }
-      if (_isSignedIn) {
-        try {
-          await _driveService.syncPendingRecords();
-        } catch (e) {
-          debugPrint('Auto-sync: Drive sync failed: $e');
-        }
-      }
+      // NOTE: Excel backup (.xlsx files) is intentionally NOT called here.
+      // The Flask API push (above) writes OPD data directly to the existing
+      // Google Sheet. Images are uploaded to the existing "MediHive Images"
+      // Drive folder. Creating .xlsx backup files during sync is disabled
+      // to prevent duplicate file creation in Google Drive.
+      // Use backupToDriveOnly() for manual Excel backups.
 
       _syncState = SyncState.synced;
       notifyListeners();
@@ -209,18 +214,29 @@ class SyncManager extends ChangeNotifier {
   String _patientToStringId(int sqliteId) =>
       'P${sqliteId.toString().padLeft(3, '0')}';
 
-  int _toSqliteOpdId(String hiveId) =>
-      int.tryParse(hiveId.replaceAll(RegExp(r'^R0*'), '')) ?? 0;
-
   String _opdToStringId(int sqliteId) => 'R$sqliteId';
 
   // ─── Push Data Builders ────────────────────────────
 
-  Map<String, dynamic> _patientRowToPushMap(Map<String, dynamic> row) {
+  String _resolveUpdatedAt(Map<String, dynamic> row) {
+    final updatedAt = row['updated_at'] as String?;
+    if (updatedAt != null && updatedAt.isNotEmpty) return updatedAt;
+    final createdAt = row['created_at'] as String?;
+    if (createdAt != null && createdAt.isNotEmpty) return createdAt;
+    return DateTime.now().toIso8601String();
+  }
+
+  Future<String> _patientSyncId(Map<String, dynamic> row) async {
+    final syncId = row['sync_id'] as String?;
+    if (syncId != null && syncId.isNotEmpty) return syncId;
+    return _patientToStringId(row['id'] as int);
+  }
+
+  Future<Map<String, dynamic>> _patientRowToPushMap(Map<String, dynamic> row) async {
     final createdAt = row['created_at'] as String? ?? '';
     final createdDt = DateTime.tryParse(createdAt) ?? DateTime.now();
     return {
-      'id': _patientToStringId(row['id'] as int),
+      'id': await _patientSyncId(row),
       'name': row['full_name'],
       'dob': row['dob'] ?? '',
       'age': row['age'] ?? 0,
@@ -229,18 +245,26 @@ class SyncManager extends ChangeNotifier {
       'mobile': row['mobile_number'],
       'address': row['address'] ?? '',
       'created_at': createdDt.toIso8601String(),
-      'updated_at': createdDt.toIso8601String(),
+      'updated_at': _resolveUpdatedAt(row),
       'is_synced': 1,
     };
   }
 
-  Map<String, dynamic> _opdRowToPushMap(Map<String, dynamic> row) {
+  Future<Map<String, dynamic>> _opdRowToPushMap(Map<String, dynamic> row) async {
     final createdAt = row['created_at'] as String? ?? '';
     final createdDt = DateTime.tryParse(createdAt) ?? DateTime.now();
     final visitDt = row['visit_datetime'] as String? ?? '';
+    final localPatientId = row['patient_id'] as int? ?? 0;
+    String patientSyncId;
+    try {
+      final patient = await _patientRepo.getById(localPatientId);
+      patientSyncId = patient?['sync_id'] as String? ?? _patientToStringId(localPatientId);
+    } catch (_) {
+      patientSyncId = _patientToStringId(localPatientId);
+    }
     return {
       'id': row['opd_id']?.toString() ?? _opdToStringId(row['id'] as int),
-      'patient_id': _patientToStringId(row['patient_id'] as int),
+      'patient_id': patientSyncId,
       'type': row['opd_type'] ?? 'consultation',
       'symptoms': row['symptoms'] ?? '',
       'diagnosis': row['diagnosis'] ?? '',
@@ -249,24 +273,25 @@ class SyncManager extends ChangeNotifier {
       'clinical_notes': row['clinical_notes'] ?? '',
       'consultation_fee': (row['consultation_fee'] as num?)?.toString() ?? '',
       'medicine_fee': (row['medicine_fee'] as num?)?.toString() ?? '',
-      'discount': '',
+      'discount': (row['discount_value'] as num?)?.toString() ?? '',
       'payment_mode': row['payment_mode'] ?? '',
       'charge_type': row['charge_type'] ?? '',
       'previous_visit_date': '',
-      'follow_up_reason': '',
+      'follow_up_reason': row['followup_status'] ?? '',
       'next_visit': row['next_visit_date'] ?? '',
       'blood_group': '',
       'created_at': createdDt.toIso8601String(),
-      'updated_at': createdDt.toIso8601String(),
+      'updated_at': _resolveUpdatedAt(row),
       'is_synced': 1,
     };
   }
 
   // ─── Pull Data Writers ─────────────────────────────
 
-  Map<String, dynamic> _remotePatientToRow(Map<String, dynamic> remote, int sqliteId) {
+  Map<String, dynamic> _remotePatientToRow(Map<String, dynamic> remote, int sqliteId, String syncId) {
     return {
       'id': sqliteId,
+      'sync_id': syncId,
       'full_name': remote['name']?.toString() ?? '',
       'mobile_number': remote['mobile']?.toString() ?? '',
       'alternate_mobile': null,
@@ -276,14 +301,23 @@ class SyncManager extends ChangeNotifier {
       'blood_group': remote['blood_group']?.toString() ?? 'Not Specified',
       'address': remote['address']?.toString() ?? '',
       'created_at': remote['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+      'updated_at': remote['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
     };
   }
 
-  Map<String, dynamic> _remoteOpdToRow(Map<String, dynamic> remote, int sqliteId) {
+  Future<Map<String, dynamic>> _remoteOpdToRow(Map<String, dynamic> remote, int sqliteId) async {
+    final remotePatientId = remote['patient_id']?.toString() ?? '';
+    int localPatientId;
+    try {
+      final patient = await _patientRepo.getBySyncId(remotePatientId);
+      localPatientId = patient?['id'] as int? ?? _toSqlitePatientId(remotePatientId);
+    } catch (_) {
+      localPatientId = _toSqlitePatientId(remotePatientId);
+    }
     return {
       'id': sqliteId,
       'opd_id': remote['id']?.toString() ?? '',
-      'patient_id': _toSqlitePatientId(remote['patient_id']?.toString() ?? ''),
+      'patient_id': localPatientId,
       'visit_datetime': remote['visit_date']?.toString() ?? '',
       'opd_type': remote['type']?.toString() ?? 'consultation',
       'charge_type': remote['charge_type']?.toString() ?? '',
@@ -294,7 +328,10 @@ class SyncManager extends ChangeNotifier {
       'medicine_fee': double.tryParse(remote['medicine_fee']?.toString() ?? '') ?? 0.0,
       'payment_mode': remote['payment_mode']?.toString() ?? '',
       'next_visit_date': remote['next_visit']?.toString() ?? '',
+      'followup_status': remote['follow_up_reason']?.toString() ?? '',
+      'discount_value': double.tryParse(remote['discount']?.toString() ?? '') ?? 0.0,
       'created_at': remote['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+      'updated_at': remote['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
       'medicines': remote['medicines']?.toString() ?? '',
     };
   }
@@ -304,6 +341,16 @@ class SyncManager extends ChangeNotifier {
   Future<void> _syncWithFlask() async {
     print('SYNC _syncWithFlask ENTER');
     debugPrint('SYNC _syncWithFlask ENTER');
+
+    // Ensure we have a valid API token before attempting sync.
+    // This handles cases where the app started in local-auth mode
+    // without a JWT token.
+    try {
+      await ApiService.ensureToken();
+    } catch (e) {
+      debugPrint('SYNC _syncWithFlask: token acquisition failed: $e');
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final lastSync = prefs.getString('last_flask_sync') ?? '';
     debugPrint('SYNC lastSync=$lastSync');
@@ -319,22 +366,28 @@ class SyncManager extends ChangeNotifier {
     debugPrint('SYNC pendingEntries count=${pendingEntries.length}');
     final processedPatientIds = <String>{};
     final processedOpdIds = <String>{};
+    final deletedEntities = <Map<String, String>>[];
 
     for (final entry in pendingEntries) {
       final entityType = entry['entity_type'] as String? ?? '';
       final entityId = entry['entity_id'] as String? ?? '';
-      debugPrint('SYNC processing entry type=$entityType id=$entityId');
+      final operation = entry['operation'] as String? ?? 'upsert';
+      debugPrint('SYNC processing entry type=$entityType id=$entityId operation=$operation');
+
+      if (operation == 'delete') {
+        deletedEntities.add({'entity_type': entityType, 'entity_id': entityId});
+        continue;
+      }
 
       if (entityType == 'patient' && !processedPatientIds.contains(entityId)) {
         processedPatientIds.add(entityId);
-        final sqliteId = _toSqlitePatientId(entityId);
         try {
-          final row = await _patientRepo.getById(sqliteId);
+          final row = await _patientRepo.getBySyncId(entityId);
           if (row != null) {
-            pushPatients.add(_patientRowToPushMap(row));
+            pushPatients.add(await _patientRowToPushMap(row));
             debugPrint('SYNC added patient $entityId to push');
           } else {
-            debugPrint('SYNC patient row null for $entityId (sqliteId=$sqliteId)');
+            debugPrint('SYNC patient row null for $entityId');
           }
         } catch (e) {
           debugPrint('SYNC patient fetch error for $entityId: $e');
@@ -347,7 +400,7 @@ class SyncManager extends ChangeNotifier {
 
         if (row != null) {
           debugPrint('SYNC FOUND OPD: $entityId');
-          pushOpd.add(_opdRowToPushMap(row));
+          pushOpd.add(await _opdRowToPushMap(row));
         } else {
           debugPrint('SYNC OPD NOT FOUND: $entityId');
         }
@@ -368,12 +421,41 @@ class SyncManager extends ChangeNotifier {
     if (pushPatients.isNotEmpty || pushOpd.isNotEmpty || pushAppts.isNotEmpty) {
       try {
         debugPrint('SYNC CALLING API SYNC PUSH');
-        await ApiService.syncPush(
+        final pushResponse = await ApiService.syncPush(
           patients: pushPatients,
           opdRecords: pushOpd,
           appointments: pushAppts,
+          deletedEntities: deletedEntities,
         );
         debugPrint('SYNC API SYNC PUSH SUCCESS');
+
+        // ── Check for sheet warnings (207 Multi-Status) ──────────
+        // When the backend saves data locally but fails to write to
+        // Google Sheets, it returns sheet_warnings. Entries should NOT
+        // be marked synced — the outer catch will increment retry_count
+        // and leave them as 'pending' for retry on next sync cycle.
+        final sheetWarnings = pushResponse['sheet_warnings'] as List<dynamic>?;
+        if (sheetWarnings != null && sheetWarnings.isNotEmpty) {
+          debugPrint('SYNC SHEET WARNINGS DETECTED: $sheetWarnings');
+          throw ApiException(
+            207,
+            'Data saved on server but Google Sheet was not updated. '
+            'Sheet warnings: ${sheetWarnings.join("; ")}. '
+            'Verify the service account has Editor access.',
+          );
+        }
+
+        // Process temp ID mappings from server
+        final tempMapped = pushResponse['temp_ids_mapped'] as Map<String, dynamic>? ?? {};
+        if (tempMapped.isNotEmpty) {
+          debugPrint('SYNC processing temp IDs: $tempMapped');
+          for (final entry in tempMapped.entries) {
+            final tempId = entry.key;
+            final realId = entry.value as String;
+            await _patientRepo.updateSyncId(tempId, realId);
+          }
+          debugPrint('SYNC temp IDs updated');
+        }
 
         // Mark queue entries as synced
         final now = DateTime.now();
@@ -421,6 +503,17 @@ class SyncManager extends ChangeNotifier {
     } else {
       debugPrint('SYNC nothing to push, no pending entries');
     }
+
+    // ── Include OPDs with pending images from SQLite patient_images ──
+    try {
+      final pendingOpdVids = await _patientImagesRepo.getDistinctOpdVisitIdsWithPending();
+      for (final vid in pendingOpdVids) {
+        final row = await _opdRepo.getById(vid);
+        if (row != null) {
+          processedOpdIds.add(row['opd_id']?.toString() ?? '');
+        }
+      }
+    } catch (_) {}
 
     // ── Include OPDs with pending images from previous failed uploads ──
     {
@@ -521,20 +614,22 @@ class SyncManager extends ChangeNotifier {
         try {
           final map = Map<String, dynamic>.from(json as Map);
           final remoteId = map['id']?.toString() ?? '';
-          final sqliteId = _toSqlitePatientId(remoteId);
           final remoteUpdatedAt = DateTime.tryParse(map['updated_at']?.toString() ?? '');
 
-          final existing = await _patientRepo.getById(sqliteId);
-          final localCreatedAt = DateTime.tryParse(
-            existing?['created_at'] as String? ?? '',
+          final existing = await _patientRepo.getBySyncId(remoteId);
+          final localUpdatedAt = DateTime.tryParse(
+            existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
           );
 
           if (existing == null ||
-              (remoteUpdatedAt != null && localCreatedAt != null && remoteUpdatedAt.isAfter(localCreatedAt))) {
+              (remoteUpdatedAt != null && localUpdatedAt != null && remoteUpdatedAt.isAfter(localUpdatedAt))) {
             if (existing != null) {
-              await _patientRepo.update(sqliteId, _remotePatientToRow(map, sqliteId));
+              final sqliteId = existing['id'] as int;
+              await _patientRepo.update(sqliteId, _remotePatientToRow(map, sqliteId, remoteId));
             } else {
-              await _patientRepo.insert(_remotePatientToRow(map, sqliteId));
+              final maxId = await _patientRepo.getMaxId();
+              final newId = maxId + 1;
+              await _patientRepo.insert(_remotePatientToRow(map, newId, remoteId));
             }
           }
         } catch (_) {}
@@ -544,21 +639,48 @@ class SyncManager extends ChangeNotifier {
         try {
           final map = Map<String, dynamic>.from(json as Map);
           final remoteId = map['id']?.toString() ?? '';
-          final sqliteId = _toSqliteOpdId(remoteId);
           final remoteUpdatedAt = DateTime.tryParse(map['updated_at']?.toString() ?? '');
 
-          final existing = await _opdRepo.getById(sqliteId);
-          final localCreatedAt = DateTime.tryParse(
-            existing?['created_at'] as String? ?? '',
+          final existing = await _opdRepo.getByOpdId(remoteId);
+          final localUpdatedAt = DateTime.tryParse(
+            existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
           );
 
           if (existing == null ||
-              (remoteUpdatedAt != null && localCreatedAt != null && remoteUpdatedAt.isAfter(localCreatedAt))) {
-            final row = _remoteOpdToRow(map, sqliteId);
+              (remoteUpdatedAt != null && localUpdatedAt != null && remoteUpdatedAt.isAfter(localUpdatedAt))) {
+            final localId = existing != null
+                ? existing['id'] as int
+                : (await _opdRepo.getMaxId()) + 1;
+            final row = await _remoteOpdToRow(map, localId);
             if (existing != null) {
-              await _opdRepo.update(sqliteId, row);
+              await _opdRepo.update(localId, row);
             } else {
               await _opdRepo.insert(row);
+            }
+
+            // Ensure follow-up appointment in Hive if next_visit_date is set
+            final nextVisit = map['next_visit']?.toString() ?? '';
+            if (nextVisit.isNotEmpty) {
+              final visitDate = DateTime.tryParse(nextVisit);
+              if (visitDate != null) {
+                try {
+                  final apptBox = Hive.box<AppointmentModel>('appointments');
+                  final patientId = map['patient_id']?.toString() ?? '';
+                final apptId = 'followup_${remoteId}_$nextVisit';
+                if (!apptBox.containsKey(apptId)) {
+                    await apptBox.put(apptId, AppointmentModel(
+                      id: apptId,
+                      patientId: patientId,
+                      dateTime: visitDate,
+                      notes: 'Follow-up',
+                      isSynced: true,
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ));
+                    debugPrint('SYNC: created Hive follow-up appointment for OPD $remoteId');
+                  }
+                } catch (_) {}
+              }
             }
           }
         } catch (_) {}
@@ -575,6 +697,53 @@ class SyncManager extends ChangeNotifier {
             apptBox.put(map['id'], AppointmentModel.fromJson(map));
           }
         } catch (_) {}
+      }
+
+      // ── Process deleted entities ────────────────────
+      final remoteDeleted = data['deleted_entities'] as List<dynamic>? ?? [];
+      debugPrint('SYNC processing ${remoteDeleted.length} deleted entities');
+      for (final del in remoteDeleted) {
+        try {
+          final d = Map<String, dynamic>.from(del as Map);
+          final etype = d['entity_type']?.toString() ?? '';
+          final eid = d['entity_id']?.toString() ?? '';
+          debugPrint('SYNC processing delete: type=$etype id=$eid');
+
+          if (etype == 'patient') {
+            final local = await _patientRepo.getBySyncId(eid);
+            if (local != null) {
+              final localId = local['id'] as int;
+              final opds = await _opdRepo.getByPatientId(localId);
+              for (final opd in opds) {
+                final opdSqlId = opd['id'] as int;
+                await _patientImagesRepo.deleteByOpdVisitId(opdSqlId);
+              }
+              await _opdRepo.deleteByPatientId(localId);
+              await _patientRepo.delete(localId);
+              await _syncQueueRepo.clearByEntity('patient', eid);
+              debugPrint('SYNC deleted local patient $eid + OPDs');
+            }
+          } else if (etype == 'opd_visit') {
+            final local = await _opdRepo.getByOpdId(eid);
+            if (local != null) {
+              final localId = local['id'] as int;
+              await _patientImagesRepo.deleteByOpdVisitId(localId);
+              await _opdRepo.delete(localId);
+              await _syncQueueRepo.clearByEntity('opd_visit', eid);
+              debugPrint('SYNC deleted local OPD $eid');
+            }
+          } else if (etype == 'appointment') {
+            try {
+              final apptBox = Hive.box<AppointmentModel>('appointments');
+              if (apptBox.containsKey(eid)) {
+                await apptBox.delete(eid);
+                debugPrint('SYNC deleted local appointment $eid');
+              }
+            } catch (_) {}
+          }
+        } catch (e) {
+          debugPrint('SYNC error processing delete $e');
+        }
       }
 
       await prefs.setString(
@@ -599,39 +768,38 @@ class SyncManager extends ChangeNotifier {
     _syncState = SyncState.syncing;
     notifyListeners();
 
+    String? errorMessage;
     try {
       await _syncWithFlask();
-    } catch (_) {}
-
-    bool driveOk = false;
-    if (!_isSignedIn) {
-      _isSignedIn = await _authService.isSignedIn();
+    } catch (e) {
+      errorMessage = e.toString();
+      print('MANUAL SYNC ERROR: $e');
     }
-    if (_isSignedIn) {
-      try {
-        await _driveService.syncPendingRecords();
-        driveOk = true;
-      } catch (_) {}
+
+    // NOTE: .xlsx file creation is intentionally skipped during manual sync.
+    // OPD data was already pushed to Flask API (which writes to the existing
+    // Google Sheet). Images are uploaded to the existing "MediHive Images"
+    // Drive folder. Use backupToDriveOnly() for manual Excel backups.
+
+    if (errorMessage == null) {
+      _syncState = SyncState.synced;
     } else {
-      driveOk = true;
+      _syncState = SyncState.error;
     }
-
-    _syncState = SyncState.synced;
     notifyListeners();
 
-    if (driveOk) {
-      await EventNotificationService.notifySyncComplete(
-        recordCount: getUnsyncedCount(),
-      );
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: const Text('✓ Data synced'),
-          backgroundColor: AppTheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-    return true;
+    await EventNotificationService.notifySyncComplete(
+      recordCount: getUnsyncedCount(),
+    );
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(errorMessage != null ? '✗ Sync failed: $errorMessage' : '✓ Data synced'),
+        backgroundColor: errorMessage != null ? AppTheme.error : AppTheme.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: errorMessage != null ? 8 : 3),
+      ),
+    );
+    return errorMessage == null;
   }
 
   Future<bool> backupToDriveOnly() async {
@@ -702,6 +870,74 @@ class SyncManager extends ChangeNotifier {
     } catch (e) {
       debugPrint('scheduleDailyBackup error: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> clearAllData() async {
+    /// Clears ALL data:
+    /// 1. Calls backend API to clear Google Sheet + backend SQLite
+    /// 2. Clears local SQLite (patients, opd_visits, sync_queue, patient_images, etc.)
+    /// 3. Clears Hive boxes (appointments, drafts, opd_documents)
+    /// 4. Resets sync-related SharedPreferences
+    /// Returns the response from the backend API.
+    debugPrint('CLEAR ALL DATA STARTED');
+
+    // 1. Call backend to clear sheet + backend DB
+    Map<String, dynamic> apiResponse;
+    try {
+      apiResponse = await ApiService.clearAllData();
+      debugPrint('CLEAR ALL DATA: backend response: $apiResponse');
+    } catch (e) {
+      debugPrint('CLEAR ALL DATA: backend call failed: $e');
+      rethrow;
+    }
+
+    // 2. Clear local SQLite tables
+    try {
+      final db = await DatabaseHelper().database;
+      await db.delete('patients');
+      await db.delete('opd_visits');
+      await db.delete('patient_images');
+      await db.delete('sync_queue');
+      await db.delete('calendar_notes');
+      await db.delete('clinic_settings');
+      debugPrint('CLEAR ALL DATA: local SQLite tables cleared');
+    } catch (e) {
+      debugPrint('CLEAR ALL DATA: local SQLite error: $e');
+    }
+
+    // 3. Clear Hive boxes
+    try {
+      if (Hive.isBoxOpen('appointments')) {
+        await Hive.box('appointments').clear();
+      }
+      if (Hive.isBoxOpen('drafts')) {
+        await Hive.box('drafts').clear();
+      }
+      if (Hive.isBoxOpen('opd_documents')) {
+        await Hive.box('opd_documents').clear();
+      }
+      debugPrint('CLEAR ALL DATA: Hive boxes cleared');
+    } catch (e) {
+      debugPrint('CLEAR ALL DATA: Hive clear error: $e');
+    }
+
+    // 4. Clear sync-related SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('last_flask_sync');
+      await prefs.remove('google_drive_pending_sync');
+      await prefs.remove('google_drive_folder_id');
+      debugPrint('CLEAR ALL DATA: SharedPreferences reset');
+    } catch (e) {
+      debugPrint('CLEAR ALL DATA: SharedPreferences error: $e');
+    }
+
+    _cachedUnsyncedCount = 0;
+    _syncState = SyncState.synced;
+    notifyListeners();
+
+    debugPrint('CLEAR ALL DATA COMPLETED');
+    return apiResponse;
   }
 
   @override

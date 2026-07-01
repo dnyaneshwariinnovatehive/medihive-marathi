@@ -113,6 +113,28 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    # Migration: add clinic_id for multi-clinic cloud sync
+    try:
+        cursor.execute("ALTER TABLE patients ADD COLUMN clinic_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE opd_records ADD COLUMN clinic_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN clinic_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN clinic_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE deleted_entities ADD COLUMN clinic_id TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS deleted_entities (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +158,44 @@ def init_db():
         CREATE TABLE IF NOT EXISTS settings (
             key         TEXT PRIMARY KEY,
             value       TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS clinics (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            email       TEXT DEFAULT '',
+            phone       TEXT DEFAULT '',
+            address     TEXT DEFAULT '',
+            created_at  TEXT NOT NULL,
+            updated_at  TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS device_registry (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id   TEXT NOT NULL UNIQUE,
+            device_name TEXT DEFAULT '',
+            clinic_id   TEXT NOT NULL,
+            fcm_token   TEXT DEFAULT '',
+            app_version TEXT DEFAULT '',
+            last_seen   TEXT DEFAULT '',
+            created_at  TEXT NOT NULL,
+            updated_at  TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_device_registry_clinic ON device_registry(clinic_id);
+
+        CREATE TABLE IF NOT EXISTS cloud_sync_log (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id       TEXT NOT NULL,
+            device_id       TEXT DEFAULT '',
+            direction       TEXT NOT NULL,
+            patients_count  INTEGER DEFAULT 0,
+            opd_count       INTEGER DEFAULT 0,
+            appointments_count INTEGER DEFAULT 0,
+            deleted_count   INTEGER DEFAULT 0,
+            status          TEXT DEFAULT 'success',
+            error_message   TEXT DEFAULT '',
+            created_at      TEXT NOT NULL
         );
     """)
 

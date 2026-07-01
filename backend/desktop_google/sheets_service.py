@@ -570,6 +570,56 @@ def upsert_calendar_note_to_sheet(note_date, note_text):
     logger.info("Appended calendar note at row %d for date %s", next_row, date_str)
 
 
+# ─────────────────────────────────────────────
+# PUBLIC API — CLEAR ALL OPD DATA
+# ─────────────────────────────────────────────
+def clear_opd_sheet_data():
+    """
+    Delete all data rows from the opd_visits tab (preserving the header row),
+    then delete all OPD records and their associated patients from the backend
+    SQLite database. This provides a clean reset for the sheet.
+    Returns the number of data rows cleared.
+    """
+    logger.warning("clear_opd_sheet_data CALLED — ALL OPD SHEET DATA WILL BE DELETED")
+
+    client = _get_client()
+    ws = _get_opd_worksheet(client)
+
+    all_values = ws.get_all_values()
+    if len(all_values) <= 1:
+        logger.info("Sheet has no data rows — nothing to clear")
+        row_count = 0
+    else:
+        row_count = len(all_values) - 1
+        rows_to_delete = len(all_values)  # header + data
+        # Delete all rows (bottom-up to preserve row indices)
+        for r in range(rows_to_delete, 1, -1):
+            ws.delete_rows(r)
+        logger.info("Cleared %d data rows from opd_visits tab", row_count)
+
+    # Re-apply headers in case they were affected
+    end_col = _col_letter(len(HEADERS) - 1)
+    ws.update(range_name=f"A1:{end_col}1", values=[HEADERS])
+    _apply_opd_formatting(ws)
+
+    # ── Clear backend SQLite OPD records & patients ──
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM opd_records")
+        cursor.execute("DELETE FROM patients")
+        cursor.execute("DELETE FROM deleted_entities")
+        cursor.execute("DELETE FROM last_sync")
+        cursor.execute("DELETE FROM settings WHERE key = 'spreadsheet_id'")
+        conn.commit()
+        conn.close()
+        logger.info("Backend SQLite cleared (opd_records, patients, deleted_entities, last_sync)")
+    except Exception as e:
+        logger.error("Failed to clear backend SQLite: %s", e)
+
+    return row_count
+
+
 def update_opd_row_in_sheet(opd_id, row_data):
     """
     Update an existing OPD row in Google Sheets.

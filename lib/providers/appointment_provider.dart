@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/appointment.dart';
@@ -62,27 +63,37 @@ class AppointmentProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  int _nextId = 0;
-
   final List<Appointment> _appointments = [];
   StreamSubscription? _apptSubscription;
+  bool _loadingHive = false;
+  bool _needsReload = false;
 
   AppointmentProvider() {
     _loadFromHive();
     _loadNotes();
     _refreshHasRealData();
     _apptSubscription = Hive.box<AppointmentModel>('appointments').watch().listen((_) {
-      _loadFromHive();
+      _requestReload();
     });
   }
 
+  void _requestReload() {
+    if (_loadingHive) {
+      _needsReload = true;
+      return;
+    }
+    _loadFromHive();
+  }
+
   Future<void> _loadFromHive() async {
+    if (_loadingHive) return;
+    _loadingHive = true;
     try {
       final box = Hive.box<AppointmentModel>('appointments');
-      _appointments.clear();
+      final temp = <Appointment>[];
       for (final m in box.values) {
         final patientName = await _patientNameFromId(m.patientId);
-        _appointments.add(Appointment(
+        temp.add(Appointment(
           id: m.id,
           dateTime: m.dateTime,
           type: m.notes == 'Follow-up' ? 'Follow-up' : 'Consultation',
@@ -90,20 +101,21 @@ class AppointmentProvider extends ChangeNotifier {
           time: '${m.dateTime.hour.toString().padLeft(2, '0')}:${m.dateTime.minute.toString().padLeft(2, '0')}',
         ));
       }
-      final maxId = box.values.fold<int>(0, (max, m) {
-        final numId = int.tryParse(m.id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        return numId > max ? numId : max;
-      });
-      _nextId = maxId;
+      _appointments
+        ..clear()
+        ..addAll(temp);
       notifyListeners();
     } catch (_) {}
+    _loadingHive = false;
+    if (_needsReload) {
+      _needsReload = false;
+      _loadFromHive();
+    }
   }
 
   Future<String> _patientNameFromId(String patientId) async {
     try {
-      final sqliteId = int.tryParse(patientId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-      if (sqliteId == 0) return patientId;
-      final patient = await PatientRepository().getById(sqliteId);
+      final patient = await PatientRepository().getBySyncId(patientId);
       if (patient != null) {
         final name = patient['full_name'] as String?;
         if (name != null && name.isNotEmpty) return name;
@@ -269,15 +281,14 @@ class AppointmentProvider extends ChangeNotifier {
     required String time,
     String? patientId,
   }) async {
-    _nextId++;
-    final id = 'apt_$_nextId';
+    final id = 'apt_${DateTime.now().microsecondsSinceEpoch}_${Random().nextInt(9999).toString().padLeft(4, '0')}';
     try {
       final box = Hive.box<AppointmentModel>('appointments');
       if (patientId == null || patientId.isEmpty) {
         final allPatients = await PatientRepository().getAll();
         for (final p in allPatients) {
           if ((p['full_name'] as String?) == patient) {
-            patientId = 'P${p['id']}';
+            patientId = p['sync_id'] as String? ?? 'P${p['id']}';
             break;
           }
         }

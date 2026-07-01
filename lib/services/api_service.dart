@@ -9,6 +9,8 @@ class ApiService {
 static String get baseUrl =>
     dotenv.env['API_BASE_URL'] ??
     'http://192.168.31.91:5000/api';
+  static String get cloudBaseUrl =>
+      dotenv.env['CLOUD_BASE_URL'] ?? '';
   static String? _token;
 
   static Future<void> _loadToken() async {
@@ -27,6 +29,29 @@ static String get baseUrl =>
     _token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('api_token');
+  }
+
+  /// Ensures a valid API token exists. If not, attempts to log in
+  /// using credentials from the .env file (LOCAL_USERNAME/LOCAL_PASSWORD).
+  /// Call this before any sync operation to avoid 401 errors.
+  static Future<void> ensureToken() async {
+    await _loadToken();
+    if (_token != null) return;
+
+    final envUser = dotenv.env['LOCAL_USERNAME'];
+    final envPass = dotenv.env['LOCAL_PASSWORD'];
+    if (envUser != null && envPass != null && envUser.isNotEmpty && envPass.isNotEmpty) {
+      try {
+        debugPrint('API: No token found — attempting login with .env credentials');
+        await login(envUser, envPass);
+        debugPrint('API: Token obtained successfully');
+      } catch (e) {
+        debugPrint('API: Token acquisition failed: $e');
+        rethrow;
+      }
+    } else {
+      debugPrint('API: No token and no .env credentials available');
+    }
   }
 
   static Map<String, String> _headers() {
@@ -174,6 +199,17 @@ static String get baseUrl =>
     await _handleResponse(res);
   }
 
+  // ─── Clear All Data ───────────────────────────────
+
+  static Future<Map<String, dynamic>> clearAllData() async {
+    await _loadToken();
+    final res = await http.post(
+      Uri.parse('$baseUrl/sync/clear-data'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 60));
+    return _handleResponse(res);
+  }
+
   // ─── Sync ──────────────────────────────────────────
 
   static Future<Map<String, dynamic>> syncPull(String lastSync) async {
@@ -190,21 +226,132 @@ static String get baseUrl =>
     required List<Map<String, dynamic>> patients,
     required List<Map<String, dynamic>> opdRecords,
     required List<Map<String, dynamic>> appointments,
+    List<Map<String, String>> deletedEntities = const [],
   }) async {
     await _loadToken();
     print("BASE URL = $baseUrl");
-    debugPrint('SYNC API syncPush: token=($_token != null) url=$baseUrl/sync/push patients=${patients.length} opdRecords=${opdRecords.length} appointments=${appointments.length}');
+    debugPrint('SYNC API syncPush: token=($_token != null) url=$baseUrl/sync/push patients=${patients.length} opdRecords=${opdRecords.length} appointments=${appointments.length} deleted=${deletedEntities.length}');
+    final body = <String, dynamic>{
+      'patients': patients,
+      'opd_records': opdRecords,
+      'appointments': appointments,
+    };
+    if (deletedEntities.isNotEmpty) {
+      body['deleted_entities'] = deletedEntities;
+    }
     final res = await http.post(
       Uri.parse('$baseUrl/sync/push'),
       headers: _headers(),
-      body: jsonEncode({
-        'patients': patients,
-        'opd_records': opdRecords,
-        'appointments': appointments,
-      }),
+      body: jsonEncode(body),
     ).timeout(const Duration(seconds: 120));
     debugPrint('SYNC API syncPush response: status=${res.statusCode}');
     return _handleResponse(res);
+  }
+
+  // ─── Cloud Sync ────────────────────────────────────
+
+  static Future<Map<String, dynamic>> cloudRegisterDevice({
+    required String deviceId,
+    required String deviceName,
+    required String clinicId,
+    String appVersion = '1.0.0',
+  }) async {
+    await _loadToken();
+    final res = await http.post(
+      Uri.parse('$cloudBaseUrl/cloud/register-device'),
+      headers: _headers(),
+      body: jsonEncode({
+        'device_id': deviceId,
+        'device_name': deviceName,
+        'clinic_id': clinicId,
+        'app_version': appVersion,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    return _handleResponse(res);
+  }
+
+  static Future<Map<String, dynamic>> cloudUpload({
+    required String deviceId,
+    required String clinicId,
+    required List<Map<String, dynamic>> patients,
+    required List<Map<String, dynamic>> opdRecords,
+    required List<Map<String, dynamic>> appointments,
+    List<Map<String, String>> deletedEntities = const [],
+  }) async {
+    // LOG: First line inside cloudUpload
+    debugPrint('CLOUD_DEBUG: cloudUpload ENTERED deviceId=$deviceId clinicId=$clinicId patients=${patients.length} opd=${opdRecords.length} appts=${appointments.length}');
+    debugPrint('CLOUD_DEBUG: cloudUpload cloudBaseUrl="$cloudBaseUrl"');
+
+    await _loadToken();
+    final body = <String, dynamic>{
+      'device_id': deviceId,
+      'clinic_id': clinicId,
+      'patients': patients,
+      'opd_records': opdRecords,
+      'appointments': appointments,
+    };
+    if (deletedEntities.isNotEmpty) {
+      body['deleted_entities'] = deletedEntities;
+    }
+    final url = '$cloudBaseUrl/cloud/upload-changes';
+    final encoded = jsonEncode(body);
+
+    // LOG: URL, payload, token before HTTP call
+    debugPrint('CLOUD_DEBUG: upload full URL="$url"');
+    debugPrint('CLOUD_DEBUG: upload body size=${encoded.length} bytes');
+    debugPrint('CLOUD_DEBUG: upload token=${_token != null ? "present (${_token!.length} chars)" : "null"}');
+
+    try {
+      // LOG: Immediately before http.post
+      debugPrint('CLOUD_DEBUG: upload ABOUT to call http.post timeout=120s');
+
+      final res = await http.post(
+        Uri.parse(url),
+        headers: _headers(),
+        body: encoded,
+      ).timeout(const Duration(seconds: 120));
+
+      // LOG: Immediately after http.post returned
+      debugPrint('CLOUD_DEBUG: upload AFTER http.post status=${res.statusCode}');
+      debugPrint('CLOUD_DEBUG: upload response body=${res.body.length > 500 ? "${res.body.substring(0, 500)}..." : res.body}');
+
+      return _handleResponse(res);
+    } catch (e) {
+      debugPrint('CLOUD_DEBUG: upload EXCEPTION caught: $e');
+      debugPrint('CLOUD_DEBUG: upload EXCEPTION type=${e.runtimeType}');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> cloudDownload({
+    required String deviceId,
+    required String clinicId,
+    required String lastSync,
+  }) async {
+    await _loadToken();
+    final res = await http.post(
+      Uri.parse('$cloudBaseUrl/cloud/download-changes'),
+      headers: _headers(),
+      body: jsonEncode({
+        'device_id': deviceId,
+        'clinic_id': clinicId,
+        'last_sync': lastSync,
+      }),
+    ).timeout(const Duration(seconds: 30));
+    return _handleResponse(res);
+  }
+
+  static Future<void> cloudHeartbeat({
+    required String deviceId,
+  }) async {
+    await _loadToken();
+    try {
+      await http.post(
+        Uri.parse('$cloudBaseUrl/cloud/heartbeat'),
+        headers: _headers(),
+        body: jsonEncode({'device_id': deviceId}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
   }
 
   static Future<Map<String, dynamic>> pushImages(
@@ -229,6 +376,44 @@ static String get baseUrl =>
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
+    throw ApiException(
+      response.statusCode,
+      jsonDecode(response.body)['error']?.toString() ?? 'Image upload failed',
+    );
+  }
+
+  static Future<Map<String, dynamic>> cloudUploadImages(
+    String opdId,
+    List<File> images,
+  ) async {
+    final uri = Uri.parse('$cloudBaseUrl/cloud/upload-images/$opdId');
+    final request = http.MultipartRequest('POST', uri);
+
+    debugPrint('CLOUD IMAGE DEBUG: endpoint=$uri');
+    debugPrint('CLOUD IMAGE DEBUG: file count=${images.length}');
+
+    for (final image in images) {
+      final exists = image.existsSync();
+      debugPrint('CLOUD IMAGE DEBUG: file exists=$exists path=${image.path}');
+      request.files.add(
+        await http.MultipartFile.fromPath('images', image.path),
+      );
+    }
+
+    debugPrint('CLOUD IMAGE DEBUG: request.files count=${request.files.length}');
+    debugPrint('CLOUD IMAGE DEBUG: sending request...');
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+    debugPrint('CLOUD IMAGE DEBUG: streamedResponse statusCode=${streamedResponse.statusCode}');
+    final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 120));
+
+    debugPrint('CLOUD IMAGE DEBUG: response status=${response.statusCode}');
+    debugPrint('CLOUD IMAGE DEBUG: response body=${response.body}');
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('CLOUD IMAGE DEBUG: upload success, decoding response');
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    debugPrint('CLOUD IMAGE DEBUG: upload failed with status ${response.statusCode}');
     throw ApiException(
       response.statusCode,
       jsonDecode(response.body)['error']?.toString() ?? 'Image upload failed',

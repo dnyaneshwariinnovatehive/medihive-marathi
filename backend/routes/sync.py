@@ -13,6 +13,7 @@ from config import GOOGLE_SHEET_ID
 from desktop_google.sheets_service import (
     upsert_opd_row_in_sheet,
     update_opd_row_in_sheet,
+    clear_opd_sheet_data,
 )
 from services.log_service import get_logger
 from routes.opd import save_images_locally, build_sheet_row_data, _ImageRecord
@@ -108,6 +109,17 @@ def push():
     """
     user_id = get_jwt_identity()
     data = request.get_json() or {}
+    logger.info(
+        "PUSH request from user=%s ip=%s patients=%d opd_records=%d appointments=%d",
+        user_id, request.remote_addr,
+        len(data.get('patients', [])),
+        len(data.get('opd_records', [])),
+        len(data.get('appointments', [])),
+    )
+    if data.get('opd_records'):
+        for r in data['opd_records']:
+            logger.info("PUSH OPD: id=%s patient_id=%s visit_date=%s",
+                        r.get('id'), r.get('patient_id'), r.get('visit_date'))
 
     results = {'patients': [], 'opd_records': [], 'appointments': []}
     temp_id_map = {}
@@ -273,3 +285,54 @@ def push_images(opd_id):
             f'as Editor on the sheet.'
         )
         return jsonify(response), 207
+
+
+@sync_bp.route('/clear-data', methods=['POST'])
+@jwt_required()
+def clear_all_data():
+    """
+    Clear ALL data from the Google Sheet (opd_visits tab) and
+    the backend SQLite database (opd_records, patients, etc.).
+    Returns the number of rows cleared from the sheet.
+    """
+    logger.warning("CLEAR ALL DATA requested by user %s", get_jwt_identity())
+
+    try:
+        from database import get_db
+
+        rows_cleared = clear_opd_sheet_data()
+
+        # Additional backend cleanup
+        db = get_db()
+
+        # Re-create the default admin user if it was deleted
+        from werkzeug.security import generate_password_hash
+        from datetime import datetime
+        now = datetime.utcnow().isoformat()
+
+        # Re-create default user
+        try:
+            db.execute(
+                "INSERT OR IGNORE INTO users (username, password, name, created_at) VALUES (?, ?, ?, ?)",
+                ('admin', generate_password_hash('admin123'), 'Admin', now)
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        db.close()
+
+        return jsonify({
+            'message': f'All data cleared successfully. Removed {rows_cleared} rows from sheet.',
+            'sheet_rows_cleared': rows_cleared,
+        }), 200
+
+    except RuntimeError as e:
+        logger.error("Clear data failed (sheet access error): %s", e)
+        return jsonify({
+            'error': f'Could not clear sheet data: {e}',
+            'detail': 'Verify the service account has EDITOR access to the sheet.'
+        }), 500
+    except Exception as e:
+        logger.error("Clear data failed: %s", e)
+        return jsonify({'error': f'Clear data failed: {e}'}), 500

@@ -37,13 +37,14 @@ class Appointment:
         db = get_db()
         db.execute("""
             INSERT INTO appointments (id, patient_id, patient_name, date_time, notes,
-                                      created_at, updated_at, is_synced, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+                                      created_at, updated_at, is_synced, user_id, clinic_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         """, (
             data['id'], data.get('patient_id', ''),
             data.get('patient_name', ''), data['date_time'],
             data.get('notes', ''), now, now,
-            data.get('user_id', '')
+            data.get('user_id', ''),
+            data.get('clinic_id', '')
         ))
         db.commit()
         db.close()
@@ -52,7 +53,8 @@ class Appointment:
     @staticmethod
     def update(appt_id, data):
         now = datetime.utcnow().isoformat()
-        allowed = ('patient_id', 'patient_name', 'date_time', 'notes', 'user_id')
+        allowed = ('patient_id', 'patient_name', 'date_time', 'notes', 'user_id',
+                   'clinic_id')
         fields = []
         values = []
         for k in allowed:
@@ -87,9 +89,24 @@ class Appointment:
         return Appointment.create(data)
 
     @staticmethod
-    def updated_since(timestamp, user_id=None):
+    def by_clinic(clinic_id):
         db = get_db()
-        if user_id:
+        rows = db.execute(
+            "SELECT * FROM appointments WHERE clinic_id = ? ORDER BY updated_at DESC",
+            (clinic_id,)
+        ).fetchall()
+        db.close()
+        return [Appointment.dict_from_row(r) for r in rows]
+
+    @staticmethod
+    def updated_since(timestamp, user_id=None, clinic_id=None):
+        db = get_db()
+        if clinic_id:
+            rows = db.execute(
+                "SELECT * FROM appointments WHERE updated_at > ? AND clinic_id = ? ORDER BY updated_at",
+                (timestamp, clinic_id)
+            ).fetchall()
+        elif user_id:
             rows = db.execute(
                 "SELECT * FROM appointments WHERE updated_at > ? AND (user_id = ? OR user_id = '') ORDER BY updated_at",
                 (timestamp, user_id)

@@ -28,7 +28,7 @@ from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 
 from config import (
@@ -195,41 +195,43 @@ def upload_images_to_drive(opd_id, image_records, visit_date):
 def upload_image_fileobj_to_drive(opd_id, file_storage, index):
     """
     Upload a single image from a Flask FileStorage object directly to Drive.
-    Saves to a temp file first (required by Google API), uploads, then deletes.
+    Uses in-memory BytesIO to avoid Windows file-locking issues.
     Returns the public Drive URL.
 
     This function is cloud-compatible — it does not require a permanent
     local storage directory.
     """
-    import tempfile
-    import os
+    logger.info("CLOUD IMAGE DEBUG: file upload start opd_id=%s index=%d filename=%s",
+                 opd_id, index, file_storage.filename)
+
+    # Read file content into memory — no temp file, no Windows locking
+    content = file_storage.read()
+    file_io = io.BytesIO(content)
 
     service = get_drive_service()
     filename = file_storage.filename or f"image_{index}.jpg"
     safe_name = f"{opd_id}_{index:02d}_{filename}"
+    logger.info("CLOUD IMAGE DEBUG: safe_name=%s content_len=%d", safe_name, len(content))
 
-    # Save to temp file, upload, then delete
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1] or '.jpg')
-    try:
-        file_storage.save(tmp.name)
-        tmp.close()
+    mimetype = file_storage.content_type or 'image/jpeg'
+    media = MediaIoBaseUpload(file_io, mimetype=mimetype, resumable=True)
 
-        media = MediaFileUpload(tmp.name, resumable=True)
-        uploaded = service.files().create(
-            body={"name": safe_name, "parents": [DRIVE_ROOT_FOLDER_ID]},
-            media_body=media,
-            fields="id"
-        ).execute()
+    logger.info("CLOUD IMAGE DEBUG: calling service.files().create() for safe_name=%s", safe_name)
+    uploaded = service.files().create(
+        body={"name": safe_name, "parents": [DRIVE_ROOT_FOLDER_ID]},
+        media_body=media,
+        fields="id"
+    ).execute()
 
-        file_id = uploaded["id"]
-        service.permissions().create(
-            fileId=file_id,
-            body={"type": "anyone", "role": "reader"}
-        ).execute()
+    file_id = uploaded["id"]
+    logger.info("CLOUD IMAGE DEBUG: file upload success file_id=%s", file_id)
 
-        public_url = f"https://drive.google.com/file/d/{file_id}/view"
-        logger.info("Uploaded '%s' -> %s", safe_name, public_url)
-        return public_url
-    finally:
-        if os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+    logger.info("CLOUD IMAGE DEBUG: setting permissions for file_id=%s", file_id)
+    service.permissions().create(
+        fileId=file_id,
+        body={"type": "anyone", "role": "reader"}
+    ).execute()
+
+    public_url = f"https://drive.google.com/file/d/{file_id}/view"
+    logger.info("CLOUD IMAGE DEBUG: drive url=%s", public_url)
+    return public_url

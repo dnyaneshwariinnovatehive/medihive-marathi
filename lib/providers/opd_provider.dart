@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import '../repositories/patient_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 import '../utils/sync_id_generator.dart';
 import '../services/sync_manager.dart';
+import '../services/cloud_sync_manager.dart';
 import 'dashboard_provider.dart';
 import 'appointment_provider.dart';
 
@@ -198,9 +200,9 @@ class OpdProvider extends ChangeNotifier {
     hasDraft = false;
 
     try {
-      final sqliteId = _toSqliteId(patientId);
-      final patient = await _patientRepo.getById(sqliteId);
+      final patient = await _patientRepo.getBySyncId(patientId);
       if (patient == null) return;
+      final sqliteId = patient['id'] as int;
 
       updateField('patientId', patientId);
       updateField('name', patient['full_name']?.toString() ?? '');
@@ -538,9 +540,16 @@ class OpdProvider extends ChangeNotifier {
       final patientName = _formData.name.isEmpty ? 'Unknown' : _formData.name;
 
       // 1. Save OPD Record (update if editing, insert if new)
-      final opdId = existingRecordId ?? 'R${DateTime.now().millisecondsSinceEpoch}';
+      final opdId = existingRecordId ?? 'R${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999).toString().padLeft(3, '0')}';
       print('OPD CREATED id=$opdId');
-      final sqlitePatientId = _toSqliteId(patientId);
+
+      int sqlitePatientId;
+      try {
+        final patient = await _patientRepo.getBySyncId(patientId);
+        sqlitePatientId = patient?['id'] as int? ?? _toSqliteId(patientId);
+      } catch (_) {
+        sqlitePatientId = _toSqliteId(patientId);
+      }
       DateTime preservedCreatedAt;
       int sqliteId;
 
@@ -596,6 +605,11 @@ class OpdProvider extends ChangeNotifier {
         await _opdRepo.update(sqliteId, recordMap);
         print('CALLING _addSyncQueueEntry for existing opd_visit id=$existingRecordId');
         await _addSyncQueueEntry('opd_visit', existingRecordId);
+        CloudSyncManager().notifyChange(
+          tableName: 'opd_visits',
+          operation: 'update',
+          recordId: existingRecordId,
+        );
         Future.microtask(() {
           print('FORCING IMMEDIATE SYNC');
           SyncManager().forceSyncNow();
@@ -604,6 +618,12 @@ class OpdProvider extends ChangeNotifier {
         await _opdRepo.insert(recordMap);
         print('CALLING _addSyncQueueEntry for new opd_visit id=$opdId');
         await _addSyncQueueEntry('opd_visit', opdId);
+        CloudSyncManager().notifyChange(
+          tableName: 'opd_visits',
+          operation: 'insert',
+          recordId: opdId,
+          payload: recordMap,
+        );
         print('OPD ADDED TO SYNC QUEUE: $opdId');
         Future.microtask(() {
           print('FORCING IMMEDIATE SYNC');
@@ -668,13 +688,14 @@ class OpdProvider extends ChangeNotifier {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
-  Future<void> _addSyncQueueEntry(String entityType, String entityId) async {
+  Future<void> _addSyncQueueEntry(String entityType, String entityId, {String? operation}) async {
     try {
-      debugPrint('_addSyncQueueEntry CALLED: type=$entityType id=$entityId');
+      debugPrint('_addSyncQueueEntry CALLED: type=$entityType id=$entityId op=$operation');
       await _syncQueueRepo.insert({
         'id': SyncIdGenerator.nextId(),
         'entity_type': entityType,
         'entity_id': entityId,
+        'operation': operation ?? 'upsert',
         'status': 'pending',
         'retry_count': 0,
         'created_at': DateTime.now().toIso8601String(),

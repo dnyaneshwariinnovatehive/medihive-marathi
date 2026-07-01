@@ -43,6 +43,15 @@ class PatientImagesRepository {
     );
   }
 
+  Future<List<int>> getDistinctOpdVisitIdsWithPending() async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      "SELECT DISTINCT opd_visit_id FROM $tablePatientImages "
+      "WHERE sync_status = 'pending' OR sync_status IS NULL",
+    );
+    return result.map((r) => r['opd_visit_id'] as int).toList();
+  }
+
   Future<int> markSyncedByOpdVisitId(int opdVisitId) async {
     final db = await _db;
     return db.update(

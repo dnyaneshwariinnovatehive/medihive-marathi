@@ -31,8 +31,9 @@ class Patient:
         db = get_db()
         db.execute("""
             INSERT INTO patients (id, name, dob, age, gender, blood_group, mobile, address,
-                                  last_diagnosis, last_visit_date, created_at, updated_at, is_synced, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                                  last_diagnosis, last_visit_date, created_at, updated_at,
+                                  is_synced, user_id, clinic_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         """, (
             data['id'], data['name'], data.get('dob', ''),
             data.get('age', 0), data.get('gender', 'Not Specified'),
@@ -40,7 +41,8 @@ class Patient:
             data.get('mobile', ''), data.get('address', ''),
             data.get('last_diagnosis', ''), data.get('last_visit_date', ''),
             now, now,
-            data.get('user_id', '')
+            data.get('user_id', ''),
+            data.get('clinic_id', '')
         ))
         db.commit()
         db.close()
@@ -50,7 +52,8 @@ class Patient:
     def update(patient_id, data):
         now = datetime.utcnow().isoformat()
         allowed = ('name', 'dob', 'age', 'gender', 'blood_group', 'mobile',
-                   'address', 'last_diagnosis', 'last_visit_date', 'user_id')
+                   'address', 'last_diagnosis', 'last_visit_date', 'user_id',
+                   'clinic_id')
         fields = []
         values = []
         for k in allowed:
@@ -107,9 +110,24 @@ class Patient:
         return Patient.create(data)
 
     @staticmethod
-    def updated_since(timestamp, user_id=None):
+    def by_clinic(clinic_id):
         db = get_db()
-        if user_id:
+        rows = db.execute(
+            "SELECT * FROM patients WHERE clinic_id = ? ORDER BY updated_at DESC",
+            (clinic_id,)
+        ).fetchall()
+        db.close()
+        return [Patient.dict_from_row(r) for r in rows]
+
+    @staticmethod
+    def updated_since(timestamp, user_id=None, clinic_id=None):
+        db = get_db()
+        if clinic_id:
+            rows = db.execute(
+                "SELECT * FROM patients WHERE updated_at > ? AND clinic_id = ? ORDER BY updated_at",
+                (timestamp, clinic_id)
+            ).fetchall()
+        elif user_id:
             rows = db.execute(
                 "SELECT * FROM patients WHERE updated_at > ? AND (user_id = ? OR user_id = '') ORDER BY updated_at",
                 (timestamp, user_id)

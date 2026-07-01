@@ -39,8 +39,9 @@ class OPDRecord:
             INSERT INTO opd_records (id, patient_id, type, symptoms, diagnosis, medicines,
                 visit_date, clinical_notes, consultation_fee, medicine_fee, discount,
                 payment_mode, charge_type, previous_visit_date, follow_up_reason,
-                next_visit, blood_group, image_links, created_at, updated_at, is_synced, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                next_visit, blood_group, image_links, created_at, updated_at,
+                is_synced, user_id, clinic_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         """, (
             data['id'], data['patient_id'], data.get('type', 'consultation'),
             data.get('symptoms', ''), data.get('diagnosis', ''),
@@ -52,7 +53,8 @@ class OPDRecord:
             data.get('next_visit', ''), data.get('blood_group', ''),
             data.get('image_links', ''),
             now, now,
-            data.get('user_id', '')
+            data.get('user_id', ''),
+            data.get('clinic_id', '')
         ))
         db.commit()
         db.close()
@@ -65,7 +67,7 @@ class OPDRecord:
                    'clinical_notes', 'consultation_fee', 'medicine_fee', 'discount',
                    'payment_mode', 'charge_type', 'previous_visit_date',
                    'follow_up_reason', 'next_visit', 'blood_group',
-                   'image_links', 'user_id')
+                   'image_links', 'user_id', 'clinic_id')
         fields = []
         values = []
         for k in allowed:
@@ -111,9 +113,24 @@ class OPDRecord:
         db.close()
 
     @staticmethod
-    def updated_since(timestamp, user_id=None):
+    def by_clinic(clinic_id):
         db = get_db()
-        if user_id:
+        rows = db.execute(
+            "SELECT * FROM opd_records WHERE clinic_id = ? ORDER BY updated_at DESC",
+            (clinic_id,)
+        ).fetchall()
+        db.close()
+        return [OPDRecord.dict_from_row(r) for r in rows]
+
+    @staticmethod
+    def updated_since(timestamp, user_id=None, clinic_id=None):
+        db = get_db()
+        if clinic_id:
+            rows = db.execute(
+                "SELECT * FROM opd_records WHERE updated_at > ? AND clinic_id = ? ORDER BY updated_at",
+                (timestamp, clinic_id)
+            ).fetchall()
+        elif user_id:
             rows = db.execute(
                 "SELECT * FROM opd_records WHERE updated_at > ? AND (user_id = ? OR user_id = '') ORDER BY updated_at",
                 (timestamp, user_id)

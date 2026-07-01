@@ -2,8 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:workmanager/workmanager.dart';
-import 'google_auth_service.dart';
-import 'google_drive_sync_service.dart';
+import 'api_service.dart';
 import 'daily_summary_service.dart';
 import 'local_notification_service.dart';
 import '../models/appointment_model.dart';
@@ -42,18 +41,24 @@ void callbackDispatcher() {
           return true;
 
         default:
-          final googleAuth = GoogleAuthService();
-          final signedIn = await googleAuth.isSignedIn();
-
-          if (signedIn) {
-            final driveService = GoogleDriveSyncService();
-            await driveService.syncPendingRecords();
-            debugPrint('Background backup completed successfully');
-            return true;
+          // NOTE: .xlsx backup files are intentionally NOT created here.
+          // The Flask API sync mechanism writes OPD data directly to the
+          // existing Google Sheet and uploads images to the existing
+          // "MediHive Images" Drive folder. No new files are created.
+          //
+          // If the Flask server is reachable, trigger a sync push to ensure
+          // any pending local data reaches the server.
+          try {
+            await ApiService.syncPush(
+              patients: [],
+              opdRecords: [],
+              appointments: [],
+            );
+            debugPrint('Background sync: Flask API reachable, pending data pushed');
+          } catch (e) {
+            debugPrint('Background sync: Flask API unreachable, data will sync later: $e');
           }
-
-          debugPrint('Background backup skipped: Google Drive not connected');
-          return false;
+          return true;
       }
     } catch (e) {
       debugPrint('Background task "$task" failed: $e');
@@ -132,7 +137,7 @@ Future<void> scheduleMorningSummaryTask() => _scheduleTask(
 
 Future<void> scheduleEveningSummaryTask() => _scheduleTask(
   taskName: _eveningSummaryTask,
-  hour: 18,
+  hour: 19,
   minute: 0,
 );
 

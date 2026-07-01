@@ -80,12 +80,34 @@ class AuthService {
     }
   }
 
+  Future<AppUser?> _ensureFlaskToken({
+    required String id,
+    required String name,
+    required String email,
+    String? photoUrl,
+  }) async {
+    // Register/login with Flask backend so ApiService has a valid JWT token.
+    // Google already authenticated the user; this gives us a Flask JWT for API calls.
+    const flaskPassword = 'medihive-google-user';
+    try {
+      await ApiService.register(email, flaskPassword, name: name);
+    } catch (_) {
+      // User likely already exists — ignore
+    }
+    try {
+      await ApiService.login(email, flaskPassword);
+    } catch (e) {
+      debugPrint('AuthService: Flask login after Google sign-in failed: $e');
+    }
+    return AppUser(id: id, name: name, email: email, photoUrl: photoUrl);
+  }
+
   /// Google Sign In — delegates to GoogleAuthService (single shared instance)
   Future<AppUser?> signInWithGoogle() async {
     try {
       final account = await GoogleAuthService().signInWithGoogle();
       if (account != null) {
-        return AppUser(
+        return await _ensureFlaskToken(
           id: account.id,
           name: account.displayName ?? 'Doctor',
           email: account.email,
@@ -105,7 +127,7 @@ class AuthService {
       if (signedIn) {
         final account = GoogleAuthService().currentUser;
         if (account != null) {
-          return AppUser(
+          return await _ensureFlaskToken(
             id: account.id,
             name: account.displayName ?? 'Doctor',
             email: account.email,

@@ -1,4 +1,4 @@
-const int databaseVersion = 1;
+const int databaseVersion = 4;
 
 const String tablePatients = 'patients';
 const String tableOpdVisits = 'opd_visits';
@@ -9,10 +9,13 @@ const String tableMedicines = 'medicines';
 const String tableSymptomsMaster = 'symptoms_master';
 const String tablePatientImages = 'patient_images';
 const String tableSyncQueue = 'sync_queue';
+const String tableCloudSyncQueue = 'cloud_sync_queue';
+const String tableDeviceRegistration = 'device_registration';
 
 String get createPatientsTable => '''
   CREATE TABLE $tablePatients (
     id INTEGER NOT NULL,
+    sync_id TEXT,
     full_name VARCHAR NOT NULL,
     mobile_number VARCHAR NOT NULL,
     alternate_mobile VARCHAR,
@@ -21,7 +24,9 @@ String get createPatientsTable => '''
     age INTEGER,
     blood_group VARCHAR,
     address VARCHAR,
+    clinic_id TEXT,
     created_at DATETIME,
+    updated_at DATETIME,
     PRIMARY KEY (id)
   )
 ''';
@@ -46,7 +51,9 @@ String get createOpdVisitsTable => '''
     payment_mode VARCHAR,
     next_visit_date DATE,
     followup_status VARCHAR,
+    clinic_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
     medicines TEXT,
     panchakarma_notes TEXT,
     PRIMARY KEY (id),
@@ -142,17 +149,51 @@ String get createSyncQueueTable => '''
     id INTEGER NOT NULL,
     entity_type VARCHAR(20) NOT NULL,
     entity_id VARCHAR(100) NOT NULL,
+    operation VARCHAR(20) DEFAULT 'upsert',
     status VARCHAR(20),
     retry_count INTEGER,
     last_error TEXT,
+    clinic_id TEXT,
     created_at DATETIME,
     last_attempt DATETIME,
     PRIMARY KEY (id)
   )
 ''';
 
+String get createCloudSyncQueueTable => '''
+  CREATE TABLE $tableCloudSyncQueue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    record_id TEXT NOT NULL,
+    payload TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    sync_status TEXT DEFAULT 'pending',
+    retry_count INTEGER DEFAULT 0
+  )
+''';
+
+String get createDeviceRegistrationTable => '''
+  CREATE TABLE $tableDeviceRegistration (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id TEXT NOT NULL UNIQUE,
+    device_name TEXT,
+    clinic_id TEXT,
+    fcm_token TEXT,
+    app_version TEXT,
+    last_seen TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
+''';
+
 String get createixPatientsId => '''
   CREATE INDEX ix_patients_id ON $tablePatients (id)
+''';
+
+String get createixPatientsSyncId => '''
+  CREATE INDEX ix_patients_sync_id ON $tablePatients (sync_id)
 ''';
 
 String get createixOpdVisitsId => '''
@@ -179,6 +220,14 @@ String get createixClinicSettingsId => '''
   CREATE INDEX ix_clinic_settings_id ON $tableClinicSettings (id)
 ''';
 
+String get createixCloudSyncQueueStatus => '''
+  CREATE INDEX ix_cloud_sync_queue_status ON $tableCloudSyncQueue (sync_status)
+''';
+
+String get createixDeviceRegistrationDeviceId => '''
+  CREATE UNIQUE INDEX ix_device_registration_device_id ON $tableDeviceRegistration (device_id)
+''';
+
 List<String> get createStatements => [
   createPatientsTable,
   createOpdVisitsTable,
@@ -189,11 +238,16 @@ List<String> get createStatements => [
   createSymptomsMasterTable,
   createPatientImagesTable,
   createSyncQueueTable,
+  createCloudSyncQueueTable,
+  createDeviceRegistrationTable,
   createixPatientsId,
+  createixPatientsSyncId,
   createixOpdVisitsId,
   createixOpdVisitsOpdId,
   createixPatientImagesId,
   createixSyncQueueId,
   createixUsersId,
   createixClinicSettingsId,
+  createixCloudSyncQueueStatus,
+  createixDeviceRegistrationDeviceId,
 ];

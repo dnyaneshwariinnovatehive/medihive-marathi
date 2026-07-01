@@ -16,10 +16,22 @@ class PatientRepository {
     return rows.isNotEmpty ? rows.first : null;
   }
 
+  Future<Map<String, dynamic>?> getBySyncId(String syncId) async {
+    final db = await _db;
+    final rows = await db.query(
+      tablePatients,
+      where: 'sync_id = ?',
+      whereArgs: [syncId],
+    );
+    return rows.isNotEmpty ? rows.first : null;
+  }
+
   Future<int> insert(Map<String, dynamic> row) async {
+    final now = DateTime.now().toIso8601String();
     final db = await _db;
     return db.insert(tablePatients, {
       'id': row['id'],
+      'sync_id': row['sync_id'],
       'full_name': row['full_name'],
       'mobile_number': row['mobile_number'],
       'alternate_mobile': row['alternate_mobile'],
@@ -28,13 +40,27 @@ class PatientRepository {
       'age': row['age'],
       'blood_group': row['blood_group'],
       'address': row['address'],
-      'created_at': row['created_at'],
+      'created_at': row['created_at'] ?? now,
+      'updated_at': row['updated_at'] ?? row['created_at'] ?? now,
     });
   }
 
   Future<int> update(int id, Map<String, dynamic> row) async {
     final db = await _db;
-    return db.update(tablePatients, row, where: 'id = ?', whereArgs: [id]);
+    return db.update(tablePatients, {
+      ...row,
+      'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> updateSyncId(String oldSyncId, String newSyncId) async {
+    final db = await _db;
+    return db.update(
+      tablePatients,
+      {'sync_id': newSyncId, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'sync_id = ?',
+      whereArgs: [oldSyncId],
+    );
   }
 
   Future<int> delete(int id) async {

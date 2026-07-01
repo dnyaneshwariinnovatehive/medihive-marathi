@@ -58,6 +58,27 @@ class DatabaseHelper {
   Future<void> _applyMigration(Database db, int targetVersion) async {
     switch (targetVersion) {
       case 2:
+        await db.execute("ALTER TABLE patients ADD COLUMN updated_at DATETIME");
+        await db.execute("ALTER TABLE opd_visits ADD COLUMN updated_at DATETIME");
+        debugPrint('Applied migration v2: added updated_at to patients and opd_visits');
+        break;
+      case 3:
+        await db.execute("ALTER TABLE patients ADD COLUMN sync_id TEXT");
+        await db.execute("CREATE INDEX ix_patients_sync_id ON patients (sync_id)");
+        await db.execute("UPDATE patients SET sync_id = 'P' || SUBSTR('000' || CAST(id AS TEXT), -3, 3) WHERE sync_id IS NULL");
+        await db.execute("ALTER TABLE sync_queue ADD COLUMN operation TEXT DEFAULT 'upsert'");
+        debugPrint('Applied migration v3: added sync_id to patients and operation to sync_queue');
+        break;
+      case 4:
+        await db.execute(createCloudSyncQueueTable);
+        await db.execute(createDeviceRegistrationTable);
+        await db.execute(createixCloudSyncQueueStatus);
+        await db.execute(createixDeviceRegistrationDeviceId);
+        try { await db.execute("ALTER TABLE patients ADD COLUMN clinic_id TEXT"); } catch (_) {}
+        try { await db.execute("ALTER TABLE opd_visits ADD COLUMN clinic_id TEXT"); } catch (_) {}
+        try { await db.execute("ALTER TABLE sync_queue ADD COLUMN clinic_id TEXT"); } catch (_) {}
+        try { await db.execute("ALTER TABLE clinic_settings ADD COLUMN clinic_id TEXT"); } catch (_) {}
+        debugPrint('Applied migration v4: added cloud_sync_queue, device_registration, clinic_id columns');
         break;
       default:
         debugPrint('No migration defined for version $targetVersion');

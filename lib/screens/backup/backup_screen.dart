@@ -765,6 +765,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                     final success = await syncMgr.triggerManualSync();
                                                     if (!context.mounted) return;
                                                     if (success) {
+                                                      // Update timestamp in settings
                                                       await settings.triggerSync();
                                                       _fetchDriveUsage();
                                                       _fetchCloudBackupHistory();
@@ -798,6 +799,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                     final success = await syncMgr.backupToDriveOnly();
                                                     if (!context.mounted) return;
                                                     if (success) {
+                                                      // Update timestamp only (no duplicate file creation)
                                                       await settings.triggerSync();
                                                       _fetchDriveUsage();
                                                       _fetchCloudBackupHistory();

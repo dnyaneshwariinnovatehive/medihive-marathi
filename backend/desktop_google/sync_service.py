@@ -9,7 +9,7 @@ from backend.models.patients import Patient
 from backend.models.patient_images import PatientImage
 from backend.models.calendar_notes import CalendarNote
 from backend.services.drive_service import upload_images_to_drive
-from backend.services.sheets_service import append_row_to_sheet, upsert_calendar_note_to_sheet
+from .sheets_service import upsert_opd_row_in_sheet, upsert_calendar_note_to_sheet
 from backend.services.log_service import get_logger
 
 logger = get_logger(__name__)
@@ -79,38 +79,36 @@ def _write_opd_to_sheets(opd_visit, patient, image_links):
         opd_visit.opd_id, len(image_links)
     )
 
-    append_row_to_sheet(
-        opd_id=opd_visit.opd_id,
-        patient_id=f"P{patient.id:04d}",  
-        patient_name=patient.full_name,
-        mobile=patient.mobile_number,
-        
-        gender=patient.gender,
-        dob=patient.dob,
-        age=patient.age,
-        blood_group=patient.blood_group,
-        address=patient.address,
-        visit_date=opd_visit.visit_datetime,
-        opd_type=opd_visit.opd_type,
-        charge_type=opd_visit.charge_type,
-        diagnosis=opd_visit.diagnosis,
-        symptoms=opd_visit.symptoms,
-        clinical_notes=opd_visit.clinical_notes,
-        panchakarma_notes=opd_visit.panchakarma_notes,
-
-                medicines=opd_visit.medicines,
-
-        consultation_fee=opd_visit.consultation_fee,
-        medicine_fee=opd_visit.medicine_fee,
-        panchakarma_fee=opd_visit.panchakarma_fee,
-        total_fee=opd_visit.total_fee,
-        discount_type=opd_visit.discount_type,
-        discount_value=opd_visit.discount_value,
-        payment_mode=opd_visit.payment_mode,
-        next_visit_date=opd_visit.next_visit_date,
-        followup_status=opd_visit.followup_status,
-        image_links=image_links
-    )
+    row_data = {
+        "OPD ID": opd_visit.opd_id,
+        "Patient ID": f"P{patient.id:04d}",
+        "Patient Name": patient.full_name,
+        "Mobile": patient.mobile_number,
+        "Gender": patient.gender,
+        "DOB": patient.dob,
+        "Age": patient.age,
+        "Blood Group": patient.blood_group,
+        "Address": patient.address,
+        "Visit Date": opd_visit.visit_datetime,
+        "OPD Type": opd_visit.opd_type,
+        "Charge Type": opd_visit.charge_type,
+        "Diagnosis": opd_visit.diagnosis,
+        "Symptoms": opd_visit.symptoms,
+        "Clinical Notes": opd_visit.clinical_notes,
+        "Panchakarma Notes": opd_visit.panchakarma_notes,
+        "Medicines": opd_visit.medicines,
+        "Consultation Fee": opd_visit.consultation_fee,
+        "Medicine Fee": opd_visit.medicine_fee,
+        "Panchakarma Fee": opd_visit.panchakarma_fee,
+        "Total Fee": opd_visit.total_fee,
+        "Discount Type": opd_visit.discount_type,
+        "Discount Value": opd_visit.discount_value,
+        "Payment Mode": opd_visit.payment_mode,
+        "Next Visit Date": opd_visit.next_visit_date,
+        "Follow-up Status": opd_visit.followup_status,
+        "Image Links": image_links,
+    }
+    upsert_opd_row_in_sheet(opd_visit.opd_id, row_data)
 
     logger.info("Sheets row written for OPD %s", opd_visit.opd_id)
 
@@ -186,7 +184,7 @@ def _process_opd_queue(session):
 # Uses update_opd_row_in_sheet instead of append
 # ─────────────────────────────────────────────
 def _process_opd_update_queue(session):
-    from backend.services.sheets_service import update_opd_row_in_sheet
+    from .sheets_service import update_opd_row_in_sheet
 
     pending_items = (
         session.query(SyncQueue)
@@ -311,6 +309,26 @@ def process_sync_queue():
 
 def start_background_sync():
     logger.info("Background sync service started")
+
+    # ── Validate Google setup ONCE at startup ────────────────────
+    # This ensures the sheet and folder exist BEFORE any sync runs.
+    # If validation fails, the service logs a clear error and stops.
+    try:
+        from .sheets_service import validate_sheet_access, validate_drive_folder_access
+        validate_sheet_access()
+        validate_drive_folder_access()
+        logger.info("Google setup validation PASSED — sync is safe to proceed")
+    except RuntimeError as e:
+        logger.critical(
+            "Google setup validation FAILED — sync will NOT start:\n%s", e
+        )
+        return  # Do not start the sync loop
+    except Exception as e:
+        logger.critical(
+            "Unexpected error during Google setup validation:\n%s", e
+        )
+        return
+
     while True:
         try:
             process_sync_queue()
