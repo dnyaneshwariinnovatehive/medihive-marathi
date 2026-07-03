@@ -80,7 +80,8 @@ except Exception as e:
     # On Cloud Run, Cloud SQL must be reachable. On local dev,
     # ensure PostgreSQL is running or DATABASE_URL is configured.
 
-initialize_google_services()
+# initialize_google_services()
+logger.info("Google validation skipped for Railway deployment")
 app = create_app()
 
 
