@@ -73,20 +73,20 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
   Future<void> _loadData() async {
     try {
-      final sqliteId =
-          int.tryParse(widget.patientId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-      if (sqliteId == 0) {
-        _hasError = true;
-        _errorMessage = 'Patient not found';
-        _dataLoaded = true;
-        if (mounted) setState(() {});
-        return;
+      final patientRepo = PatientRepository();
+      var patientRow = await patientRepo.getBySyncId(widget.patientId);
+
+      int sqliteId;
+      if (patientRow != null) {
+        sqliteId = patientRow['id'] as int;
+      } else {
+        sqliteId = int.tryParse(widget.patientId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        if (sqliteId > 0) {
+          patientRow = await patientRepo.getById(sqliteId);
+        }
       }
 
-      final patientRepo = PatientRepository();
-      final patientRow = await patientRepo.getById(sqliteId);
-
-      if (patientRow == null) {
+      if (patientRow == null || sqliteId == 0) {
         _hasError = true;
         _errorMessage = 'Patient not found';
         _dataLoaded = true;

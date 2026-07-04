@@ -5,6 +5,7 @@ import 'package:workmanager/workmanager.dart';
 import 'api_service.dart';
 import 'daily_summary_service.dart';
 import 'local_notification_service.dart';
+import '../database/database_helper.dart';
 import '../models/appointment_model.dart';
 
 const String _dailyBackupTask = 'dailyBackup';
@@ -27,6 +28,9 @@ void callbackDispatcher() {
       await Hive.openBox('day_notes');
 
       await LocalNotificationService().init();
+      try {
+        await DatabaseHelper().database;
+      } catch (_) {}
 
       switch (task) {
         case _morningSummaryTask:
@@ -137,7 +141,7 @@ Future<void> scheduleMorningSummaryTask() => _scheduleTask(
 
 Future<void> scheduleEveningSummaryTask() => _scheduleTask(
   taskName: _eveningSummaryTask,
-  hour: 19,
+  hour: 20,
   minute: 0,
 );
 

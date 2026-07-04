@@ -51,8 +51,13 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
 
   Future<void> _loadPatient() async {
     final repo = PatientRepository();
-    final sqliteId = _toSqliteId(widget.patientId);
-    final patient = await repo.getById(sqliteId);
+    var patient = await repo.getBySyncId(widget.patientId);
+    if (patient == null) {
+      final sqliteId = _toSqliteId(widget.patientId);
+      if (sqliteId > 0) {
+        patient = await repo.getById(sqliteId);
+      }
+    }
     if (!mounted) return;
     if (patient == null) {
       setState(() => _isLoading = false);

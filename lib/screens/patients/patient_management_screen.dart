@@ -8,6 +8,8 @@ import '../../providers/patient_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../models/patient.dart';
 import '../../repositories/opd_record_repository.dart';
+import '../../database/database_helper.dart';
+import '../../database/schema.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/pressable_card.dart';
 import '../../widgets/standard_header.dart';
@@ -23,7 +25,7 @@ class PatientManagementScreen extends StatefulWidget {
 class _PatientManagementScreenState extends State<PatientManagementScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
-  DateTime? _selectedDate;
+  DateTime _selectedDate = DateTime.now();
   Set<String> _datePatientIds = {};
   int _lastPatientCount = -1;
 
@@ -32,6 +34,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PatientProvider>().loadPatients();
+      _loadDateRecords();
     });
     _scrollController.addListener(() {
       final show =
@@ -70,23 +73,32 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
   }
 
   bool get _isToday {
-    if (_selectedDate == null) return false;
     final now = DateTime.now();
-    return _selectedDate!.year == now.year &&
-        _selectedDate!.month == now.month &&
-        _selectedDate!.day == now.day;
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
   }
 
   Future<void> _loadDateRecords() async {
     try {
-      if (_selectedDate == null) {
+      final opdRepo = OpdRecordRepository();
+      final rows = await opdRepo.getByDate(_selectedDate);
+      if (rows.isEmpty) {
         _datePatientIds = {};
       } else {
-        final opdRepo = OpdRecordRepository();
-        final rows = await opdRepo.getByDate(_selectedDate!);
-        _datePatientIds = rows
-            .map((r) => 'P${(r['patient_id'] as int).toString().padLeft(3, '0')}')
-            .where((id) => id != 'P000')
+        final patientIds = rows.map((r) => r['patient_id'] as int).toSet().toList();
+        final db = await DatabaseHelper().database;
+        final placeholders = patientIds.map((_) => '?').join(',');
+        final patientRows = await db.query(
+          tablePatients,
+          columns: ['sync_id', 'id'],
+          where: 'id IN ($placeholders)',
+          whereArgs: patientIds,
+        );
+        _datePatientIds = patientRows
+            .map<String>((r) => (r['sync_id'] as String?) ??
+                'P${(r['id'] as int).toString().padLeft(3, '0')}')
+            .where((id) => id.isNotEmpty)
             .toSet();
       }
     } catch (_) {
@@ -98,7 +110,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -129,9 +141,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadDateRecords());
     }
     final allPatients = provider.filteredPatients;
-    final dateFilteredPatients = _selectedDate == null
-        ? allPatients.toList()
-        : allPatients.where((p) => _datePatientIds.contains(p.id)).toList();
+    final dateFilteredPatients = allPatients.where((p) => _datePatientIds.contains(p.id)).toList();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -198,11 +208,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _selectedDate == null
-                                  ? 'All Records'
-                                  : DateFormat('EEEE, d MMMM yyyy').format(
-                                      _selectedDate!,
-                                    ),
+                              DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
                               style: AppTheme.body.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
@@ -211,11 +217,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              _selectedDate == null
-                                  ? 'Showing all patients'
-                                  : _isToday
-                                      ? 'Today'
-                                      : 'Selected date',
+                              _isToday ? 'Today' : 'Selected date',
                               style: AppTheme.caption.copyWith(
                                 color: AppTheme.textSecondary,
                                 fontSize: 11,
@@ -224,25 +226,6 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           ],
                         ),
                       ),
-                      if (_selectedDate != null)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedDate = null);
-                            _loadDateRecords();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              size: 18,
-                              color: AppTheme.primary,
-                            ),
-                          ),
-                        ),
                       const SizedBox(width: 4),
                       Icon(
                         Icons.arrow_drop_down,
@@ -283,7 +266,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            _selectedDate == null ? 'No Patients Found' : _isToday ? 'No Patients Yet' : 'No Patients on This Date',
+                            _isToday ? 'No Patients Yet' : 'No Patients on This Date',
                             style: AppTheme.heading.copyWith(
                               color: AppTheme.textPrimary,
                             ),

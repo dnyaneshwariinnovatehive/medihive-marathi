@@ -6,6 +6,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import '../models/appointment_model.dart';
 import '../repositories/calendar_notes_repository.dart';
+import '../repositories/opd_record_repository.dart';
+import '../repositories/sync_queue_repository.dart';
 import 'local_notification_service.dart' as local_notif;
 import 'shared_notification_plugin.dart';
 
@@ -86,21 +88,52 @@ class DailySummaryService {
   static Future<void> sendMorningSummary() async {
     if (kIsWeb) return;
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Today's OPD visits count
+    int opdCount = 0;
+    try {
+      final opdRepo = OpdRecordRepository();
+      final todayRecords = await opdRepo.getByDate(today);
+      opdCount = todayRecords.length;
+    } catch (_) {}
+
+    // Today's appointments count
+    int appointmentCount = 0;
+    try {
+      final box = Hive.box<AppointmentModel>('appointments');
+      appointmentCount = box.values.where((a) {
+        final aptDate = DateTime(
+          a.dateTime.year, a.dateTime.month, a.dateTime.day,
+        );
+        return aptDate == today;
+      }).length;
+    } catch (_) {}
+
+    // Follow-ups due today
     final followUpCount = _todayFollowUpCount();
+
+    // Clinical notes for today
     final notes = await _todayNotes();
 
-    final buffer = StringBuffer();
+    final parts = <String>[];
+    if (opdCount > 0) {
+      parts.add('$opdCount OPD visit${opdCount == 1 ? '' : 's'} today');
+    }
+    if (appointmentCount > 0) {
+      parts.add('$appointmentCount appointment${appointmentCount == 1 ? '' : 's'}');
+    }
     if (followUpCount > 0) {
-      buffer.write('$followUpCount follow-up${followUpCount == 1 ? '' : 's'} due today');
+      parts.add('$followUpCount follow-up${followUpCount == 1 ? '' : 's'} due');
     }
     if (notes.isNotEmpty) {
-      if (buffer.isNotEmpty) buffer.write(' • ');
-      buffer.write('${notes.length} clinical note${notes.length == 1 ? '' : 's'}');
+      parts.add('${notes.length} clinical note${notes.length == 1 ? '' : 's'}');
     }
 
-    final body = buffer.isNotEmpty
-        ? 'You have $buffer'
-        : 'No follow-ups or notes scheduled for today';
+    final body = parts.isNotEmpty
+        ? parts.join(' • ')
+        : 'No visits, appointments, or follow-ups scheduled today';
 
     await local_notif.LocalNotificationService().showNotification(
       id: _morningSummaryId,
@@ -112,21 +145,48 @@ class DailySummaryService {
   static Future<void> sendEveningSummary() async {
     if (kIsWeb) return;
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // OPD records created today
+    int opdCount = 0;
+    int patientCount = 0;
+    try {
+      final opdRepo = OpdRecordRepository();
+      final todayRecords = await opdRepo.getByDate(today);
+      opdCount = todayRecords.length;
+      patientCount = todayRecords.map((r) => r['patient_id'] as int).toSet().length;
+    } catch (_) {}
+
+    // Pending follow-ups
     final followUpCount = _todayFollowUpCount();
-    final notes = await _todayNotes();
 
-    final buffer = StringBuffer();
+    // Sync status
+    int pendingSyncCount = 0;
+    try {
+      final syncRepo = SyncQueueRepository();
+      pendingSyncCount = await syncRepo.countPending();
+    } catch (_) {}
+
+    final parts = <String>[];
+    if (patientCount > 0) {
+      parts.add('$patientCount patient${patientCount == 1 ? '' : 's'} seen');
+    }
+    if (opdCount > 0) {
+      parts.add('$opdCount OPD record${opdCount == 1 ? '' : 's'} created');
+    }
     if (followUpCount > 0) {
-      buffer.write('$followUpCount follow-up${followUpCount == 1 ? '' : 's'}');
+      parts.add('$followUpCount follow-up${followUpCount == 1 ? '' : 's'} pending');
     }
-    if (notes.isNotEmpty) {
-      if (buffer.isNotEmpty) buffer.write(' • ');
-      buffer.write('${notes.length} clinical note${notes.length == 1 ? '' : 's'}');
+    if (pendingSyncCount > 0) {
+      parts.add('$pendingSyncCount item${pendingSyncCount == 1 ? '' : 's'} awaiting sync');
+    } else {
+      parts.add('All data synced');
     }
 
-    final body = buffer.isNotEmpty
-        ? 'Today you had $buffer'
-        : 'No follow-ups or clinical notes recorded today';
+    final body = parts.isNotEmpty
+        ? 'Today: ${parts.join(' • ')}'
+        : 'No activity recorded today';
 
     await local_notif.LocalNotificationService().showNotification(
       id: _eveningSummaryId,
