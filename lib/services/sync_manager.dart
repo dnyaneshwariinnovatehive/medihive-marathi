@@ -10,9 +10,7 @@ import 'connectivity_service.dart';
 import 'google_auth_service.dart';
 import 'google_drive_sync_service.dart';
 import '../models/appointment_model.dart';
-import 'event_notification_service.dart';
 import 'background_backup_handler.dart';
-import '../theme/app_theme.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/opd_record_repository.dart';
 import '../repositories/sync_queue_repository.dart';
@@ -509,92 +507,124 @@ class SyncManager extends ChangeNotifier {
     // ── Include OPDs with pending images from SQLite patient_images ──
     try {
       final pendingOpdVids = await _patientImagesRepo.getDistinctOpdVisitIdsWithPending();
+      print('IMAGES: found ${pendingOpdVids.length} OPD visit IDs with pending SQLite images');
       for (final vid in pendingOpdVids) {
         final row = await _opdRepo.getById(vid);
         if (row != null) {
-          processedOpdIds.add(row['opd_id']?.toString() ?? '');
+          final opdId = row['opd_id']?.toString() ?? '';
+          processedOpdIds.add(opdId);
+          print('IMAGES: added OPD $opdId from SQLite patient_images (visit_id=$vid)');
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('IMAGES: error reading SQLite patient_images: $e');
+    }
 
     // ── Include OPDs with pending images from previous failed uploads ──
     {
       final docBox = Hive.box('opd_documents');
-      for (final key in docBox.keys) {
+      final keys = docBox.keys.toList();
+      print('IMAGES: found ${keys.length} entries in Hive opd_documents box');
+      for (final key in keys) {
         processedOpdIds.add(key.toString());
+        print('IMAGES: added OPD $key from Hive opd_documents');
       }
     }
+
+    print('IMAGES: total OPDs to process for image upload: ${processedOpdIds.length}');
+    print('IMAGES: OPD IDs: $processedOpdIds');
 
     // ── Upload images for pushed OPDs ────────────────
     for (final opdId in processedOpdIds) {
       try {
+        print('IMAGES: processing OPD $opdId');
         final row = await _opdRepo.getByOpdId(opdId);
         if (row == null) {
+          print('IMAGES: OPD $opdId not found in local DB');
           final docBox = Hive.box('opd_documents');
           if (docBox.containsKey(opdId)) {
-            print('SYNC cleanup: OPD $opdId not in local DB, removing stale Hive entry');
+            print('IMAGES: cleanup - removing stale Hive entry for OPD $opdId');
             await docBox.delete(opdId);
           }
           continue;
         }
         final sqliteId = row['id'] as int;
+        print('IMAGES: OPD $opdId found in local DB (sqlite_id=$sqliteId)');
 
         final pendingImages =
             await _patientImagesRepo.getPendingByOpdVisitId(sqliteId);
+        print('IMAGES: pending SQLite images for OPD $opdId: ${pendingImages.length}');
 
         if (pendingImages.isNotEmpty) {
+          // ── PATH A: Upload from SQLite patient_images ──
           final files = <File>[];
           for (final img in pendingImages) {
             final path = img['file_path'] as String;
             final file = File(path);
-            if (await file.exists()) files.add(file);
+            final exists = await file.exists();
+            print('IMAGES: SQLite image path=$path exists=$exists');
+            if (exists) files.add(file);
           }
           if (files.isNotEmpty) {
+            print('IMAGES: PATH A - uploading ${files.length} file(s) from SQLite for OPD $opdId');
             await ApiService.pushImages(opdId, files);
             await _patientImagesRepo.markSyncedByOpdVisitId(sqliteId);
             _imageUploadRetries.remove(opdId);
-            print('SYNC image uploaded for OPD $opdId (from patient_images)');
+            print('IMAGES: PATH A - upload SUCCESS for OPD $opdId (from patient_images)');
+          } else {
+            print('IMAGES: PATH A - no valid files found on disk for OPD $opdId');
           }
         } else {
+          // ── PATH B: Upload from Hive opd_documents (fallback) ──
           final docBox = Hive.box('opd_documents');
           final raw = docBox.get(opdId);
+          final hasHiveEntry = raw != null;
+          print('IMAGES: PATH B - checking Hive opd_documents for OPD $opdId: found=$hasHiveEntry');
           if (raw != null) {
-            final bytes = base64Decode(raw.toString());
+            final rawStr = raw.toString();
+            print('IMAGES: PATH B - Hive value type=${raw.runtimeType} length=${rawStr.length}');
+            final bytes = base64Decode(rawStr);
+            print('IMAGES: PATH B - decoded base64: ${bytes.length} bytes');
             final tempFile = File(
               '${Directory.systemTemp.path}/${opdId}_${DateTime.now().microsecondsSinceEpoch}.jpg',
             );
             try {
               await tempFile.writeAsBytes(bytes);
+              print('IMAGES: PATH B - temp file written: ${tempFile.path} (${bytes.length} bytes)');
+              print('IMAGES: PATH B - calling ApiService.pushImages for OPD $opdId');
               await ApiService.pushImages(opdId, [tempFile]);
               await docBox.delete(opdId);
               _imageUploadRetries.remove(opdId);
-              print('SYNC image uploaded for OPD $opdId (from opd_documents Hive)');
+              print('IMAGES: PATH B - upload SUCCESS for OPD $opdId (from opd_documents Hive)');
             } catch (e) {
+              print('IMAGES: PATH B - upload FAILED for OPD $opdId: $e');
               if (e is ApiException && e.statusCode == 404) {
-                print('SYNC OPD $opdId not found on Flask, removing stale Hive entry');
+                print('IMAGES: PATH B - OPD $opdId not found on Flask, removing stale Hive entry');
                 await docBox.delete(opdId);
               }
               rethrow;
             } finally {
               if (await tempFile.exists()) {
                 await tempFile.delete();
+                print('IMAGES: PATH B - temp file deleted');
               }
             }
           } else {
-            print('SYNC no Hive entry for OPD $opdId in image loop');
+            print('IMAGES: PATH B - no Hive entry for OPD $opdId in image loop');
           }
         }
       } catch (e, st) {
-        print('SYNC image upload failed for OPD $opdId: $e');
-        print(st);
+        print('IMAGES: ERROR for OPD $opdId: $e');
+        print('IMAGES: stack trace: $st');
         final retries = (_imageUploadRetries[opdId] ?? 0) + 1;
         _imageUploadRetries[opdId] = retries;
+        print('IMAGES: retry count for OPD $opdId: $retries/3');
         if (retries >= 3) {
-          print('SYNC giving up on OPD $opdId image after $retries failures');
+          print('IMAGES: giving up on OPD $opdId image after $retries failures');
           final docBox = Hive.box('opd_documents');
           if (docBox.containsKey(opdId)) {
             await docBox.delete(opdId);
-            print('SYNC removed stale Hive entry for OPD $opdId');
+            print('IMAGES: removed stale Hive entry for OPD $opdId');
           }
           _imageUploadRetries.remove(opdId);
         }
@@ -798,18 +828,6 @@ class SyncManager extends ChangeNotifier {
       _syncState = SyncState.error;
     }
     notifyListeners();
-
-    await EventNotificationService.notifySyncComplete(
-      recordCount: getUnsyncedCount(),
-    );
-    scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: Text(errorMessage != null ? '✗ Sync failed: $errorMessage' : '✓ Data synced'),
-        backgroundColor: errorMessage != null ? AppTheme.error : AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: errorMessage != null ? 8 : 3),
-      ),
-    );
     return errorMessage == null;
   }
 
@@ -832,29 +850,10 @@ class SyncManager extends ChangeNotifier {
       await _driveService.syncPendingRecords();
       _syncState = SyncState.synced;
       notifyListeners();
-      await EventNotificationService.notifyBackupComplete(success: true);
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: const Text('✓ Backed up to Google Drive'),
-          backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       return true;
     } catch (e) {
       _syncState = SyncState.error;
       notifyListeners();
-      await EventNotificationService.notifyBackupComplete(
-        success: false,
-        details: 'Backup failed: $e',
-      );
-      scaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: Text('✗ Backup failed: $e'),
-          backgroundColor: AppTheme.danger,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
       return false;
     }
   }

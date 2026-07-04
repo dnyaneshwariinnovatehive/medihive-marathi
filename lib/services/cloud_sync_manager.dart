@@ -8,15 +8,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'api_service.dart';
 import 'connectivity_service.dart';
 import '../models/appointment_model.dart';
-import '../database/database_helper.dart';
-import '../database/schema.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/opd_record_repository.dart';
 import '../repositories/cloud_sync_queue_repository.dart';
 import '../repositories/device_registration_repository.dart';
 import '../repositories/patient_images_repository.dart';
-import 'event_notification_service.dart';
-import 'local_notification_service.dart';
 import 'dart:math';
 
 enum CloudSyncState {
@@ -558,19 +554,6 @@ class CloudSyncManager extends ChangeNotifier {
       } catch (e) {
         debugPrint('CLOUD DOWNLOAD: delete error: $e');
       }
-    }
-
-    // Notify about new data downloaded
-    final newCount = remotePatients.length + remoteOpd.length + remoteAppts.length;
-    if (newCount > 0) {
-      try {
-        await EventNotificationService.notifySyncComplete(recordCount: newCount);
-        await LocalNotificationService().showNotification(
-          id: DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF,
-          title: 'New Data Synced',
-          body: '$newCount new record${newCount == 1 ? '' : 's'} available',
-        );
-      } catch (_) {}
     }
 
     // Save last sync timestamp

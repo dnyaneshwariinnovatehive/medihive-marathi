@@ -14,7 +14,6 @@ import '../../repositories/patient_repository.dart';
 import '../../repositories/opd_record_repository.dart';
 import '../../repositories/sync_queue_repository.dart';
 import '../../services/sync_manager.dart';
-import '../../services/event_notification_service.dart';
 import '../../utils/sync_id_generator.dart';
 import '../../widgets/standard_header.dart';
 import '../../services/prescription_pdf_service.dart';
@@ -291,11 +290,6 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       Future.microtask(() {
         SyncManager().forceSyncNow();
       });
-
-      EventNotificationService.notifyPatientUpdate(
-        patientName: _rx.patientName,
-        action: 'edited (prescription)',
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -226,56 +226,103 @@ def push_images(opd_id):
     Stage 2: Upload images to Google Drive, persist links in SQLite,
     then update the existing Google Sheets row with image links.
     """
-    logger.info("Image push requested for OPD %s", opd_id)
+    logger.info("=== IMAGE UPLOAD START === OPD=%s", opd_id)
+    logger.info("Request content_type=%s content_length=%s",
+                request.content_type, request.content_length)
 
     opd = OPDRecord.get(opd_id)
     if opd is None:
         logger.warning("OPD record not found: %s", opd_id)
         return jsonify({'error': 'OPD record not found'}), 404
 
+    logger.info("OPD found: patient_id=%s visit_date=%s",
+                opd.get('patient_id'), opd.get('visit_date'))
+
     if 'images' not in request.files:
         logger.warning("No 'images' field in request for OPD %s", opd_id)
         return jsonify({'error': 'No image files provided'}), 400
 
     files = request.files.getlist('images')
+    raw_file_count = len(files)
     files = [f for f in files if f.filename]
+    logger.info("Files received: %d total, %d with filename, %d filtered out",
+                raw_file_count, len(files), raw_file_count - len(files))
+
+    for i, f in enumerate(files):
+        f.seek(0, 2)  # seek to end
+        size = f.tell()
+        f.seek(0)  # seek back to start
+        logger.info("  File[%d]: name=%s type=%s size=%d bytes",
+                    i, f.filename, f.content_type, size)
+
     if not files:
         logger.warning("No valid image files for OPD %s", opd_id)
         return jsonify({'error': 'No valid image files provided'}), 400
 
     try:
         visit_date = datetime.fromisoformat(opd['visit_date'])
+        logger.info("Parsed visit_date: %s", visit_date)
     except (ValueError, TypeError):
         visit_date = datetime.utcnow()
+        logger.warning("Could not parse visit_date '%s', using current time: %s",
+                       opd.get('visit_date'), visit_date)
 
     if IS_CLOUD:
-        logger.info("Cloud mode: uploading %d image(s) directly to Drive for OPD %s", len(files), opd_id)
+        logger.info("CLOUD MODE: uploading %d image(s) directly to Drive for OPD %s",
+                    len(files), opd_id)
         drive_urls = []
         for i, f in enumerate(files, 1):
+            logger.info("Drive upload starting: OPD=%s index=%d filename=%s",
+                        opd_id, i, f.filename)
             url = upload_image_fileobj_to_drive(opd_id, f, i)
             if url:
                 drive_urls.append(url)
-        logger.info("Uploaded %d image(s) to Drive for OPD %s", len(drive_urls), opd_id)
+                logger.info("Drive upload SUCCESS: OPD=%s url=%s", opd_id, url)
+            else:
+                logger.error("Drive upload FAILED: OPD=%s index=%d", opd_id, i)
+        logger.info("Uploaded %d/%d image(s) to Drive for OPD %s",
+                    len(drive_urls), len(files), opd_id)
     else:
+        logger.info("LOCAL MODE: saving %d image(s) to disk for OPD %s",
+                    len(files), opd_id)
         saved_paths = save_images_locally(opd_id, files)
-        logger.info("Saved %d image(s) for OPD %s", len(saved_paths), opd_id)
+        logger.info("Saved %d/%d image(s) to disk for OPD %s. Paths: %s",
+                    len(saved_paths), len(files), opd_id,
+                    [str(p) for p in saved_paths])
+
+        logger.info("Checking for existing Drive files for OPD %s", opd_id)
         drive_urls = check_existing_drive_files(opd_id, visit_date, len(saved_paths))
         if not drive_urls:
+            logger.info("No existing Drive files found, uploading %d image(s) for OPD %s",
+                        len(saved_paths), opd_id)
             image_records = [_ImageRecord(p) for p in saved_paths]
             drive_urls = upload_images_to_drive(opd_id, image_records, visit_date)
-            logger.info("Uploaded %d image(s) to Drive for OPD %s",
-                        len(drive_urls), opd_id)
+            logger.info("Uploaded %d/%d image(s) to Drive for OPD %s. URLs: %s",
+                        len(drive_urls), len(saved_paths), opd_id, drive_urls)
         else:
-            logger.info("Reused %d existing Drive file(s) for OPD %s",
-                        len(drive_urls), opd_id)
+            logger.info("Reused %d existing Drive file(s) for OPD %s: %s",
+                        len(drive_urls), opd_id, drive_urls)
+
+    if not drive_urls:
+        logger.error("IMAGE UPLOAD FAILED: No Drive URLs generated for OPD %s", opd_id)
+        return jsonify({
+            'error': 'Image upload to Drive failed',
+            'opd_id': opd_id,
+            'image_count': 0,
+            'drive_urls': [],
+            'images_uploaded': False,
+        }), 500
 
     urls_text = "\n".join(drive_urls)
     OPDRecord.set_image_links(opd_id, urls_text)
-    logger.info("Image links persisted for OPD %s", opd_id)
+    logger.info("Image links persisted in DB for OPD %s: %s", opd_id, urls_text)
 
     sheet_update_ok = True
     try:
+        logger.info("Updating Google Sheet row for OPD %s with %d image link(s)",
+                    opd_id, len(drive_urls))
         _sync_opd_to_sheets(opd, drive_urls)
+        logger.info("Google Sheet update SUCCESS for OPD %s", opd_id)
     except RuntimeError as e:
         logger.error(
             "Sheet update blocked for OPD %s (no new sheet created): %s",
@@ -283,7 +330,7 @@ def push_images(opd_id):
         )
         sheet_update_ok = False
     except Exception as e:
-        logger.error("Sheet update failed for OPD %s: %s", opd_id, e)
+        logger.error("Sheet update FAILED for OPD %s: %s", opd_id, e)
         sheet_update_ok = False
 
     response = {
@@ -296,6 +343,8 @@ def push_images(opd_id):
 
     if sheet_update_ok:
         response['message'] = 'Images synced successfully'
+        logger.info("=== IMAGE UPLOAD COMPLETE (success) === OPD=%s urls=%s",
+                    opd_id, drive_urls)
         return jsonify(response), 200
     else:
         response['message'] = (
@@ -307,6 +356,7 @@ def push_images(opd_id):
             f'Add medihive-service@medihive-500611.iam.gserviceaccount.com '
             f'as Editor on the sheet.'
         )
+        logger.warning("=== IMAGE UPLOAD PARTIAL === OPD=%s (Drive OK, Sheet FAILED)", opd_id)
         return jsonify(response), 207
 
 
