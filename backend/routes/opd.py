@@ -94,7 +94,7 @@ def save_images_locally(opd_id, files):
 def build_sheet_row_data(opd, patient, drive_urls):
     def safe_int(val):
         try:
-            return int(val or '0')
+            return int(float(val)) if val else 0
         except (ValueError, TypeError):
             return 0
 
@@ -129,7 +129,8 @@ def build_sheet_row_data(opd, patient, drive_urls):
         'Discount Value': opd.get('discount', '0'),
         'Payment Mode': opd.get('payment_mode', ''),
         'Next Visit Date': opd.get('next_visit', ''),
-        'Follow-up Status': opd.get('follow_up_reason', ''),
+        'Follow-up Status': opd.get('follow_up_reason', '') or
+            ('Scheduled' if opd.get('next_visit', '') else 'No Follow-up'),
         'Image Links': drive_urls,
     }
 

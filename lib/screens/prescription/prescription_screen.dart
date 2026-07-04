@@ -12,6 +12,10 @@ import '../../models/prescription.dart';
 import '../../providers/settings_provider.dart';
 import '../../repositories/patient_repository.dart';
 import '../../repositories/opd_record_repository.dart';
+import '../../repositories/sync_queue_repository.dart';
+import '../../services/sync_manager.dart';
+import '../../services/event_notification_service.dart';
+import '../../utils/sync_id_generator.dart';
 import '../../widgets/standard_header.dart';
 import '../../services/prescription_pdf_service.dart';
 import '../../widgets/animated_list_item.dart';
@@ -273,6 +277,25 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
     try {
       await opdRepo.update(_latestRecord['id'] as int, updatedRow);
+
+      final syncQueueRepo = SyncQueueRepository();
+      await syncQueueRepo.insert({
+        'id': SyncIdGenerator.nextId(),
+        'entity_type': 'opd',
+        'entity_id': _latestRecord['sync_id'] as String? ?? '${_latestRecord['id']}',
+        'status': 'pending',
+        'retry_count': 0,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      Future.microtask(() {
+        SyncManager().forceSyncNow();
+      });
+
+      EventNotificationService.notifyPatientUpdate(
+        patientName: _rx.patientName,
+        action: 'edited (prescription)',
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

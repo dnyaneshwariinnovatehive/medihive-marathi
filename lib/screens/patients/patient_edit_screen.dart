@@ -8,6 +8,7 @@ import '../../repositories/sync_queue_repository.dart';
 import '../../utils/helpers.dart';
 import '../../utils/sync_id_generator.dart';
 import '../../services/sync_manager.dart';
+import '../../services/event_notification_service.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/standard_header.dart';
 
@@ -118,6 +119,11 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
         print('FORCING IMMEDIATE SYNC');
         SyncManager().forceSyncNow();
       });
+
+      EventNotificationService.notifyPatientUpdate(
+        patientName: name,
+        action: 'updated',
+      );
 
       if (mounted) {
         context.read<PatientProvider>().loadPatients();
