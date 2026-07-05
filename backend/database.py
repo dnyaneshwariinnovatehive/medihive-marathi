@@ -131,6 +131,8 @@ def init_db():
     """Create all database tables if they don't exist.
     Uses get_db() which includes Neon auto-suspend retry logic."""
     db = get_db()
+    # Clear any stale aborted transaction from a previous connection use
+    db.rollback()
     try:
         db.execute("""
             CREATE TABLE IF NOT EXISTS patients (
@@ -182,23 +184,26 @@ def init_db():
                 clinic_id           TEXT DEFAULT ''
             );
         """)
-        # Add panchakarma_notes column for existing databases (safe if already exists)
+        # Add columns for existing databases.
+        # Each ALTER TABLE is followed by a rollback on failure because PostgreSQL
+        # aborts the entire transaction when any statement fails, even if the
+        # error is caught in Python.
         try:
             db.execute("ALTER TABLE opd_records ADD COLUMN panchakarma_notes TEXT DEFAULT ''")
         except Exception:
-            pass
+            db.rollback()
         try:
             db.execute("ALTER TABLE opd_records ADD COLUMN panchakarma_fee TEXT DEFAULT '0'")
         except Exception:
-            pass
+            db.rollback()
         try:
             db.execute("ALTER TABLE opd_records ADD COLUMN total_fee TEXT DEFAULT '0'")
         except Exception:
-            pass
+            db.rollback()
         try:
             db.execute("ALTER TABLE opd_records ADD COLUMN discount_type TEXT DEFAULT 'None'")
         except Exception:
-            pass
+            db.rollback()
         db.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id          TEXT PRIMARY KEY,
