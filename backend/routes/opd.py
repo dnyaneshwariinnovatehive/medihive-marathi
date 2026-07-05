@@ -100,8 +100,20 @@ def build_sheet_row_data(opd, patient, drive_urls):
 
     consultation_fee = safe_int(opd.get('consultation_fee'))
     medicine_fee = safe_int(opd.get('medicine_fee'))
-    discount = safe_int(opd.get('discount'))
-    total_fee = consultation_fee + medicine_fee - discount
+    panchakarma_fee = safe_int(opd.get('panchakarma_fee'))
+    discount_value = safe_int(opd.get('discount'))
+    discount_type = opd.get('discount_type', 'None')
+
+    subtotal = consultation_fee + medicine_fee + panchakarma_fee
+    if discount_type == '₹':
+        total_fee = max(0, subtotal - discount_value)
+    elif discount_type == '%':
+        total_fee = max(0, int(subtotal - (subtotal * discount_value / 100)))
+    elif discount_value > 0:
+        # Backward compatibility: old records have discount but no discount_type
+        total_fee = max(0, subtotal - discount_value)
+    else:
+        total_fee = subtotal
 
     pk_val = opd.get('panchakarma_notes', '')
     logger.info("SHEET DEBUG: build_sheet_row_data for OPD %s panchakarma_notes=%r", opd['id'], pk_val)
@@ -123,12 +135,12 @@ def build_sheet_row_data(opd, patient, drive_urls):
         'Clinical Notes': opd.get('clinical_notes', ''),
         'Panchakarma Notes': pk_val,
         'Medicines': opd.get('medicines', ''),
-        'Consultation Fee': opd.get('consultation_fee', '0'),
-        'Medicine Fee': opd.get('medicine_fee', '0'),
-        'Panchakarma Fee': '0',
-        'Total Fee': str(total_fee),
-        'Discount Type': 'NA',
-        'Discount Value': opd.get('discount', '0'),
+        'Consultation Fee': str(consultation_fee),
+        'Medicine Fee': str(medicine_fee),
+        'Panchakarma Fee': str(panchakarma_fee),
+        'Total Fee': str(int(total_fee)),
+        'Discount Type': discount_type if discount_type != 'None' else 'NA',
+        'Discount Value': str(discount_value),
         'Payment Mode': opd.get('payment_mode', ''),
         'Next Visit Date': opd.get('next_visit', ''),
         'Follow-up Status': opd.get('follow_up_reason', '') or

@@ -89,10 +89,24 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     _opdRows = await opdRepo.getByPatientId(sqliteId);
     _visits = _opdRows.map((r) {
       final consultation =
-          int.tryParse(r['consultation_fee']?.toString() ?? '') ?? 0;
-      final medicine = int.tryParse(r['medicine_fee']?.toString() ?? '') ?? 0;
-      final disc = int.tryParse(r['discount_value']?.toString() ?? '') ?? 0;
-      final totalFee = consultation + medicine - disc;
+          double.tryParse(r['consultation_fee']?.toString() ?? '') ?? 0;
+      final medicine = double.tryParse(r['medicine_fee']?.toString() ?? '') ?? 0;
+      final panchakarma = double.tryParse(r['panchakarma_fee']?.toString() ?? '') ?? 0;
+      final discVal = double.tryParse(r['discount_value']?.toString() ?? '') ?? 0;
+      final discType = r['discount_type']?.toString() ?? 'None';
+      final subtotal = consultation + medicine + panchakarma;
+      double totalFee;
+      if (discType == '₹') {
+        totalFee = subtotal - discVal;
+      } else if (discType == '%') {
+        totalFee = subtotal - (subtotal * discVal / 100);
+      } else if (discVal > 0) {
+        totalFee = subtotal - discVal;
+      } else {
+        totalFee = subtotal;
+      }
+      if (totalFee < 0) totalFee = 0;
+      final fees = totalFee.toInt();
       final visitDateStr = r['visit_datetime'] as String? ?? '';
       DateTime visitDate;
       try {
@@ -112,7 +126,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             ? r['symptoms'] as String
             : 'No notes',
         panchakarmaNotes: (r['panchakarma_notes'] as String?) ?? '',
-        fees: totalFee > 0 ? totalFee : 0,
+        fees: fees > 0 ? fees : 0,
       );
     }).toList();
     if (mounted) setState(() => _loaded = true);

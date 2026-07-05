@@ -164,7 +164,11 @@ def push():
         if pat_id in temp_id_map:
             r['patient_id'] = temp_id_map[pat_id]
         pk = r.get('panchakarma_notes', '')
-        logger.info("PUSH DEBUG: OPD id=%s panchakarma_notes=%r", r.get('id'), pk)
+        panchakarma_fee = r.get('panchakarma_fee', '')
+        total_fee = r.get('total_fee', '')
+        discount_type = r.get('discount_type', '')
+        logger.info("PUSH DEBUG: OPD id=%s panchakarma_notes=%r panchakarma_fee=%s total_fee=%s discount_type=%s",
+                     r.get('id'), pk, panchakarma_fee, total_fee, discount_type)
         result = OPDRecord.upsert(r)
         results['opd_records'].append(result)
         try:

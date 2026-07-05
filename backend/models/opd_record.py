@@ -37,17 +37,20 @@ class OPDRecord:
         db = get_db()
         db.execute("""
             INSERT INTO opd_records (id, patient_id, type, symptoms, diagnosis, medicines,
-                visit_date, clinical_notes, consultation_fee, medicine_fee, discount,
-                payment_mode, charge_type, previous_visit_date, follow_up_reason,
+                visit_date, clinical_notes, consultation_fee, medicine_fee, panchakarma_fee,
+                total_fee, discount, discount_type, payment_mode, charge_type,
+                previous_visit_date, follow_up_reason,
                 next_visit, blood_group, image_links, panchakarma_notes, created_at, updated_at,
                 is_synced, user_id, clinic_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
         """, (
             data['id'], data['patient_id'], data.get('type', 'consultation'),
             data.get('symptoms', ''), data.get('diagnosis', ''),
             data.get('medicines', ''), data.get('visit_date', now),
             data.get('clinical_notes', ''), data.get('consultation_fee', '0'),
-            data.get('medicine_fee', '0'), data.get('discount', '0'),
+            data.get('medicine_fee', '0'), data.get('panchakarma_fee', '0'),
+            data.get('total_fee', '0'), data.get('discount', '0'),
+            data.get('discount_type', 'None'),
             data.get('payment_mode', ''), data.get('charge_type', ''),
             data.get('previous_visit_date', ''), data.get('follow_up_reason', ''),
             data.get('next_visit', ''), data.get('blood_group', ''),
@@ -65,7 +68,8 @@ class OPDRecord:
     def update(record_id, data):
         now = datetime.utcnow().isoformat()
         allowed = ('type', 'symptoms', 'diagnosis', 'medicines', 'visit_date',
-                   'clinical_notes', 'consultation_fee', 'medicine_fee', 'discount',
+                   'clinical_notes', 'consultation_fee', 'medicine_fee',
+                   'panchakarma_fee', 'total_fee', 'discount', 'discount_type',
                    'payment_mode', 'charge_type', 'previous_visit_date',
                    'follow_up_reason', 'next_visit', 'blood_group',
                    'image_links', 'user_id', 'clinic_id',

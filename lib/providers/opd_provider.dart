@@ -478,8 +478,12 @@ class OpdProvider extends ChangeNotifier {
         _formData.consultationFee = value;
       case 'medicineFee':
         _formData.medicineFee = value;
+      case 'panchakarmaFee':
+        _formData.panchakarmaFee = value;
       case 'discount':
         _formData.discount = value;
+      case 'discountType':
+        _formData.discountType = value;
       case 'paymentMode':
         _formData.paymentMode = value;
       case 'previousVisitDate':
@@ -586,9 +590,9 @@ class OpdProvider extends ChangeNotifier {
         'panchakarma_notes': _formData.panchakarmaNotes.isNotEmpty ? _formData.panchakarmaNotes : null,
         'consultation_fee': _parseFee(_formData.consultationFee),
         'medicine_fee': _parseFee(_formData.medicineFee),
-        'panchakarma_fee': null,
-        'total_fee': null,
-        'discount_type': null,
+        'panchakarma_fee': _parseFee(_formData.panchakarmaFee),
+        'total_fee': _formData.totalFee,
+        'discount_type': _formData.discountType.isNotEmpty ? _formData.discountType : null,
         'discount_value': _parseFee(_formData.discount),
         'payment_mode': _formData.paymentMode.isNotEmpty ? _formData.paymentMode : null,
         'next_visit_date': _formData.nextVisit.isNotEmpty ? _formData.nextVisit : null,

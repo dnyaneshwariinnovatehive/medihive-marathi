@@ -1423,20 +1423,100 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             ],
           ),
           const SizedBox(height: 20),
+
+          // Consultation Fee *
           _textField(
-            'Consultation Fee',
+            'Consultation Fees',
             '0',
             opd.formData.consultationFee,
             (v) => opd.updateField('consultationFee', v),
             keyboardType: TextInputType.number,
+            isRequired: true,
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'Required';
-              if (int.tryParse(value.trim()) == null)
+              if (double.tryParse(value.trim()) == null)
                 return 'Must be a valid number';
               return null;
             },
           ),
+          const SizedBox(height: 16),
+
+          // Medicine Fee
+          _textField(
+            'Medicine Fee',
+            '0',
+            opd.formData.medicineFee,
+            (v) => opd.updateField('medicineFee', v),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+
+          // Panchakarma Fee
+          _textField(
+            'Panchakarma Fee',
+            '0',
+            opd.formData.panchakarmaFee,
+            (v) => opd.updateField('panchakarmaFee', v),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+
+          // Discount Type Dropdown
+          _label('Discount Type'),
+          const SizedBox(height: 4),
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            value: opd.formData.discountType,
+            decoration: InputDecoration(
+              labelText: 'Discount Type',
+              labelStyle: TextStyle(color: AppTheme.textSecondary),
+              filled: true,
+              fillColor: AppTheme.surface,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.primary, width: 2),
+              ),
+            ),
+            dropdownColor: AppTheme.surface,
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w500,
+              fontSize: 16,
+            ),
+            items: const [
+              DropdownMenuItem(value: 'None', child: Text('None')),
+              DropdownMenuItem(value: '₹', child: Text('₹ (Amount)')),
+              DropdownMenuItem(value: '%', child: Text('% (Percentage)')),
+            ],
+            onChanged: (v) {
+              if (v != null) opd.updateField('discountType', v);
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Discount Value (enabled only when discount type is not None)
+          _textField(
+            'Discount Value',
+            '0',
+            opd.formData.discount,
+            (v) => opd.updateField('discount', v),
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 24),
+
+          // Total Fee (read-only, auto-calculated)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -1448,26 +1528,78 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Total Amount',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 14,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Subtotal',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      '₹${opd.formData.subtotal.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '₹${opd.formData.totalFee}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
+                if (opd.formData.discountType != 'None' && (double.tryParse(opd.formData.discount) ?? 0) > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Discount (${opd.formData.discountType})',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '-₹${opd.formData.discountType == '%'
+                            ? ((opd.formData.subtotal * (double.tryParse(opd.formData.discount) ?? 0) / 100).toStringAsFixed(0))
+                            : opd.formData.discount}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
+                ],
+                const SizedBox(height: 8),
+                const Divider(color: Colors.white24, height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '₹${opd.formData.totalFee.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
+
+          // Payment Mode
           _label('Payment Mode'),
           ChipSelector(
             options: AppConstants.paymentModes,
@@ -1475,6 +1607,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             onSelected: (v) => opd.updateField('paymentMode', v),
           ),
           const SizedBox(height: 16),
+
+          // Charge Type
           _label('Charge Type'),
           ChipSelector(
             options: AppConstants.chargeTypes,

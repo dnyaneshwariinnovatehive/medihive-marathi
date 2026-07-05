@@ -110,6 +110,8 @@ def upload_changes():
         pat_id = r.get('patient_id', '')
         if pat_id in temp_id_map:
             r['patient_id'] = temp_id_map[pat_id]
+        logger.info("CLOUD DEBUG: OPD id=%s panchakarma_fee=%s total_fee=%s discount_type=%s",
+                     r.get('id'), r.get('panchakarma_fee', ''), r.get('total_fee', ''), r.get('discount_type', ''))
         result = OPDRecord.upsert(r)
         results['opd_records'].append(result)
         logger.info("CLOUD DEVICE DEBUG: stored opd id=%s clinic_id=%s", r['id'], r.get('clinic_id', ''))

@@ -17,7 +17,9 @@ class OpdFormData {
   String nextVisit;
   String consultationFee;
   String medicineFee;
+  String panchakarmaFee;
   String discount;
+  String discountType;
   String paymentMode;
   String previousVisitDate;
   String followUpReason;
@@ -41,16 +43,29 @@ class OpdFormData {
     this.nextVisit = '',
     this.consultationFee = '500',
     this.medicineFee = '0',
+    this.panchakarmaFee = '0',
     this.discount = '0',
+    this.discountType = 'None',
     this.paymentMode = 'Cash',
     this.previousVisitDate = '',
     this.followUpReason = '',
   });
 
-  int get totalFee =>
-      (int.tryParse(consultationFee) ?? 0) +
-      (int.tryParse(medicineFee) ?? 0) -
-      (int.tryParse(discount) ?? 0);
+  double get subtotal =>
+      (double.tryParse(consultationFee) ?? 0) +
+      (double.tryParse(medicineFee) ?? 0) +
+      (double.tryParse(panchakarmaFee) ?? 0);
+
+  double get totalFee {
+    final sub = subtotal;
+    final discVal = double.tryParse(discount) ?? 0;
+    if (discountType == '₹') return sub - discVal < 0 ? 0 : sub - discVal;
+    if (discountType == '%') {
+      final discAmt = sub * discVal / 100;
+      return sub - discAmt < 0 ? 0 : sub - discAmt;
+    }
+    return sub;
+  }
 
   void reset() {
     patientId = '';
@@ -71,7 +86,9 @@ class OpdFormData {
     nextVisit = '';
     consultationFee = '500';
     medicineFee = '0';
+    panchakarmaFee = '0';
     discount = '0';
+    discountType = 'None';
     paymentMode = 'Cash';
     previousVisitDate = '';
     followUpReason = '';
@@ -97,7 +114,9 @@ class OpdFormData {
       'nextVisit': nextVisit,
       'consultationFee': consultationFee,
       'medicineFee': medicineFee,
+      'panchakarmaFee': panchakarmaFee,
       'discount': discount,
+      'discountType': discountType,
       'paymentMode': paymentMode,
       'previousVisitDate': previousVisitDate,
       'followUpReason': followUpReason,
@@ -123,7 +142,9 @@ class OpdFormData {
     nextVisit = json['nextVisit'] ?? '';
     consultationFee = json['consultationFee'] ?? '500';
     medicineFee = json['medicineFee'] ?? '0';
+    panchakarmaFee = json['panchakarmaFee'] ?? '0';
     discount = json['discount'] ?? '0';
+    discountType = json['discountType'] ?? 'None';
     paymentMode = json['paymentMode'] ?? 'Cash';
     previousVisitDate = json['previousVisitDate'] ?? '';
     followUpReason = json['followUpReason'] ?? '';

@@ -163,7 +163,10 @@ def init_db():
                 clinical_notes      TEXT DEFAULT '',
                 consultation_fee    TEXT DEFAULT '0',
                 medicine_fee        TEXT DEFAULT '0',
+                panchakarma_fee     TEXT DEFAULT '0',
+                total_fee           TEXT DEFAULT '0',
                 discount            TEXT DEFAULT '0',
+                discount_type       TEXT DEFAULT 'None',
                 payment_mode        TEXT DEFAULT '',
                 charge_type         TEXT DEFAULT '',
                 previous_visit_date TEXT DEFAULT '',
@@ -182,6 +185,18 @@ def init_db():
         # Add panchakarma_notes column for existing databases (safe if already exists)
         try:
             db.execute("ALTER TABLE opd_records ADD COLUMN panchakarma_notes TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE opd_records ADD COLUMN panchakarma_fee TEXT DEFAULT '0'")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE opd_records ADD COLUMN total_fee TEXT DEFAULT '0'")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE opd_records ADD COLUMN discount_type TEXT DEFAULT 'None'")
         except Exception:
             pass
         db.execute("""
