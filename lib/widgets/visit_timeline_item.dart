@@ -104,6 +104,25 @@ class VisitTimelineItem extends StatelessWidget {
                       fontSize: 13,
                     ),
                   ),
+                  if (visit.panchakarmaNotes.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Panchakarma Notes',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      visit.panchakarmaNotes,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Divider(height: 1, color: AppTheme.border),
                   const SizedBox(height: 6),

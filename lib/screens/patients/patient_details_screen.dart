@@ -111,6 +111,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         notes: ((r['symptoms'] as String?)?.isNotEmpty == true)
             ? r['symptoms'] as String
             : 'No notes',
+        panchakarmaNotes: (r['panchakarma_notes'] as String?) ?? '',
         fees: totalFee > 0 ? totalFee : 0,
       );
     }).toList();
@@ -511,6 +512,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                       medicines: medicines,
                                       notes:
                                           latest?['clinical_notes']
+                                              as String? ??
+                                          '',
+                                      panchakarmaNotes:
+                                          latest?['panchakarma_notes']
                                               as String? ??
                                           '',
                                       nextVisit:

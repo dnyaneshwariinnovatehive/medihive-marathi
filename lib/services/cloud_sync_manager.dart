@@ -670,6 +670,8 @@ class CloudSyncManager extends ChangeNotifier {
     } catch (_) {
       patientSyncId = 'P$localPatientId';
     }
+    final pkNotes = row['panchakarma_notes'] ?? '';
+    debugPrint('CLOUD_DEBUG: _opdRowToMap panchakarma_notes="${pkNotes}"');
     return {
       'id': row['opd_id']?.toString() ?? 'R${row['id']}',
       'patient_id': patientSyncId,
@@ -679,6 +681,7 @@ class CloudSyncManager extends ChangeNotifier {
       'medicines': row['medicines'] ?? '',
       'visit_date': DateTime.tryParse(visitDt)?.toIso8601String() ?? createdDt.toIso8601String(),
       'clinical_notes': row['clinical_notes'] ?? '',
+      'panchakarma_notes': pkNotes,
       'consultation_fee': (row['consultation_fee'] as num?)?.toString() ?? '',
       'medicine_fee': (row['medicine_fee'] as num?)?.toString() ?? '',
       'discount': (row['discount_value'] as num?)?.toString() ?? '',
@@ -730,6 +733,7 @@ class CloudSyncManager extends ChangeNotifier {
       'diagnosis': remote['diagnosis']?.toString() ?? '',
       'symptoms': remote['symptoms']?.toString() ?? '',
       'clinical_notes': remote['clinical_notes']?.toString() ?? '',
+      'panchakarma_notes': remote['panchakarma_notes']?.toString() ?? '',
       'consultation_fee': double.tryParse(remote['consultation_fee']?.toString() ?? '') ?? 0.0,
       'medicine_fee': double.tryParse(remote['medicine_fee']?.toString() ?? '') ?? 0.0,
       'payment_mode': remote['payment_mode']?.toString() ?? '',

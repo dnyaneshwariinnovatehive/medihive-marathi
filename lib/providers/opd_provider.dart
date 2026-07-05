@@ -220,6 +220,7 @@ class OpdProvider extends ChangeNotifier {
         updateField('symptoms', latest['symptoms']?.toString() ?? '');
         updateField('medicines', latest['medicines']?.toString() ?? '');
         updateField('clinicalNotes', latest['clinical_notes']?.toString() ?? '');
+        updateField('panchakarmaNotes', latest['panchakarma_notes']?.toString() ?? '');
         updateField(
           'opdType',
           latest['opd_type']?.toString() == 'follow_up' ? 'Follow-up' : 'Consultation',
@@ -469,6 +470,8 @@ class OpdProvider extends ChangeNotifier {
         _formData.medicines = value;
       case 'clinicalNotes':
         _formData.clinicalNotes = value;
+      case 'panchakarmaNotes':
+        _formData.panchakarmaNotes = value;
       case 'nextVisit':
         _formData.nextVisit = value;
       case 'consultationFee':
@@ -542,6 +545,7 @@ class OpdProvider extends ChangeNotifier {
       // 1. Save OPD Record (update if editing, insert if new)
       final opdId = existingRecordId ?? 'R${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999).toString().padLeft(3, '0')}';
       print('OPD CREATED id=$opdId');
+      print('OPD DEBUG: panchakarmaNotes="${_formData.panchakarmaNotes}"');
 
       int sqlitePatientId;
       try {
@@ -579,6 +583,7 @@ class OpdProvider extends ChangeNotifier {
         'diagnosis': _formData.diagnosis.isNotEmpty ? _formData.diagnosis : null,
         'symptoms': _formData.symptoms.isNotEmpty ? _formData.symptoms : null,
         'clinical_notes': _formData.clinicalNotes.isNotEmpty ? _formData.clinicalNotes : null,
+        'panchakarma_notes': _formData.panchakarmaNotes.isNotEmpty ? _formData.panchakarmaNotes : null,
         'consultation_fee': _parseFee(_formData.consultationFee),
         'medicine_fee': _parseFee(_formData.medicineFee),
         'panchakarma_fee': null,
@@ -590,7 +595,6 @@ class OpdProvider extends ChangeNotifier {
         'followup_status': _formData.followUpReason.isNotEmpty ? _formData.followUpReason : null,
         'created_at': preservedCreatedAt.toIso8601String(),
         'medicines': _formData.medicines.isNotEmpty ? _formData.medicines : null,
-        'panchakarma_notes': null,
       };
 
       if (existingRecordId != null) {

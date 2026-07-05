@@ -103,6 +103,8 @@ def build_sheet_row_data(opd, patient, drive_urls):
     discount = safe_int(opd.get('discount'))
     total_fee = consultation_fee + medicine_fee - discount
 
+    pk_val = opd.get('panchakarma_notes', '')
+    logger.info("SHEET DEBUG: build_sheet_row_data for OPD %s panchakarma_notes=%r", opd['id'], pk_val)
     return {
         'OPD ID': opd['id'],
         'Patient ID': opd['patient_id'],
@@ -119,7 +121,7 @@ def build_sheet_row_data(opd, patient, drive_urls):
         'Diagnosis': opd.get('diagnosis', ''),
         'Symptoms': opd.get('symptoms', ''),
         'Clinical Notes': opd.get('clinical_notes', ''),
-        'Panchakarma Notes': '',
+        'Panchakarma Notes': pk_val,
         'Medicines': opd.get('medicines', ''),
         'Consultation Fee': opd.get('consultation_fee', '0'),
         'Medicine Fee': opd.get('medicine_fee', '0'),

@@ -38,13 +38,14 @@ class OPDRecordModelAdapter extends TypeAdapter<OPDRecordModel> {
       followUpReason: (fields[18] as String?) ?? '',
       nextVisit: (fields[19] as String?) ?? '',
       bloodGroup: (fields[20] as String?) ?? '',
+      panchakarmaNotes: (fields[21] as String?) ?? '',
     );
   }
 
   @override
   void write(BinaryWriter writer, OPDRecordModel obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +87,9 @@ class OPDRecordModelAdapter extends TypeAdapter<OPDRecordModel> {
       ..writeByte(19)
       ..write(obj.nextVisit)
       ..writeByte(20)
-      ..write(obj.bloodGroup);
+      ..write(obj.bloodGroup)
+      ..writeByte(21)
+      ..write(obj.panchakarmaNotes);
   }
 
   @override

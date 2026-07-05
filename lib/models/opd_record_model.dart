@@ -67,6 +67,9 @@ class OPDRecordModel extends HiveObject {
   @HiveField(20)
   final String bloodGroup;
 
+  @HiveField(21)
+  final String panchakarmaNotes;
+
   OPDRecordModel({
     required this.id,
     required this.patientId,
@@ -89,6 +92,7 @@ class OPDRecordModel extends HiveObject {
     this.followUpReason = '',
     this.nextVisit = '',
     this.bloodGroup = '',
+    this.panchakarmaNotes = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -109,6 +113,7 @@ class OPDRecordModel extends HiveObject {
     'follow_up_reason': followUpReason,
     'next_visit': nextVisit,
     'blood_group': bloodGroup,
+    'panchakarma_notes': panchakarmaNotes,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
     'is_synced': isSynced ? 1 : 0,
@@ -136,6 +141,7 @@ class OPDRecordModel extends HiveObject {
     followUpReason: json['follow_up_reason']?.toString() ?? '',
     nextVisit: json['next_visit']?.toString() ?? '',
     bloodGroup: json['blood_group']?.toString() ?? '',
+    panchakarmaNotes: json['panchakarma_notes']?.toString() ?? '',
   );
 
   OPDRecordModel copyWith({
@@ -160,6 +166,7 @@ class OPDRecordModel extends HiveObject {
     String? followUpReason,
     String? nextVisit,
     String? bloodGroup,
+    String? panchakarmaNotes,
   }) {
     return OPDRecordModel(
       id: id ?? this.id,
@@ -183,6 +190,7 @@ class OPDRecordModel extends HiveObject {
       followUpReason: followUpReason ?? this.followUpReason,
       nextVisit: nextVisit ?? this.nextVisit,
       bloodGroup: bloodGroup ?? this.bloodGroup,
+      panchakarmaNotes: panchakarmaNotes ?? this.panchakarmaNotes,
     );
   }
 }

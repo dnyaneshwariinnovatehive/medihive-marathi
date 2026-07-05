@@ -60,6 +60,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   String _errorMessage = '';
   late TextEditingController _diagnosisController;
   late TextEditingController _notesController;
+  late TextEditingController _panchakarmaNotesController;
   late TextEditingController _nextVisitController;
   late List<_MedicineFieldData> _medicineFields;
   late Map<String, dynamic> _latestRecord;
@@ -149,6 +150,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       final visitDate = DateTime.tryParse(visitDtStr) ?? DateTime.now();
       final diagnosis = _latestRecord['diagnosis'] as String? ?? '';
       final symptoms = _latestRecord['symptoms'] as String? ?? '';
+      final panchakarmaNotes = _latestRecord['panchakarma_notes'] as String? ?? '';
       final nextVisit = _latestRecord['next_visit_date'] as String? ?? '';
       final patientName = patientRow['full_name'] as String? ?? '';
       final patientIdStr = 'P$sqliteId';
@@ -165,6 +167,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
         diagnosis: diagnosis.isNotEmpty ? diagnosis : 'Consultation',
         medicines: medList,
         notes: symptoms.isNotEmpty ? symptoms : 'No specific instructions.',
+        panchakarmaNotes: panchakarmaNotes,
         nextVisit: nextVisit.isNotEmpty ? nextVisit : 'As required',
         doctorName: settings.doctorName.isNotEmpty
             ? settings.doctorName
@@ -186,6 +189,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
       _diagnosisController = TextEditingController(text: _rx.diagnosis);
       _notesController = TextEditingController(text: _rx.notes);
+      _panchakarmaNotesController = TextEditingController(text: _rx.panchakarmaNotes);
       _nextVisitController = TextEditingController(text: _rx.nextVisit);
       _initMedicineFields();
     } catch (e) {
@@ -215,6 +219,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   void dispose() {
     _diagnosisController.dispose();
     _notesController.dispose();
+    _panchakarmaNotesController.dispose();
     _nextVisitController.dispose();
     for (final f in _medicineFields) {
       f.dispose();
@@ -252,6 +257,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   Future<void> _saveChanges() async {
     final newDiagnosis = _diagnosisController.text.trim();
     final newNotes = _notesController.text.trim();
+    final newPanchakarmaNotes = _panchakarmaNotesController.text.trim();
     final newNextVisit = _nextVisitController.text.trim();
     final newMedicinesList = _medicineFields
         .map((f) => f.toMedicine())
@@ -270,6 +276,9 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
     updatedRow['medicines'] = newMedicinesRaw.isNotEmpty
         ? newMedicinesRaw
         : (_latestRecord['medicines'] as String? ?? '');
+    updatedRow['panchakarma_notes'] = newPanchakarmaNotes.isNotEmpty
+        ? newPanchakarmaNotes
+        : (_latestRecord['panchakarma_notes'] as String? ?? '');
     updatedRow['next_visit_date'] = newNextVisit.isNotEmpty
         ? newNextVisit
         : (_latestRecord['next_visit_date'] as String? ?? '');
@@ -313,6 +322,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       diagnosis: newDiagnosis.isNotEmpty ? newDiagnosis : _rx.diagnosis,
       medicines: newMedicinesList.isNotEmpty ? newMedicinesList : _rx.medicines,
       notes: newNotes.isNotEmpty ? newNotes : _rx.notes,
+      panchakarmaNotes: newPanchakarmaNotes.isNotEmpty ? newPanchakarmaNotes : _rx.panchakarmaNotes,
       nextVisit: newNextVisit.isNotEmpty ? newNextVisit : _rx.nextVisit,
       doctorName: _rx.doctorName,
       clinicName: _rx.clinicName,
@@ -863,6 +873,43 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   ),
                                   child: Text(
                                     _rx.notes,
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              SizedBox(height: 12),
+                              _sectionTitle('Panchakarma Notes'),
+                              SizedBox(height: 8),
+                              if (_isEditing)
+                                TextField(
+                                  controller: _panchakarmaNotesController,
+                                  maxLines: 3,
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 13,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.all(12),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.surfaceTint,
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceTint,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    _rx.panchakarmaNotes.isNotEmpty
+                                        ? _rx.panchakarmaNotes
+                                        : 'No Panchakarma notes',
                                     style: TextStyle(
                                       color: AppTheme.textPrimary,
                                     ),

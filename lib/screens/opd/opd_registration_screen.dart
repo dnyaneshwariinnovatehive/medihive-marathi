@@ -952,6 +952,14 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             (v) => opd.updateField('clinicalNotes', v),
             maxLines: 3,
           ),
+          const SizedBox(height: 16),
+          _textField(
+            'Panchakarma Notes',
+            'Enter Panchakarma treatment notes',
+            opd.formData.panchakarmaNotes,
+            (v) => opd.updateField('panchakarmaNotes', v),
+            maxLines: 3,
+          ),
           const SizedBox(height: 20),
           _label('OPD Type'),
           ChipSelector(

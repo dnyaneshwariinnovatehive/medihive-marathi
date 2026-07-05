@@ -77,6 +77,7 @@ class VisitRecord {
   final String type;
   final String diagnosis;
   final String notes;
+  final String panchakarmaNotes;
   final int fees;
 
   const VisitRecord({
@@ -84,6 +85,7 @@ class VisitRecord {
     required this.type,
     required this.diagnosis,
     required this.notes,
+    this.panchakarmaNotes = '',
     required this.fees,
   });
 }

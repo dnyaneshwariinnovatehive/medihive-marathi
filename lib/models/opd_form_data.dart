@@ -13,6 +13,7 @@ class OpdFormData {
   String chargeType;
   String medicines;
   String clinicalNotes;
+  String panchakarmaNotes;
   String nextVisit;
   String consultationFee;
   String medicineFee;
@@ -36,6 +37,7 @@ class OpdFormData {
     this.chargeType = 'Cash',
     this.medicines = '',
     this.clinicalNotes = '',
+    this.panchakarmaNotes = '',
     this.nextVisit = '',
     this.consultationFee = '500',
     this.medicineFee = '0',
@@ -65,6 +67,7 @@ class OpdFormData {
     chargeType = 'Cash';
     medicines = '';
     clinicalNotes = '';
+    panchakarmaNotes = '';
     nextVisit = '';
     consultationFee = '500';
     medicineFee = '0';
@@ -90,6 +93,7 @@ class OpdFormData {
       'chargeType': chargeType,
       'medicines': medicines,
       'clinicalNotes': clinicalNotes,
+      'panchakarmaNotes': panchakarmaNotes,
       'nextVisit': nextVisit,
       'consultationFee': consultationFee,
       'medicineFee': medicineFee,
@@ -115,6 +119,7 @@ class OpdFormData {
     chargeType = json['chargeType'] ?? 'Cash';
     medicines = json['medicines'] ?? '';
     clinicalNotes = json['clinicalNotes'] ?? '';
+    panchakarmaNotes = json['panchakarmaNotes'] ?? '';
     nextVisit = json['nextVisit'] ?? '';
     consultationFee = json['consultationFee'] ?? '500';
     medicineFee = json['medicineFee'] ?? '0';

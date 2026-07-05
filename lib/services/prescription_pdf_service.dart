@@ -115,6 +115,11 @@ class PrescriptionPdfService {
                     pw.Divider(),
                     pw.SizedBox(height: 8),
                     pw.Text(rx.notes),
+                    pw.SizedBox(height: 16),
+                    pw.Text('Panchakarma Notes', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.Divider(),
+                    pw.SizedBox(height: 8),
+                    pw.Text(rx.panchakarmaNotes.isNotEmpty ? rx.panchakarmaNotes : 'None'),
                     pw.SizedBox(height: 24),
                     
                     pw.Text('Next Visit: ${rx.nextVisit}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),

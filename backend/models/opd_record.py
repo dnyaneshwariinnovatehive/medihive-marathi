@@ -39,9 +39,9 @@ class OPDRecord:
             INSERT INTO opd_records (id, patient_id, type, symptoms, diagnosis, medicines,
                 visit_date, clinical_notes, consultation_fee, medicine_fee, discount,
                 payment_mode, charge_type, previous_visit_date, follow_up_reason,
-                next_visit, blood_group, image_links, created_at, updated_at,
+                next_visit, blood_group, image_links, panchakarma_notes, created_at, updated_at,
                 is_synced, user_id, clinic_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
         """, (
             data['id'], data['patient_id'], data.get('type', 'consultation'),
             data.get('symptoms', ''), data.get('diagnosis', ''),
@@ -52,6 +52,7 @@ class OPDRecord:
             data.get('previous_visit_date', ''), data.get('follow_up_reason', ''),
             data.get('next_visit', ''), data.get('blood_group', ''),
             data.get('image_links', ''),
+            data.get('panchakarma_notes', ''),
             now, now,
             data.get('user_id', ''),
             data.get('clinic_id', '')
@@ -67,7 +68,8 @@ class OPDRecord:
                    'clinical_notes', 'consultation_fee', 'medicine_fee', 'discount',
                    'payment_mode', 'charge_type', 'previous_visit_date',
                    'follow_up_reason', 'next_visit', 'blood_group',
-                   'image_links', 'user_id', 'clinic_id')
+                   'image_links', 'user_id', 'clinic_id',
+                   'panchakarma_notes')
         fields = []
         values = []
         for k in allowed:

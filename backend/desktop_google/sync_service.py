@@ -221,8 +221,59 @@ def _process_opd_update_queue(session):
                     _upload_images(session, opd_visit, images)
             # ─────────────────────────────────────────────────────
 
+            # ── Build row_data from OPDVisit + Patient ──────────────
+            if not opd_visit:
+                logger.warning("OPD_UPDATE: opd_visit not found for %s, skipping", item.entity_id)
+                item.status = "FAILED"
+                item.last_error = "OPD visit not found"
+                item.last_attempt = datetime.utcnow()
+                session.commit()
+                continue
+
+            patient = session.get(Patient, opd_visit.patient_id)
+            if not patient:
+                logger.warning("OPD_UPDATE: patient not found for %s, skipping", item.entity_id)
+                item.status = "FAILED"
+                item.last_error = "Patient not found"
+                item.last_attempt = datetime.utcnow()
+                session.commit()
+                continue
+
+            drive_urls = [img.drive_url for img in images if img.drive_url] if images else []
+            image_links_str = "\n".join(drive_urls) if drive_urls else ""
+            row_data = {
+                "OPD ID": opd_visit.opd_id,
+                "Patient ID": f"P{patient.id:04d}",
+                "Patient Name": patient.full_name,
+                "Mobile": patient.mobile_number,
+                "Gender": patient.gender,
+                "DOB": patient.dob,
+                "Age": patient.age,
+                "Blood Group": patient.blood_group,
+                "Address": patient.address,
+                "Visit Date": opd_visit.visit_datetime,
+                "OPD Type": opd_visit.opd_type,
+                "Charge Type": opd_visit.charge_type,
+                "Diagnosis": opd_visit.diagnosis,
+                "Symptoms": opd_visit.symptoms,
+                "Clinical Notes": opd_visit.clinical_notes,
+                "Panchakarma Notes": opd_visit.panchakarma_notes,
+                "Medicines": opd_visit.medicines,
+                "Consultation Fee": opd_visit.consultation_fee,
+                "Medicine Fee": opd_visit.medicine_fee,
+                "Panchakarma Fee": opd_visit.panchakarma_fee,
+                "Total Fee": opd_visit.total_fee,
+                "Discount Type": opd_visit.discount_type,
+                "Discount Value": opd_visit.discount_value,
+                "Payment Mode": opd_visit.payment_mode,
+                "Next Visit Date": opd_visit.next_visit_date,
+                "Follow-up Status": opd_visit.followup_status,
+                "Image Links": image_links_str,
+            }
+            # ─────────────────────────────────────────────────────
+
             # ── Update sheet row with latest data + drive links ──
-            update_opd_row_in_sheet(item.entity_id)
+            update_opd_row_in_sheet(item.entity_id, row_data)
 
             item.status = "SYNCED"
             item.last_attempt = datetime.utcnow()

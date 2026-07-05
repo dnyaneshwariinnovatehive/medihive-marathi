@@ -508,6 +508,10 @@ def upsert_opd_row_in_sheet(opd_id, row_data):
     Otherwise, append a new row at the end.
     """
     logger.info("upsert_opd_row_in_sheet called for OPD %s", opd_id)
+    if row_data:
+        pk_idx = HEADER_TO_INDEX.get("Panchakarma Notes")
+        pk_val = row_data.get("Panchakarma Notes", "NOT_FOUND")
+        logger.info("SHEET DEBUG: upsert OPD=%s Panchakarma Notes value=%r (idx=%s)", opd_id, pk_val, pk_idx)
 
     client = _get_client()
     ws = _get_opd_worksheet(client)
@@ -626,6 +630,9 @@ def update_opd_row_in_sheet(opd_id, row_data):
     Logs warning if OPD ID is not found in the sheet.
     """
     logger.info("update_opd_row_in_sheet called for OPD %s", opd_id)
+    if row_data:
+        pk_val = row_data.get("Panchakarma Notes", "NOT_FOUND")
+        logger.info("SHEET DEBUG: update OPD=%s Panchakarma Notes value=%r", opd_id, pk_val)
 
     client = _get_client()
     ws = _get_opd_worksheet(client)

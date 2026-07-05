@@ -19,6 +19,7 @@ class Prescription {
   final String diagnosis;
   final List<Medicine> medicines;
   final String notes;
+  final String panchakarmaNotes;
   final String nextVisit;
   final String doctorName;
   final String clinicName;
@@ -36,6 +37,7 @@ class Prescription {
     required this.diagnosis,
     required this.medicines,
     required this.notes,
+    this.panchakarmaNotes = '',
     required this.nextVisit,
     required this.doctorName,
     required this.clinicName,

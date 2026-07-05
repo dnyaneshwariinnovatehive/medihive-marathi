@@ -171,6 +171,7 @@ def init_db():
                 next_visit          TEXT DEFAULT '',
                 blood_group         TEXT DEFAULT '',
                 image_links         TEXT DEFAULT '',
+                panchakarma_notes   TEXT DEFAULT '',
                 created_at          TEXT NOT NULL,
                 updated_at          TEXT NOT NULL,
                 is_synced           INTEGER DEFAULT 0,
@@ -178,6 +179,11 @@ def init_db():
                 clinic_id           TEXT DEFAULT ''
             );
         """)
+        # Add panchakarma_notes column for existing databases (safe if already exists)
+        try:
+            db.execute("ALTER TABLE opd_records ADD COLUMN panchakarma_notes TEXT DEFAULT ''")
+        except Exception:
+            pass
         db.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id          TEXT PRIMARY KEY,
