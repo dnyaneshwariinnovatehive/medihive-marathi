@@ -609,8 +609,25 @@ class OpdProvider extends ChangeNotifier {
           if (originalVisitDt.isNotEmpty) {
             recordMap['visit_datetime'] = originalVisitDt;
           }
+          print('OPD EDIT LOADED existing: id=$existingRecordId sqliteId=$sqliteId '
+              'diagnosis=${recordMap['diagnosis']} '
+              'symptoms=${recordMap['symptoms']} '
+              'clinical_notes=${recordMap['clinical_notes']} '
+              'panchakarma_notes=${recordMap['panchakarma_notes']} '
+              'consultation_fee=${recordMap['consultation_fee']} '
+              'medicine_fee=${recordMap['medicine_fee']} '
+              'panchakarma_fee=${recordMap['panchakarma_fee']} '
+              'discount_type=${recordMap['discount_type']} '
+              'discount_value=${recordMap['discount_value']} '
+              'payment_mode=${recordMap['payment_mode']} '
+              'followup_status=${recordMap['followup_status']} '
+              'next_visit_date=${recordMap['next_visit_date']} '
+              'medicines=${recordMap['medicines']?.toString().substring(0, 100)}');
+        } else {
+          print('OPD EDIT WARNING: existing record NOT FOUND for id=$existingRecordId');
         }
         await _opdRepo.update(sqliteId, recordMap);
+        print('OPD EDIT UPDATED SQLITE: id=$existingRecordId sqliteId=$sqliteId');
         print('CALLING _addSyncQueueEntry for existing opd_visit id=$existingRecordId');
         await _addSyncQueueEntry('opd_visit', existingRecordId);
         CloudSyncManager().notifyChange(

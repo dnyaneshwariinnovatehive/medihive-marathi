@@ -12,7 +12,6 @@ from desktop_google.drive_service import upload_images_to_drive, check_existing_
 from config import GOOGLE_SHEET_ID
 from desktop_google.sheets_service import (
     upsert_opd_row_in_sheet,
-    update_opd_row_in_sheet,
     clear_opd_sheet_data,
 )
 from services.log_service import get_logger
@@ -26,13 +25,21 @@ sync_bp = Blueprint('sync', __name__)
 def _sync_opd_to_sheets(opd, image_links=None):
     """
     Append/upsert (Stage 1) or update (Stage 2) OPD row in Google Sheets.
+    Always uses upsert_opd_row_in_sheet which handles both insert and update.
     Raises RuntimeError if the sheet is not accessible — no new sheet is created.
     """
-    patient = Patient.get(opd.get('patient_id'))
+    opd_id = opd.get('id', 'UNKNOWN')
+    patient_id = opd.get('patient_id', 'UNKNOWN')
+    logger.info(
+        "SHEET SYNC START: OPD=%s patient_id=%s has_images=%s",
+        opd_id, patient_id, bool(image_links),
+    )
+
+    patient = Patient.get(patient_id)
     if not patient:
         logger.warning(
-            "Patient %s not found, creating placeholder for sheet sync for OPD %s",
-            opd.get('patient_id'), opd['id'],
+            "Patient %s not found in PostgreSQL, creating placeholder for sheet sync for OPD %s",
+            patient_id, opd_id,
         )
         now = datetime.utcnow().isoformat()
         db = get_db()
@@ -42,20 +49,54 @@ def _sync_opd_to_sheets(opd, image_links=None):
             VALUES (%s, %s, %s, %s, %s, %s, 0)
             ON CONFLICT DO NOTHING
         """, (
-            opd.get('patient_id'), 'Unknown (Auto-created)',
+            patient_id, 'Unknown (Auto-created)',
             '', 'Not Specified', now, now,
         ))
         db.commit()
         db.close()
-        patient = Patient.get(opd.get('patient_id'))
+        patient = Patient.get(patient_id)
         if not patient:
-            logger.error("Could not create placeholder patient %s", opd.get('patient_id'))
-            return
+            logger.error(
+                "Could not create placeholder patient %s for OPD %s — building row with fallback",
+                patient_id, opd_id,
+            )
+            patient = {
+                'id': patient_id,
+                'name': 'Unknown',
+                'mobile': '',
+                'gender': 'Not Specified',
+                'dob': '',
+                'age': 0,
+                'blood_group': '',
+                'address': '',
+            }
+
     row_data = build_sheet_row_data(opd, patient, image_links or [])
-    if image_links:
-        update_opd_row_in_sheet(opd['id'], row_data)
-    else:
-        upsert_opd_row_in_sheet(opd['id'], row_data)
+    logger.info(
+        "SHEET SYNC DATA: OPD=%s diagnosis=%r symptoms=%r clinical_notes=%r panchakarma_notes=%r "
+        "consultation_fee=%s medicine_fee=%s panchakarma_fee=%s total_fee=%s "
+        "discount_type=%s discount_value=%s payment_mode=%s follow_up_status=%s next_visit=%s",
+        opd_id,
+        row_data.get('Diagnosis', ''),
+        row_data.get('Symptoms', ''),
+        row_data.get('Clinical Notes', ''),
+        row_data.get('Panchakarma Notes', ''),
+        row_data.get('Consultation Fee', ''),
+        row_data.get('Medicine Fee', ''),
+        row_data.get('Panchakarma Fee', ''),
+        row_data.get('Total Fee', ''),
+        row_data.get('Discount Type', ''),
+        row_data.get('Discount Value', ''),
+        row_data.get('Payment Mode', ''),
+        row_data.get('Follow-up Status', ''),
+        row_data.get('Next Visit Date', ''),
+    )
+
+    # Always use upsert_opd_row_in_sheet — it handles both insert and update
+    # by searching column A for the OPD ID. This is more robust than switching
+    # between upsert/update based on image_links.
+    upsert_opd_row_in_sheet(opd_id, row_data)
+    logger.info("SHEET SYNC END: OPD=%s — upsert_opd_row_in_sheet called", opd_id)
 
 
 @sync_bp.route('/pull', methods=['POST'])
@@ -135,26 +176,44 @@ def push():
         patient = Patient.upsert(p)
         results['patients'].append(patient)
 
+    # Collect the set of OPD IDs being edited in this push batch
+    # so the patient re-sync loop skips them — they will be synced
+    # with fresh data in the OPD upsert loop below.
+    edited_opd_ids = {r.get('id') for r in data.get('opd_records', []) if r.get('id')}
+
     # Re-sync all existing OPD records for this patient so that
     # patient columns (name, mobile, blood group, address, etc.)
     # are updated in Google Sheets immediately.
+    # SKIP OPDs that are in the current push batch (they will be
+    # synced with fresh data in the OPD upsert loop below).
     re_synced_opds = 0
+    skipped_edited = 0
     for p in data.get('patients', []):
         pat_id = p.get('id', '')
         if pat_id and not pat_id.startswith('TEMP_'):
             for opd in OPDRecord.all(patient_id=pat_id):
+                opd_id = opd.get('id', '')
+                if opd_id in edited_opd_ids:
+                    logger.info(
+                        "Skipping patient re-sync for OPD %s — "
+                        "will be synced with fresh data in OPD upsert loop",
+                        opd_id,
+                    )
+                    skipped_edited += 1
+                    continue
                 try:
                     _sync_opd_to_sheets(opd)
                     re_synced_opds += 1
                 except Exception as e:
                     logger.warning(
                         "Patient-edit re-sync failed for OPD %s: %s",
-                        opd['id'], e,
+                        opd_id, e,
                     )
-    if re_synced_opds:
+    if re_synced_opds or skipped_edited:
         logger.info(
-            "Re-synced %d OPD records to sheets after patient edits",
-            re_synced_opds,
+            "Re-synced %d OPD records to sheets after patient edits "
+            "(skipped %d edited OPDs that will sync below)",
+            re_synced_opds, skipped_edited,
         )
 
     sheet_errors = []
@@ -163,22 +222,38 @@ def push():
         pat_id = r.get('patient_id', '')
         if pat_id in temp_id_map:
             r['patient_id'] = temp_id_map[pat_id]
+        opd_id = r.get('id', 'UNKNOWN')
         pk = r.get('panchakarma_notes', '')
         panchakarma_fee = r.get('panchakarma_fee', '')
         total_fee = r.get('total_fee', '')
         discount_type = r.get('discount_type', '')
-        logger.info("PUSH DEBUG: OPD id=%s panchakarma_notes=%r panchakarma_fee=%s total_fee=%s discount_type=%s",
-                     r.get('id'), pk, panchakarma_fee, total_fee, discount_type)
+        discount = r.get('discount', '')
+        logger.info(
+            "OPD UPSERT+SYNC: id=%s patient_id=%s "
+            "diagnosis=%r symptoms=%r clinical_notes=%r panchakarma_notes=%r "
+            "consultation_fee=%s medicine_fee=%s panchakarma_fee=%s total_fee=%s "
+            "discount=%s discount_type=%s payment_mode=%s charge_type=%s "
+            "follow_up_reason=%s next_visit=%s visit_date=%s medicines=%s",
+            opd_id, pat_id,
+            r.get('diagnosis', ''), r.get('symptoms', ''),
+            r.get('clinical_notes', ''), pk,
+            r.get('consultation_fee', ''), r.get('medicine_fee', ''),
+            panchakarma_fee, total_fee,
+            discount, discount_type,
+            r.get('payment_mode', ''), r.get('charge_type', ''),
+            r.get('follow_up_reason', ''), r.get('next_visit', ''),
+            r.get('visit_date', ''), r.get('medicines', ''),
+        )
         result = OPDRecord.upsert(r)
         results['opd_records'].append(result)
         try:
             _sync_opd_to_sheets(r)
         except RuntimeError as e:
-            msg = f"Sheet not updated for OPD {r.get('id')}: {e}"
+            msg = f"Sheet not updated for OPD {opd_id}: {e}"
             logger.error(msg)
             sheet_errors.append(msg)
         except Exception as e:
-            msg = f"Sheet sync failed for OPD {r.get('id')}: {e}"
+            msg = f"Sheet sync failed for OPD {opd_id}: {e}"
             logger.error(msg)
             sheet_errors.append(msg)
 

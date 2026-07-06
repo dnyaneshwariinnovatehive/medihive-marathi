@@ -425,6 +425,18 @@ class SyncManager extends ChangeNotifier {
     } catch (_) {}
 
     debugPrint('SYNC pushPatients=${pushPatients.length} pushOpd=${pushOpd.length} pushAppts=${pushAppts.length} pendingEntries=${pendingEntries.length}');
+    if (pushOpd.isNotEmpty) {
+      for (final opd in pushOpd) {
+        debugPrint('SYNC PUSH OPD: id=${opd['id']} patient_id=${opd['patient_id']} '
+            'diagnosis=${opd['diagnosis']} symptoms=${opd['symptoms']} '
+            'clinical_notes=${opd['clinical_notes']} panchakarma_notes=${opd['panchakarma_notes']} '
+            'consultation_fee=${opd['consultation_fee']} medicine_fee=${opd['medicine_fee']} '
+            'panchakarma_fee=${opd['panchakarma_fee']} total_fee=${opd['total_fee']} '
+            'discount=${opd['discount']} discount_type=${opd['discount_type']} '
+            'payment_mode=${opd['payment_mode']} follow_up_reason=${opd['follow_up_reason']} '
+            'next_visit=${opd['next_visit']} visit_date=${opd['visit_date']}');
+      }
+    }
     if (pushPatients.isNotEmpty || pushOpd.isNotEmpty || pushAppts.isNotEmpty) {
       try {
         debugPrint('SYNC CALLING API SYNC PUSH');

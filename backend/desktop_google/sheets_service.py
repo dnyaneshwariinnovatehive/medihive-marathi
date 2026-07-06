@@ -507,17 +507,41 @@ def upsert_opd_row_in_sheet(opd_id, row_data):
     If OPD ID exists in column A, update that row.
     Otherwise, append a new row at the end.
     """
-    logger.info("upsert_opd_row_in_sheet called for OPD %s", opd_id)
+    logger.info("=== SHEET UPSERT START === OPD=%s", opd_id)
+
+    # Log all fields being written
     if row_data:
-        pk_idx = HEADER_TO_INDEX.get("Panchakarma Notes")
-        pk_val = row_data.get("Panchakarma Notes", "NOT_FOUND")
-        logger.info("SHEET DEBUG: upsert OPD=%s Panchakarma Notes value=%r (idx=%s)", opd_id, pk_val, pk_idx)
+        log_fields = [
+            'OPD ID', 'Patient ID', 'Patient Name', 'Mobile',
+            'Visit Date', 'OPD Type', 'Charge Type',
+            'Diagnosis', 'Symptoms', 'Clinical Notes', 'Panchakarma Notes',
+            'Medicines', 'Consultation Fee', 'Medicine Fee',
+            'Panchakarma Fee', 'Total Fee', 'Discount Type',
+            'Discount Value', 'Payment Mode', 'Next Visit Date',
+            'Follow-up Status',
+        ]
+        for f in log_fields:
+            val = row_data.get(f, '')
+            if val:
+                logger.info(
+                    "SHEET FIELD: OPD=%s %s=%r",
+                    opd_id, f, str(val)[:200],
+                )
 
     client = _get_client()
     ws = _get_opd_worksheet(client)
 
     row = _build_row(row_data)
+    logger.info(
+        "SHEET BUILT_ROW: OPD=%s row=%s",
+        opd_id, row,
+    )
+
     col_a = ws.col_values(1)
+    logger.info(
+        "SHEET COL_A: OPD=%s column_A_has_rows=%d header=%r",
+        opd_id, len(col_a), col_a[0] if col_a else '(empty)',
+    )
 
     for i, existing_id in enumerate(col_a):
         if i == 0:
@@ -525,17 +549,34 @@ def upsert_opd_row_in_sheet(opd_id, row_data):
         if existing_id == opd_id:
             sheet_row = i + 1
             end_col = _col_letter(len(HEADERS) - 1)
+            logger.info(
+                "SHEET MATCH FOUND: OPD=%s at sheet_row=%d (0-based index=%d) "
+                "existing_id=%r == opd_id=%r — UPDATING row",
+                opd_id, sheet_row, i, existing_id, opd_id,
+            )
             ws.update(
                 range_name=f"A{sheet_row}:{end_col}{sheet_row}",
                 values=[row]
             )
-            logger.info("Updated existing row %d for OPD %s", sheet_row, opd_id)
+            logger.info(
+                "=== SHEET UPSERT END (UPDATE) === OPD=%s row=%d",
+                opd_id, sheet_row,
+            )
             return
 
+    # If we get here, no match was found — append new row
     next_row = max(len(col_a) + 1, 2)
     end_col = _col_letter(len(HEADERS) - 1)
+    logger.info(
+        "SHEET NO MATCH: OPD=%s not found in column A (searched %d rows) — "
+        "APPENDING new row at row=%d",
+        opd_id, len(col_a) - 1, next_row,
+    )
     ws.update(range_name=f"A{next_row}:{end_col}{next_row}", values=[row])
-    logger.info("Appended new row at %d for OPD %s", next_row, opd_id)
+    logger.info(
+        "=== SHEET UPSERT END (APPEND) === OPD=%s row=%d",
+        opd_id, next_row,
+    )
 
 
 # ─────────────────────────────────────────────
@@ -629,7 +670,7 @@ def update_opd_row_in_sheet(opd_id, row_data):
     Finds row by OPD ID (column A) and updates its values.
     Logs warning if OPD ID is not found in the sheet.
     """
-    logger.info("update_opd_row_in_sheet called for OPD %s", opd_id)
+    logger.info("=== SHEET UPDATE START === OPD=%s", opd_id)
     if row_data:
         pk_val = row_data.get("Panchakarma Notes", "NOT_FOUND")
         logger.info("SHEET DEBUG: update OPD=%s Panchakarma Notes value=%r", opd_id, pk_val)
@@ -639,6 +680,10 @@ def update_opd_row_in_sheet(opd_id, row_data):
 
     row = _build_row(row_data)
     records = ws.get_all_values()
+    logger.info(
+        "SHEET UPDATE SCAN: OPD=%s sheet_has_rows=%d header=%r",
+        opd_id, len(records), records[0] if records else '(empty)',
+    )
 
     for i, existing_row in enumerate(records):
         if i == 0:
@@ -646,11 +691,21 @@ def update_opd_row_in_sheet(opd_id, row_data):
         if existing_row and existing_row[0] == opd_id:
             sheet_row = i + 1
             end_col = _col_letter(len(HEADERS) - 1)
+            logger.info(
+                "SHEET UPDATE MATCH: OPD=%s at sheet_row=%d — UPDATING row",
+                opd_id, sheet_row,
+            )
             ws.update(
                 range_name=f"A{sheet_row}:{end_col}{sheet_row}",
                 values=[row]
             )
-            logger.info("Updated row %d for OPD %s", sheet_row, opd_id)
+            logger.info(
+                "=== SHEET UPDATE END === OPD=%s row=%d",
+                opd_id, sheet_row,
+            )
             return
 
-    logger.warning("OPD %s not found in sheet, cannot update", opd_id)
+    logger.warning(
+        "SHEET UPDATE FAILED: OPD=%s not found in sheet after scanning %d data rows — cannot update",
+        opd_id, len(records) - 1,
+    )
