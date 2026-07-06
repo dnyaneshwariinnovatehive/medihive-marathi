@@ -335,6 +335,7 @@ final _router = GoRouter(
                   path: 'edit/:patientId',
                   builder: (context, state) => OpdRegistrationScreen(
                     editPatientId: state.pathParameters['patientId'] ?? '',
+                    editOpdId: state.uri.queryParameters['opdId'],
                   ),
                 ),
               ],

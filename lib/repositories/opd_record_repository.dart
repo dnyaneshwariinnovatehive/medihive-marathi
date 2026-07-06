@@ -34,10 +34,12 @@ class OpdRecordRepository {
 
   Future<int> update(int id, Map<String, dynamic> row) async {
     final db = await _db;
-    return db.update(tableOpdVisits, {
+    final affected = await db.update(tableOpdVisits, {
       ...row,
       'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
     }, where: 'id = ?', whereArgs: [id]);
+    print('OPD REPO UPDATE: id=$id affectedRows=$affected opd_id=${row['opd_id']} sql=${tableOpdVisits}');
+    return affected;
   }
 
   Future<int> delete(int id) async {

@@ -24,12 +24,14 @@ import '../../utils/medical_data.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../repositories/opd_record_repository.dart';
+import '../../repositories/patient_repository.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class OpdRegistrationScreen extends StatefulWidget {
   final String? editPatientId;
-  const OpdRegistrationScreen({super.key, this.editPatientId});
+  final String? editOpdId;
+  const OpdRegistrationScreen({super.key, this.editPatientId, this.editOpdId});
 
   @override
   State<OpdRegistrationScreen> createState() => _OpdRegistrationScreenState();
@@ -362,22 +364,48 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                   opd.formData.name;
                               // Find existing record ID if editing
                               String? existingId;
-                              if (widget.editPatientId != null) {
-                                final sqliteId = int.tryParse(
-                                  widget.editPatientId!.replaceAll(
-                                    RegExp(r'[^0-9]'), '',
-                                  ),
-                                ) ?? 0;
-                                if (sqliteId != 0) {
+                              print('OPD SAVE: editPatientId="${widget.editPatientId}" editOpdId="${widget.editOpdId}"');
+                              if (widget.editOpdId != null &&
+                                  widget.editOpdId!.isNotEmpty) {
+                                existingId = widget.editOpdId;
+                                print('OPD SAVE: using direct editOpdId=$existingId');
+                              } else if (widget.editPatientId != null &&
+                                  widget.editPatientId!.isNotEmpty) {
+                                final patientSyncId = widget.editPatientId!;
+                                final patientRepo = PatientRepository();
+                                final patient =
+                                    await patientRepo.getBySyncId(patientSyncId);
+                                if (patient != null) {
+                                  final sqlitePatientId = patient['id'] as int;
                                   final opdRepo = OpdRecordRepository();
                                   final records = await opdRepo
-                                      .getByPatientId(sqliteId);
+                                      .getByPatientId(sqlitePatientId);
+                                  print('OPD SAVE: patientRecords=${records.length}');
                                   if (records.isNotEmpty) {
-                                    existingId = records.first['opd_id']
-                                        ?.toString();
+                                    final firstOpdId =
+                                        records.first['opd_id']?.toString();
+                                    print(
+                                        'OPD SAVE: firstRecord opd_id=$firstOpdId');
+                                    if (firstOpdId != null &&
+                                        firstOpdId.isNotEmpty) {
+                                      existingId = firstOpdId;
+                                    } else {
+                                      print(
+                                          'OPD SAVE WARNING: first record has null/empty opd_id');
+                                    }
+                                  } else {
+                                    print(
+                                        'OPD SAVE WARNING: no OPD records found for patient sqlitePatientId=$sqlitePatientId');
                                   }
+                                } else {
+                                  print(
+                                      'OPD SAVE WARNING: patient not found by syncId=$patientSyncId');
                                 }
+                              } else {
+                                print(
+                                    'OPD SAVE: editPatientId is null/empty — will CREATE new OPD');
                               }
+                              print('OPD SAVE: existingId=$existingId');
                               final success = await opd.submitRecord(
                                 dashboardProvider: context
                                     .read<DashboardProvider>(),

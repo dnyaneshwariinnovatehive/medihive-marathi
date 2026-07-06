@@ -53,6 +53,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   List<VisitRecord> _visits = [];
   List<Map<String, dynamic>> _opdRows = [];
   bool _loaded = false;
+  int _loadVersion = 0;
 
   @override
   void initState() {
@@ -60,7 +61,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool force = false}) async {
+    if (_loaded && !force) return;
+    _loadVersion++;
     final patientRepo = PatientRepository();
     var patientRow = await patientRepo.getBySyncId(widget.patientId);
     patientRow ??= await _getPatientByLocalId(patientRepo);
@@ -408,11 +411,26 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                               ),
                               SizedBox(height: 16),
                               ...visits.asMap().entries.map(
-                                (e) => VisitTimelineItem(
-                                  visit: e.value,
-                                  isLast: e.key == visits.length - 1,
-                                  onDelete: () => _confirmDeleteOpd(e.key),
-                                ),
+                                (e) {
+                                  final opdId = e.key < _opdRows.length
+                                      ? _opdRows[e.key]['opd_id']?.toString() ?? ''
+                                      : '';
+                                  return VisitTimelineItem(
+                                    visit: e.value,
+                                    isLast: e.key == visits.length - 1,
+                                    onDelete: () => _confirmDeleteOpd(e.key),
+                                    onEdit: opdId.isNotEmpty
+                                        ? () async {
+                                            await context.push(
+                                              '/app/opd/edit/${widget.patientId}?opdId=$opdId',
+                                            );
+                                            if (mounted) {
+                                              _loadData(force: true);
+                                            }
+                                          }
+                                        : null,
+                                  );
+                                },
                               ),
                             ],
                           ),

@@ -230,7 +230,7 @@ class PatientProvider extends ChangeNotifier {
     if (formData.patientId.isNotEmpty) {
       final existing = await _repo.getBySyncId(formData.patientId);
       if (existing != null) {
-        await _repo.update(existing['id'] as int, {
+        final updateData = <String, dynamic>{
           'full_name': formData.name.isNotEmpty ? formData.name : existing['full_name'],
           'mobile_number': formData.mobile.isNotEmpty ? formData.mobile : existing['mobile_number'],
           'gender': formData.gender.isNotEmpty ? formData.gender : existing['gender'],
@@ -238,7 +238,14 @@ class PatientProvider extends ChangeNotifier {
           'age': ageFromDob > 0 ? ageFromDob : existing['age'],
           'blood_group': formData.bloodGroup.isNotEmpty ? formData.bloodGroup : existing['blood_group'],
           'address': formData.address.isNotEmpty ? formData.address : existing['address'],
-        });
+        };
+        print('PATIENT ADD: updating patient id=${existing['id']} syncId=${formData.patientId}');
+        print('PATIENT ADD: name="${updateData['full_name']}" gender="${updateData['gender']}" mobile="${updateData['mobile_number']}"');
+        final affected = await _repo.update(existing['id'] as int, updateData);
+        print('PATIENT ADD: update affectedRows=$affected');
+        if (affected == 0) {
+          print('PATIENT ADD CRITICAL: UPDATE affected 0 rows!');
+        }
         await _addSyncQueueEntry('patient', formData.patientId);
         CloudSyncManager().notifyChange(
           tableName: 'patients',
@@ -246,8 +253,13 @@ class PatientProvider extends ChangeNotifier {
           recordId: formData.patientId,
         );
         await loadPatients();
+        print('PATIENT ADD: loadPatients() completed');
         return;
+      } else {
+        print('PATIENT ADD: existing patient NOT FOUND for syncId=${formData.patientId}');
       }
+    } else {
+      print('PATIENT ADD: formData.patientId is empty — will create new patient');
     }
 
     final nextId = await generateNextPatientId();

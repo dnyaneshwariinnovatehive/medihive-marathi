@@ -47,10 +47,12 @@ class PatientRepository {
 
   Future<int> update(int id, Map<String, dynamic> row) async {
     final db = await _db;
-    return db.update(tablePatients, {
+    final affected = await db.update(tablePatients, {
       ...row,
       'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
     }, where: 'id = ?', whereArgs: [id]);
+    print('PATIENT REPO UPDATE: id=$id affectedRows=$affected');
+    return affected;
   }
 
   Future<int> updateSyncId(String oldSyncId, String newSyncId) async {

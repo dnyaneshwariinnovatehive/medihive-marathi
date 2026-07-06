@@ -548,7 +548,15 @@ class OpdProvider extends ChangeNotifier {
 
       // 1. Save OPD Record (update if editing, insert if new)
       final opdId = existingRecordId ?? 'R${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999).toString().padLeft(3, '0')}';
-      print('OPD CREATED id=$opdId');
+      print('=== OPD SUBMIT ===');
+      print('OPD SUBMIT: existingRecordId=$existingRecordId');
+      print('OPD SUBMIT: opdId=$opdId');
+      print('OPD SUBMIT: formData.patientId=$patientId');
+      print('OPD SUBMIT: formData.gender="${_formData.gender}"');
+      print('OPD SUBMIT: formData.diagnosis="${_formData.diagnosis}"');
+      print('OPD SUBMIT: formData.symptoms="${_formData.symptoms}"');
+      print('OPD SUBMIT: formData.clinicalNotes="${_formData.clinicalNotes}"');
+      print('OPD SUBMIT: formData.panchakarmaNotes="${_formData.panchakarmaNotes}"');
       print('OPD DEBUG: panchakarmaNotes="${_formData.panchakarmaNotes}"');
 
       int sqlitePatientId;
@@ -558,21 +566,27 @@ class OpdProvider extends ChangeNotifier {
       } catch (_) {
         sqlitePatientId = _toSqliteId(patientId);
       }
+      print('OPD SUBMIT: sqlitePatientId=$sqlitePatientId');
+
       DateTime preservedCreatedAt;
       int sqliteId;
 
       if (existingRecordId != null) {
+        print('OPD SUBMIT: EDIT PATH — finding existing record by opd_id=$existingRecordId');
         final existing = await _opdRepo.getByOpdId(existingRecordId);
         if (existing != null) {
           sqliteId = existing['id'] as int;
           preservedCreatedAt = DateTime.tryParse(existing['created_at']?.toString() ?? '') ?? DateTime.now();
+          print('OPD SUBMIT: EDIT PATH — found existing record sqliteId=$sqliteId preservedCreatedAt=$preservedCreatedAt');
         } else {
           sqliteId = DateTime.now().microsecondsSinceEpoch;
           preservedCreatedAt = DateTime.now();
+          print('OPD SUBMIT: EDIT PATH — getByOpdId returned NULL! Using new sqliteId=$sqliteId. THIS WILL CAUSE UPDATE TO AFFECT 0 ROWS!');
         }
       } else {
         sqliteId = DateTime.now().microsecondsSinceEpoch;
         preservedCreatedAt = DateTime.now();
+        print('OPD SUBMIT: INSERT PATH — no existingRecordId, new sqliteId=$sqliteId');
       }
 
       final nowStr = DateTime.now().toIso8601String();
@@ -626,8 +640,15 @@ class OpdProvider extends ChangeNotifier {
         } else {
           print('OPD EDIT WARNING: existing record NOT FOUND for id=$existingRecordId');
         }
-        await _opdRepo.update(sqliteId, recordMap);
-        print('OPD EDIT UPDATED SQLITE: id=$existingRecordId sqliteId=$sqliteId');
+        final affected = await _opdRepo.update(sqliteId, recordMap);
+        print('OPD EDIT UPDATE: opdId=$existingRecordId sqliteId=$sqliteId affectedRows=$affected');
+        if (affected == 0) {
+          print('OPD EDIT CRITICAL: UPDATE affected 0 rows! Falling back to INSERT.');
+          await _opdRepo.insert({
+            ...recordMap,
+            'id': DateTime.now().microsecondsSinceEpoch,
+          });
+        }
         print('CALLING _addSyncQueueEntry for existing opd_visit id=$existingRecordId');
         await _addSyncQueueEntry('opd_visit', existingRecordId);
         CloudSyncManager().notifyChange(
@@ -640,7 +661,8 @@ class OpdProvider extends ChangeNotifier {
           SyncManager().forceSyncNow();
         });
       } else {
-        await _opdRepo.insert(recordMap);
+        final insertedId = await _opdRepo.insert(recordMap);
+        print('OPD INSERT: opdId=$opdId sqliteId=$sqliteId insertedId=$insertedId');
         print('CALLING _addSyncQueueEntry for new opd_visit id=$opdId');
         await _addSyncQueueEntry('opd_visit', opdId);
         CloudSyncManager().notifyChange(
