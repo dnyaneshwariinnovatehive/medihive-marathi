@@ -373,17 +373,18 @@ class CloudSyncManager extends ChangeNotifier {
   /// Download remote changes and apply them locally.
   Future<void> _downloadChanges() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastSync = prefs.getString('last_cloud_sync') ?? '';
+    final String lastSync;
 
-    // On first ever sync (fresh install), skip download to avoid
-    // populating a new device with all remote cloud data. Only upload
-    // local changes should happen. Subsequent syncs will download
-    // incrementally using the stored lastSync timestamp.
-    if (lastSync.isEmpty) {
-      debugPrint('CLOUD DOWNLOAD: first sync — skipping download to keep fresh install clean');
-      final now = DateTime.now().toUtc().toIso8601String();
-      await prefs.setString('last_cloud_sync', now);
-      return;
+    // On first ever sync (fresh install), use epoch timestamp so ALL
+    // existing clinic data is downloaded. Do NOT skip — the cloud is the
+    // source of truth and a fresh install must see all records from other
+    // devices in the same clinic.
+    final rawLastSync = prefs.getString('last_cloud_sync') ?? '';
+    if (rawLastSync.isEmpty) {
+      lastSync = '2000-01-01T00:00:00';
+      debugPrint('CLOUD DOWNLOAD: first sync — using epoch default to download all existing clinic data');
+    } else {
+      lastSync = rawLastSync;
     }
 
     debugPrint('CLOUD DEVICE DEBUG: download clinic_id=$_clinicId device_id=$_deviceId last_sync=$lastSync');
