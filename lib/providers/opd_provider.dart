@@ -195,7 +195,7 @@ class OpdProvider extends ChangeNotifier {
     prescribedMedicines = medicines;
   }
 
-  Future<void> loadPatientForEdit(String patientId) async {
+  Future<void> loadPatientForEdit(String patientId, {String? opdId}) async {
     reset();
     hasDraft = false;
 
@@ -213,29 +213,37 @@ class OpdProvider extends ChangeNotifier {
       updateField('address', patient['address']?.toString() ?? '');
       updateField('bloodGroup', patient['blood_group']?.toString() ?? 'O+');
 
-      final records = await _opdRepo.getByPatientId(sqliteId);
-      if (records.isNotEmpty) {
-        final latest = records.first;
-        updateField('diagnosis', latest['diagnosis']?.toString() ?? '');
-        updateField('symptoms', latest['symptoms']?.toString() ?? '');
-        updateField('medicines', latest['medicines']?.toString() ?? '');
-        updateField('clinicalNotes', latest['clinical_notes']?.toString() ?? '');
-        updateField('panchakarmaNotes', latest['panchakarma_notes']?.toString() ?? '');
+      Map<String, dynamic>? record;
+      if (opdId != null && opdId.isNotEmpty) {
+        record = await _opdRepo.getByOpdId(opdId);
+      }
+      if (record == null) {
+        final records = await _opdRepo.getByPatientId(sqliteId);
+        if (records.isNotEmpty) {
+          record = records.first;
+        }
+      }
+      if (record != null) {
+        updateField('diagnosis', record['diagnosis']?.toString() ?? '');
+        updateField('symptoms', record['symptoms']?.toString() ?? '');
+        updateField('medicines', record['medicines']?.toString() ?? '');
+        updateField('clinicalNotes', record['clinical_notes']?.toString() ?? '');
+        updateField('panchakarmaNotes', record['panchakarma_notes']?.toString() ?? '');
         updateField(
           'opdType',
-          latest['opd_type']?.toString() == 'follow_up' ? 'Follow-up' : 'Consultation',
+          record['opd_type']?.toString() == 'follow_up' ? 'Follow-up' : 'Consultation',
         );
-        updateField('consultationFee', latest['consultation_fee']?.toString() ?? '');
-        updateField('medicineFee', latest['medicine_fee']?.toString() ?? '');
-        updateField('discount', _readDiscountString(latest));
-        updateField('paymentMode', latest['payment_mode']?.toString() ?? '');
-        updateField('chargeType', latest['charge_type']?.toString() ?? '');
-        updateField('previousVisitDate', latest['previous_visit_date']?.toString() ?? '');
-        updateField('followUpReason', latest['followup_status']?.toString() ?? '');
-        updateField('nextVisit', latest['next_visit_date']?.toString() ?? '');
-        _visitType = latest['opd_type']?.toString() ?? 'consultation';
-        if ((latest['previous_visit_date']?.toString() ?? '').isNotEmpty) {
-          _previousVisitDate = DateTime.tryParse(latest['previous_visit_date'].toString());
+        updateField('consultationFee', record['consultation_fee']?.toString() ?? '');
+        updateField('medicineFee', record['medicine_fee']?.toString() ?? '');
+        updateField('discount', _readDiscountString(record));
+        updateField('paymentMode', record['payment_mode']?.toString() ?? '');
+        updateField('chargeType', record['charge_type']?.toString() ?? '');
+        updateField('previousVisitDate', record['previous_visit_date']?.toString() ?? '');
+        updateField('followUpReason', record['followup_status']?.toString() ?? '');
+        updateField('nextVisit', record['next_visit_date']?.toString() ?? '');
+        _visitType = record['opd_type']?.toString() ?? 'consultation';
+        if ((record['previous_visit_date']?.toString() ?? '').isNotEmpty) {
+          _previousVisitDate = DateTime.tryParse(record['previous_visit_date'].toString());
         }
       }
     } catch (_) {

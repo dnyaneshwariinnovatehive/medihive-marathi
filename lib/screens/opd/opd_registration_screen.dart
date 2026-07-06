@@ -71,7 +71,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<OpdProvider>();
       if (widget.editPatientId != null && widget.editPatientId!.isNotEmpty) {
-        p.loadPatientForEdit(widget.editPatientId!);
+        p.loadPatientForEdit(widget.editPatientId!, opdId: widget.editOpdId);
       } else {
         p.loadDraftFromHive();
       }

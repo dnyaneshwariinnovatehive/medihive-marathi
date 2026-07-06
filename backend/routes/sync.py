@@ -247,7 +247,9 @@ def push():
         result = OPDRecord.upsert(r)
         results['opd_records'].append(result)
         try:
-            _sync_opd_to_sheets(r)
+            # Pass the PostgreSQL record (result) not the raw push data (r)
+            # so image_links, panchakarma_notes, etc. are preserved
+            _sync_opd_to_sheets(result)
         except RuntimeError as e:
             msg = f"Sheet not updated for OPD {opd_id}: {e}"
             logger.error(msg)

@@ -275,78 +275,95 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 13, 16, 28),
                       child: Column(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15),
-                              ),
-                            ),
-                            child: Column(
+                            Stack(
                               children: [
-                                Row(
-                                  children: [
-                                    Hero(
-                                      tag: 'patient_avatar_${patient.id}',
-                                      child: CircleAvatar(
-                                        radius: 40,
-                                        backgroundColor: Colors.white,
-                                        child: Text(
-                                          patient.initial,
-                                          style: TextStyle(
-                                            fontSize: 32,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primary,
-                                          ),
-                                        ),
-                                      ),
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.15),
                                     ),
-                                    SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
                                         children: [
-                                          Text(
-                                            patient.name,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: -0.3,
+                                          Hero(
+                                            tag: 'patient_avatar_${patient.id}',
+                                            child: CircleAvatar(
+                                              radius: 40,
+                                              backgroundColor: Colors.white,
+                                              child: Text(
+                                                patient.initial,
+                                                style: TextStyle(
+                                                  fontSize: 32,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primary,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            '${patient.id} • ${patient.gender}',
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.8,
-                                              ),
-                                              fontSize: 13,
+                                          SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  patient.name,
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: -0.3,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  '${patient.id} • ${patient.gender}',
+                                                  style: TextStyle(
+                                                    color: Colors.white.withValues(
+                                                      alpha: 0.8,
+                                                    ),
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          _glassTile('Age', '${patient.age} years'),
+                                          SizedBox(width: 12),
+                                          _glassTile(
+                                            'Blood Group',
+                                            patient.bloodGroup,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    _glassTile('Age', '${patient.age} years'),
-                                    SizedBox(width: 12),
-                                    _glassTile(
-                                      'Blood Group',
-                                      patient.bloodGroup,
-                                    ),
-                                  ],
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit_outlined,
+                                        color: Colors.white70, size: 22),
+                                    onPressed: () async {
+                                      await context.push(
+                                          '/app/patients/${widget.patientId}/edit');
+                                      if (mounted) _loadData(force: true);
+                                    },
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
                         ],
                       ),
                     ),
