@@ -12,6 +12,7 @@ import '../repositories/sync_queue_repository.dart';
 import '../utils/sync_id_generator.dart';
 import '../services/sync_manager.dart';
 import '../services/cloud_sync_manager.dart';
+import '../utils/helpers.dart';
 import 'dashboard_provider.dart';
 import 'appointment_provider.dart';
 
@@ -24,6 +25,57 @@ class OpdProvider extends ChangeNotifier {
   final int totalSteps = 3;
   final OpdFormData _formData = OpdFormData();
   bool hasDraft = false;
+
+  List<Map<String, dynamic>> _matchedPatients = [];
+  bool _showMobileLookup = false;
+
+  List<Map<String, dynamic>> get matchedPatients => _matchedPatients;
+  bool get showMobileLookup => _showMobileLookup;
+
+  Future<void> searchPatientsByMobile(String mobile) async {
+    final normalized = Helpers.normalizePhone(mobile);
+    if (normalized.length != 10) {
+      _matchedPatients = [];
+      _showMobileLookup = false;
+      notifyListeners();
+      return;
+    }
+    final repo = PatientRepository();
+    final results = await repo.getByMobile(normalized);
+    _matchedPatients = results;
+    _showMobileLookup = results.isNotEmpty;
+    notifyListeners();
+  }
+
+  void autoFillFromPatient(Map<String, dynamic> patientRow) {
+    updateField('patientId', patientRow['sync_id']?.toString() ?? '');
+    updateField('dob', patientRow['dob']?.toString() ?? '');
+    updateField('age', patientRow['age']?.toString() ?? '');
+    updateField('gender', patientRow['gender']?.toString() ?? 'Male');
+    updateField('address', patientRow['address']?.toString() ?? '');
+    updateField('bloodGroup', patientRow['blood_group']?.toString() ?? 'O+');
+    _matchedPatients = [];
+    _showMobileLookup = false;
+    notifyListeners();
+  }
+
+  void selectNewPatientRegistration() {
+    updateField('patientId', '');
+    updateField('dob', '');
+    updateField('age', '');
+    updateField('gender', 'Male');
+    updateField('address', '');
+    updateField('bloodGroup', 'O+');
+    _matchedPatients = [];
+    _showMobileLookup = false;
+    notifyListeners();
+  }
+
+  void clearMobileLookup() {
+    _matchedPatients = [];
+    _showMobileLookup = false;
+    notifyListeners();
+  }
 
   OpdProvider() {
     loadDraftFromHive();

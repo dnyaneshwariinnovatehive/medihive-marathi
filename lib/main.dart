@@ -157,16 +157,13 @@ void main() async {
       }
     }
 
-    // First-run detection: clear stale sync timestamps that may have
-    // survived from Android auto-backup restore.
-    if (!kIsWeb && startupPrefs.getBool('app_first_run_complete') != true) {
-      debugPrint('MAIN: first run detected — clearing stale sync timestamps');
-      await startupPrefs.remove('last_cloud_sync');
-      await startupPrefs.remove('last_flask_sync');
-      await startupPrefs.remove('hive_sqlite_migration_done');
-      await startupPrefs.setBool('app_first_run_complete', true);
-      debugPrint('MAIN: first run cleanup complete');
-    }
+    // Clear stale sync timestamps on every startup. This ensures that
+    // even if Android auto-backup restored old SharedPreferences (before
+    // allowBackup=false took effect), the next cloud sync will download
+    // from epoch and overwrite any restored local data via last-write-wins.
+    await startupPrefs.remove('last_cloud_sync');
+    await startupPrefs.remove('last_flask_sync');
+    debugPrint('MAIN: sync timestamps cleared — next sync will download all cloud data');
 
     // Initialize local notification services
   if (!kIsWeb) {

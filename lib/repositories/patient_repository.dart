@@ -76,6 +76,16 @@ class PatientRepository {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
+  Future<List<Map<String, dynamic>>> getByMobile(String mobile) async {
+    final db = await _db;
+    return db.query(
+      tablePatients,
+      where: 'mobile_number = ?',
+      whereArgs: [mobile],
+      orderBy: 'full_name ASC',
+    );
+  }
+
   Future<List<Map<String, dynamic>>> search(String query) async {
     final db = await _db;
     return db.query(tablePatients,
