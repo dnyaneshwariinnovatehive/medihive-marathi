@@ -78,12 +78,21 @@ class PatientRepository {
 
   Future<List<Map<String, dynamic>>> getByMobile(String mobile) async {
     final db = await _db;
-    return db.query(
+    final rows = await db.query(
       tablePatients,
       where: 'mobile_number = ?',
       whereArgs: [mobile],
       orderBy: 'full_name ASC',
     );
+    final seen = <String>{};
+    final unique = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final key = '${row['full_name']}|${row['gender']}|${row['dob']}';
+      if (seen.add(key)) {
+        unique.add(row);
+      }
+    }
+    return unique;
   }
 
   Future<List<Map<String, dynamic>>> search(String query) async {
