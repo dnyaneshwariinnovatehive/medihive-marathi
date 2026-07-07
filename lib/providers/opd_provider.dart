@@ -49,6 +49,7 @@ class OpdProvider extends ChangeNotifier {
 
   void autoFillFromPatient(Map<String, dynamic> patientRow) {
     updateField('patientId', patientRow['sync_id']?.toString() ?? '');
+    updateField('name', patientRow['full_name']?.toString() ?? '');
     updateField('dob', patientRow['dob']?.toString() ?? '');
     updateField('age', patientRow['age']?.toString() ?? '');
     updateField('gender', patientRow['gender']?.toString() ?? 'Male');
