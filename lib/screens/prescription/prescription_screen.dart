@@ -153,7 +153,8 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       final panchakarmaNotes = _latestRecord['panchakarma_notes'] as String? ?? '';
       final nextVisit = _latestRecord['next_visit_date'] as String? ?? '';
       final patientName = patientRow['full_name'] as String? ?? '';
-      final patientIdStr = 'P$sqliteId';
+      final patientSyncId = patientRow['sync_id'] as String? ?? '';
+      final patientIdStr = patientSyncId.isNotEmpty ? patientSyncId : 'P$sqliteId';
       final patientAge = patientRow['age'] as int? ?? 0;
       final patientGender = patientRow['gender'] as String? ?? '';
       final patientMobile = patientRow['mobile_number'] as String? ?? '';
@@ -172,6 +173,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
         doctorName: settings.doctorName.isNotEmpty
             ? settings.doctorName
             : 'Dr. Rajas Gavas',
+        doctorQualification: settings.doctorSpecialty,
         clinicName: settings.clinicName.isNotEmpty
             ? settings.clinicName
             : 'Shree Clinic',
@@ -185,6 +187,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
             ? settings.doctorLicense
             : 'I-107200-A',
         patientMobile: patientMobile.isNotEmpty ? patientMobile : '',
+        clinicLogoPath: settings.clinicLogoPath,
       );
 
       _diagnosisController = TextEditingController(text: _rx.diagnosis);
@@ -325,10 +328,12 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       panchakarmaNotes: newPanchakarmaNotes.isNotEmpty ? newPanchakarmaNotes : _rx.panchakarmaNotes,
       nextVisit: newNextVisit.isNotEmpty ? newNextVisit : _rx.nextVisit,
       doctorName: _rx.doctorName,
+      doctorQualification: _rx.doctorQualification,
       clinicName: _rx.clinicName,
       clinicAddress: _rx.clinicAddress,
       clinicPhone: _rx.clinicPhone,
       licenseNo: _rx.licenseNo,
+      clinicLogoPath: _rx.clinicLogoPath,
     );
     _rx = updatedRx;
 
@@ -1059,9 +1064,15 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   if (!await docDir.exists()) {
                                     await docDir.create(recursive: true);
                                   }
-                                  final safeName = _rx.patientName.replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(RegExp(r'\s+'), '_');
+                                  final safeName = _rx.patientName
+                                      .replaceAll(RegExp(r'[^\w\s-]'), '')
+                                      .replaceAll(RegExp(r'\s+'), '_')
+                                      .trim()
+                                      .replaceAll(RegExp(r'_+'), '_');
+                                  final safeId = _rx.patientId
+                                      .replaceAll(RegExp(r'[^\w]'), '');
                                   final file = File(
-                                    '${docDir.path}/${safeName}_${_rx.patientId}.pdf',
+                                    '${docDir.path}/${safeName}_$safeId.pdf',
                                   );
                                   await file.writeAsBytes(pdfData);
                                   if (!context.mounted) return;

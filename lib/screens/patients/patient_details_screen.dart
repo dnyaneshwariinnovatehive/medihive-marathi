@@ -572,11 +572,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                               as String? ??
                                           '',
                                       doctorName: settings.doctorName,
+                                      doctorQualification:
+                                          settings.doctorSpecialty,
                                       clinicName: settings.clinicName,
                                       clinicAddress: settings.clinicAddress,
                                       clinicPhone: settings.clinicPhone,
                                       licenseNo: settings.doctorLicense,
                                       patientMobile: patient.mobile,
+                                      clinicLogoPath: settings.clinicLogoPath,
                                     );
 
                                     final pdfData =
@@ -605,9 +608,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                         await getTemporaryDirectory();
                                     final safeName = patient.name
                                         .replaceAll(RegExp(r'[^\w\s-]'), '')
-                                        .replaceAll(RegExp(r'\s+'), '_');
+                                        .replaceAll(RegExp(r'\s+'), '_')
+                                        .trim()
+                                        .replaceAll(RegExp(r'_+'), '_');
+                                    final safeId = patient.id
+                                        .replaceAll(RegExp(r'[^\w]'), '');
                                     final pdfFile = File(
-                                      '${tempDir.path}/${safeName}_${patient.id}.pdf',
+                                      '${tempDir.path}/${safeName}_$safeId.pdf',
                                     );
                                     await pdfFile.writeAsBytes(pdfData);
 

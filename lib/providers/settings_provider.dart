@@ -27,6 +27,7 @@ class SettingsProvider extends ChangeNotifier {
   String _clinicAddress = 'Suite 101, Medical Plaza, Mumbai';
   String _clinicHours = '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
   String _clinicWebsite = '';
+  String _clinicLogoPath = '';
 
   // Google Sign-In & Backup state (lazy to avoid web crash)
   GoogleAuthService? _googleAuthServiceInstance;
@@ -57,6 +58,7 @@ class SettingsProvider extends ChangeNotifier {
   String get clinicAddress => _clinicAddress;
   String get clinicHours => _clinicHours;
   String get clinicWebsite => _clinicWebsite;
+  String get clinicLogoPath => _clinicLogoPath;
 
   // Google Getters
   bool get isGoogleConnected => _googleUser != null;
@@ -213,6 +215,7 @@ class SettingsProvider extends ChangeNotifier {
         _clinicAddress = row['clinic_address'] as String? ?? 'Suite 101, Medical Plaza, Mumbai';
         _clinicHours = row['operating_hours'] as String? ?? '09:00 AM - 01:00 PM, 04:00 PM - 08:00 PM';
         _clinicWebsite = row['website'] as String? ?? '';
+        _clinicLogoPath = row['clinic_logo_path'] as String? ?? '';
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -236,6 +239,7 @@ class SettingsProvider extends ChangeNotifier {
       'clinic_phone': _clinicPhone,
       'clinic_address': _clinicAddress,
       'website': _clinicWebsite,
+      'clinic_logo_path': _clinicLogoPath,
       'operating_hours': _clinicHours,
       'updated_at': DateTime.now().toIso8601String(),
     });
