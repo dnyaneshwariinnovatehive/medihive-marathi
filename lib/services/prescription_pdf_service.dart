@@ -112,13 +112,13 @@ class PrescriptionPdfService {
   }
 
   static pw.Widget _defaultLogo() {
+    final crossStyle = pw.BoxDecoration(
+      color: PdfColors.blueGrey800,
+      borderRadius: pw.BorderRadius.all(pw.Radius.circular(3)),
+    );
     return pw.Container(
-      width: 54,
-      height: 54,
-      decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey800,
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-      ),
+      width: 44,
+      height: 44,
       child: pw.Center(
         child: pw.Stack(
           alignment: pw.Alignment.center,
@@ -126,12 +126,12 @@ class PrescriptionPdfService {
             pw.Container(
               width: 24,
               height: 6,
-              color: PdfColors.white,
+              decoration: crossStyle,
             ),
             pw.Container(
               width: 6,
               height: 24,
-              color: PdfColors.white,
+              decoration: crossStyle,
             ),
           ],
         ),
