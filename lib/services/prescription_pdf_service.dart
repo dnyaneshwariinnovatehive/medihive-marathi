@@ -1,13 +1,25 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/prescription.dart';
 
 class PrescriptionPdfService {
+  static Uint8List? _cachedLogoBytes;
+
+  static Future<void> _ensureLogoLoaded() async {
+    if (_cachedLogoBytes != null) return;
+    try {
+      final data = await rootBundle.load('assets/images/logo.png');
+      _cachedLogoBytes = data.buffer.asUint8List();
+    } catch (_) {}
+  }
+
   static Future<Uint8List> generatePdf(Prescription rx,
       {bool includePatientDetails = true}) async {
+    await _ensureLogoLoaded();
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -112,31 +124,14 @@ class PrescriptionPdfService {
   }
 
   static pw.Widget _defaultLogo() {
-    final crossStyle = pw.BoxDecoration(
-      color: PdfColors.blueGrey800,
-      borderRadius: pw.BorderRadius.all(pw.Radius.circular(3)),
-    );
-    return pw.Container(
-      width: 44,
-      height: 44,
-      child: pw.Center(
-        child: pw.Stack(
-          alignment: pw.Alignment.center,
-          children: [
-            pw.Container(
-              width: 24,
-              height: 6,
-              decoration: crossStyle,
-            ),
-            pw.Container(
-              width: 6,
-              height: 24,
-              decoration: crossStyle,
-            ),
-          ],
-        ),
-      ),
-    );
+    if (_cachedLogoBytes != null) {
+      return pw.Container(
+        width: 44,
+        height: 44,
+        child: pw.Image(pw.MemoryImage(_cachedLogoBytes!)),
+      );
+    }
+    return pw.SizedBox.shrink();
   }
 
   static pw.Widget _buildPatientInfo(Prescription rx) {
