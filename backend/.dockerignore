@@ -17,13 +17,6 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Dead code (obsolete architecture)
-desktop_google/auth_service.py
-desktop_google/auth_routes.py
-desktop_google/sync_service.py
-desktop_google/sync_queue.py
-desktop_google/image_service.py
-
 # Git
 .git/
 .gitignore

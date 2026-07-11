@@ -6,6 +6,7 @@ import '../../providers/settings_provider.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/standard_header.dart';
 import '../../utils/constants.dart';
+import '../../l10n/app_localizations.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -38,6 +39,7 @@ class _CalendarScreenState extends State<CalendarScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final apt = context.watch<AppointmentProvider>();
     context.watch<SettingsProvider>();
 
@@ -60,7 +62,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         controller: _scrollController,
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const StandardHeader(title: 'Calendar'),
+          StandardHeader(title: l10n.calendar),
 
           SliverToBoxAdapter(
             child: Padding(
@@ -279,8 +281,8 @@ class _CalendarScreenState extends State<CalendarScreen>
                                 children: [
                                   Text(
                                     isToday
-                                        ? "Today's Follow-ups"
-                                        : 'Upcoming Follow-ups',
+                                        ? l10n.todaysFollowUps
+                                        : l10n.upcomingFollowUps,
                                     style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -291,8 +293,8 @@ class _CalendarScreenState extends State<CalendarScreen>
                                   if (followUps.isEmpty)
                                     Text(
                                       isToday
-                                          ? 'No follow-ups today.'
-                                          : 'No follow-ups on this date.',
+                                          ? l10n.noFollowUpsToday
+                                          : l10n.noFollowUpsOnDate,
                                     )
                                   else
                                     ...followUps.map(
@@ -336,8 +338,8 @@ class _CalendarScreenState extends State<CalendarScreen>
                             children: [
                               Text(
                                 isToday
-                                    ? "Today's Follow-ups"
-                                    : 'Upcoming Follow-ups',
+                                    ? l10n.todaysFollowUps
+                                    : l10n.upcomingFollowUps,
                                 style: AppTheme.caption.copyWith(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13,
@@ -349,7 +351,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '${apt.selectedDayFollowUps.length} Scheduled',
+                                    l10n.nScheduled(apt.selectedDayFollowUps.length),
                                     style: AppTheme.display.copyWith(
                                       color: Colors.white,
                                       fontSize: 26,
@@ -427,13 +429,14 @@ class _DayNoteSectionState extends State<_DayNoteSection> {
   void _handleAdd() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
     widget.onAddNote(text);
     _controller.clear();
     FocusScope.of(context).unfocus();
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Note added'),
+        content: Text(l10n.noteAdded),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -448,6 +451,7 @@ class _DayNoteSectionState extends State<_DayNoteSection> {
   @override
   Widget build(BuildContext context) {
     _notes = List.from(widget.notes);
+    final l10n = AppLocalizations.of(context)!;
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +460,7 @@ class _DayNoteSectionState extends State<_DayNoteSection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Clinical Notes',
+                l10n.clinicalNotes,
                 style: AppTheme.subHeading.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
@@ -514,7 +518,7 @@ class _DayNoteSectionState extends State<_DayNoteSection> {
                   maxLines: 2,
                   style: AppTheme.body,
                   decoration: InputDecoration(
-                    hintText: 'Add clinical reminders, doctor schedule notes...',
+                    hintText: l10n.addClinicalReminders,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 12,

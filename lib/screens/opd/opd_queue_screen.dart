@@ -9,6 +9,7 @@ import '../../repositories/opd_record_repository.dart';
 import '../../repositories/patient_repository.dart';
 import '../../widgets/pressable_card.dart';
 import '../../widgets/standard_header.dart';
+import '../../l10n/app_localizations.dart';
 
 class OpdQueueScreen extends StatefulWidget {
   const OpdQueueScreen({super.key});
@@ -91,10 +92,11 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
   }
 
   Widget _buildTypeCapsule(Map<String, dynamic> record) {
+    final l10n = AppLocalizations.of(context)!;
     final opdType = record['opd_type'] as String? ?? '';
     final followUpStatus = record['followup_status'] as String? ?? '';
     final isFollowUp = opdType == 'follow_up' || followUpStatus.isNotEmpty;
-    final label = isFollowUp ? 'FOLLOW-UP' : 'CONSULTATION';
+    final label = isFollowUp ? l10n.followUp : l10n.consultation;
     final color = isFollowUp ? AppTheme.warning : AppTheme.primary;
 
     return Container(
@@ -118,6 +120,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
     context.watch<OpdProvider>();
+    final l10n = AppLocalizations.of(context)!;
     _scheduleRefreshIfStale();
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -125,7 +128,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
         controller: ScrollController(),
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const StandardHeader(title: 'OPD Queue'),
+          StandardHeader(title: l10n.opdQueue),
           SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -174,7 +177,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                               ),
                               const SizedBox(height: 1),
                               Text(
-                                _isToday ? 'Today' : 'Selected date',
+                                _isToday ? l10n.today : l10n.selectedDate,
                                 style: AppTheme.caption.copyWith(
                                   color: AppTheme.textSecondary,
                                   fontSize: 11,
@@ -230,8 +233,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                             const SizedBox(height: 16),
                               Text(
                                 _isToday
-                                    ? 'No OPD records found for today.'
-                                    : 'No appointments scheduled for this day.',
+                                    ? l10n.noOpdRecordsToday
+                                    : l10n.noAppointmentsThisDay,
                                 style: AppTheme.body.copyWith(
                                   color: AppTheme.textSecondary,
                                 ),
@@ -239,8 +242,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 _isToday
-                                    ? 'New registrations will appear here'
-                                    : 'Select a different date to view records',
+                                    ? l10n.newRegistrationsAppear
+                                    : l10n.selectDifferentDate,
                                 style: AppTheme.caption.copyWith(
                                   color: AppTheme.textHint,
                                 ),
@@ -249,7 +252,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                               const SizedBox(height: 24),
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Register Patient'),
+                                label: Text(l10n.registerPatient),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
@@ -336,7 +339,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                               children: [
                                                 Expanded(
                                                   child: Text(
-                                                    patientName ?? 'Unknown',
+                                                    patientName ?? l10n.unknown,
                                                     style: AppTheme.body.copyWith(
                                                       fontWeight: FontWeight.bold,
                                                       fontSize: 16,
@@ -400,7 +403,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                                 ),
                                                 Flexible(
                                                   child: Text(
-                                                    patientGender ?? 'Not Specified',
+                                                    patientGender ?? l10n.notSpecified,
                                                     style: AppTheme.caption.copyWith(
                                                       fontSize: 11,
                                                       fontWeight: FontWeight.w600,
@@ -419,7 +422,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                                                   child: Text(
                                                     (record['diagnosis'] as String? ?? '').isNotEmpty
                                                         ? record['diagnosis'] as String
-                                                        : 'No diagnosis',
+                                                        : l10n.noDiagnosis,
                                                     style: AppTheme.caption.copyWith(
                                                       color: AppTheme.textSecondary,
                                                       fontSize: 12,
@@ -475,8 +478,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                 context.go('/app/opd/new');
               },
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'New OPD',
+              label: Text(
+                l10n.newOpd,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

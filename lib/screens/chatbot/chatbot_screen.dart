@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 
@@ -64,7 +65,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           'To create a prescription: go to Patient Details → tap "Create Prescription".\n'
           'The PDF is generated automatically and can be shared via WhatsApp.';
     }
-    return 'I\'m a demo assistant with predefined answers. Try one of the suggested prompts above, or contact support for more help.';
+    return AppLocalizations.of(context)!.demoAssistantMessage;
   }
 
   String? _getAction(String query) {
@@ -97,6 +98,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(backgroundColor: AppTheme.background, body: Column(children: [
       Container(
         decoration: const BoxDecoration(gradient: AppTheme.primaryGradient,
@@ -110,8 +112,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               child: Icon(Icons.smart_toy_outlined, color: Colors.white, size: 24)),
             SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('AI Assistant', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 20)),
-              Text('Always here to help', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+              Text(l10n.aiAssistant, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 20)),
+              Text(l10n.alwaysHereToHelp, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
             ]),
             Spacer(),
             Image.asset('assets/images/logo.png', height: 80, width: 80, fit: BoxFit.contain),
@@ -129,14 +131,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 SizedBox(width: 8),
                 Flexible(child: Container(padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: AppTheme.cardShadow),
-                  child: Text("Hello, I am your MediHive AI Assistant", style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)))),
+                  child: Text(l10n.helloAssistant, style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)))),
               ],
             ));
           }
           // ── Index 1: "How can I help you today?" ──
           if (index == 1) {
             return Padding(padding: const EdgeInsets.only(left: 48, bottom: 8),
-              child: Text('How can I help you today?', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)));
+              child: Text(l10n.howCanIHelp, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)));
           }
           // ── Remaining: messages interleaved with prompts ──
           final remaining = index - 2;
@@ -212,7 +214,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return Padding(padding: const EdgeInsets.only(bottom: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: EdgeInsets.only(left: 48, bottom: 10),
-          child: Text('Choose a question:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
+          child: Text(AppLocalizations.of(context)!.chooseQuestion, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
         Padding(padding: EdgeInsets.only(left: 48),
           child: Wrap(spacing: 8, runSpacing: 8, children: _prompts.map((p) => GestureDetector(
             onTap: () => _send(p),
@@ -224,11 +226,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   String _actionLabel(String action) {
+    final l10n = AppLocalizations.of(context)!;
     switch (action) {
-      case 'opd': return 'Register New Patient →';
-      case 'backup': return 'Open Backup & Restore →';
-      case 'calendar': return 'Open Calendar →';
-      case 'prescription': return 'View Patient List →';
+      case 'opd': return l10n.registerNewPatientPrompt;
+      case 'backup': return l10n.openBackupRestore;
+      case 'calendar': return l10n.openCalendar;
+      case 'prescription': return l10n.viewPatientList;
       default: return 'Open →';
     }
   }

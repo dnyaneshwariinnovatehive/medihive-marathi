@@ -37,9 +37,9 @@ def _init_test_schema():
 
     # Monkey-patch DATABASE_URL so init_db() uses our test database
     import database as db_module
-    import config
-    original_url = config.DATABASE_URL
-    config.DATABASE_URL = PG_TEST_URL
+    import app_config
+    original_url = app_config.DATABASE_URL
+    app_config.DATABASE_URL = PG_TEST_URL
 
     # Reset the pool so init_db creates a new one with test URL
     if db_module._pool is not None:

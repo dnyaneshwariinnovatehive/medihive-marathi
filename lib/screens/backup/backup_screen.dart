@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-
+import '../../l10n/app_localizations.dart';
+ 
 import '../../theme/app_theme.dart';
 import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
@@ -93,7 +94,7 @@ class _BackupScreenState extends State<BackupScreen> {
         _driveUsageStr = 'Unknown';
       });
       if (mounted) {
-        _showToast('Could not fetch Drive usage', isError: true);
+        _showToast(AppLocalizations.of(context)!.failedToFetchDriveUsage, isError: true);
       }
     }
   }
@@ -112,7 +113,7 @@ class _BackupScreenState extends State<BackupScreen> {
     } catch (e) {
       setState(() => _isLoadingHistory = false);
       if (mounted) {
-        _showToast('Failed to load backup history: $e', isError: true);
+        _showToast(AppLocalizations.of(context)!.failedToLoadBackupHistory(e.toString()), isError: true);
       }
     }
   }
@@ -183,13 +184,13 @@ class _BackupScreenState extends State<BackupScreen> {
         _backupTimeStr = _formatTimeOfDay(selected);
       });
       await syncMgr.scheduleDailyBackup(selected);
-      _showToast('✓ Automatic backup scheduled at $_backupTimeStr');
+      _showToast('✓ ${AppLocalizations.of(context)!.backupScheduledAt(_backupTimeStr)}');
     }
   }
 
   Future<void> _shareBackup() async {
     try {
-      _showToast('Preparing backup file to share...');
+      _showToast(AppLocalizations.of(context)!.preparingBackupToShare);
       final bytes = await ExcelExportService().generateExcelFile();
       final fileName = ExcelExportService().generateFileName('Shree_Clinic');
       
@@ -202,7 +203,7 @@ class _BackupScreenState extends State<BackupScreen> {
         text: 'MediHive Backup - Shree Clinic Data Export',
       );
     } catch (e) {
-      _showToast('✗ Share failed: $e', isError: true);
+      _showToast(AppLocalizations.of(context)!.shareFailed(e.toString()), isError: true);
     }
   }
 
@@ -214,17 +215,17 @@ class _BackupScreenState extends State<BackupScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 28),
             const SizedBox(width: 8),
-            const Text('Restore Backup'),
+            Text(AppLocalizations.of(context)!.restoreBackupTitle),
           ],
         ),
-        content: const Text(
-          'This will completely replace all your current patient database, OPD registrations, and calendar appointments with the backup data. This action cannot be undone.\n\nDo you want to continue?',
+        content: Text(
+          AppLocalizations.of(context)!.restoreWarning,
           style: TextStyle(height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text(AppLocalizations.of(context)!.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -232,7 +233,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                   foregroundColor: AppTheme.textOnPrimary,
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore Data'),
+            child: Text(AppLocalizations.of(context)!.restoreDataBtn),
           ),
         ],
       ),
@@ -246,7 +247,7 @@ class _BackupScreenState extends State<BackupScreen> {
   Future<void> _performRestore(DriveBackupInfo backup) async {
     setState(() {
       _isRestoring = true;
-      _restoreProgressStr = 'Downloading backup file...';
+      _restoreProgressStr = AppLocalizations.of(context)!.downloadingBackup;
     });
 
     try {
@@ -254,7 +255,7 @@ class _BackupScreenState extends State<BackupScreen> {
       
       final recordCount = _parseRecordCount(backup.name);
       setState(() {
-        _restoreProgressStr = 'Restoring $recordCount records...';
+        _restoreProgressStr = AppLocalizations.of(context)!.restoringNRecords(recordCount);
       });
 
       final restored = await ExcelRestoreService().restoreFromExcel(bytes);
@@ -264,7 +265,7 @@ class _BackupScreenState extends State<BackupScreen> {
         _restoreProgressStr = '';
       });
 
-      _showToast('✓ Restored $restored records successfully!');
+      _showToast('✓ ${AppLocalizations.of(context)!.restoredNRecords(restored)}');
       _fetchCloudBackupHistory();
     } catch (e) {
       setState(() {
@@ -277,6 +278,7 @@ class _BackupScreenState extends State<BackupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: Stack(
@@ -285,7 +287,7 @@ class _BackupScreenState extends State<BackupScreen> {
             physics: const BouncingScrollPhysics(),
             slivers: [
               StandardHeader(
-                title: 'Backup & Cloud Sync',
+                title: l10n.backupAndCloudSyncTitle,
                 showBack: true,
                 onBack: () => context.go('/app/settings'),
               ),
@@ -347,7 +349,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Local Backup',
+                                      l10n.localBackup,
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 18,
@@ -355,7 +357,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Export & Share patient data locally',
+                                      l10n.exportAndShareLocally,
                                       style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                                     ),
                                   ],
@@ -370,7 +372,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                'Generate a secure Excel file containing all patients, clinical OPD visit logs, and appointment lists. Save it locally or send it directly via messaging apps.',
+                                l10n.generateExcelDescription,
                                 style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
                               ),
                             ),
@@ -381,7 +383,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   child: ElevatedButton.icon(
                                     onPressed: () => setState(() => _showDropdown = !_showDropdown),
                                     icon: const Icon(Icons.download, size: 20),
-                                    label: const Text('Export to Device'),
+                                    label: Text(l10n.exportToDevice),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppTheme.primary,
                                       foregroundColor: AppTheme.textOnPrimary,
@@ -395,7 +397,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   child: OutlinedButton.icon(
                                     onPressed: _shareBackup,
                                     icon: const Icon(Icons.share, size: 20),
-                                    label: const Text('Share Backup'),
+                                    label: Text(l10n.shareBackupBtn),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppTheme.primary,
                                       side: BorderSide(color: AppTheme.primary),
@@ -416,11 +418,11 @@ class _BackupScreenState extends State<BackupScreen> {
                                   boxShadow: AppTheme.heavyShadow,
                                 ),
                                 child: Column(
-                                  children: ['1 Month', '3 Months', '6 Months', '12 Months', 'Complete Backup'].map((p) => InkWell(
+                                  children: [l10n.month1Period, l10n.months3Period, l10n.months6Period, l10n.months12Period, l10n.completeBackup].map((p) => InkWell(
                                     onTap: () async {
                                       setState(() => _showDropdown = false);
                                       try {
-                                        _showToast('Generating $p backup...');
+                                        _showToast(l10n.generatingBackup(p));
                                         final bytes = await ExcelExportService().generateExcelFile();
                                         final suffix = p.replaceAll(' ', '_').toLowerCase();
                                         final fileName = ExcelExportService().generateFileName('Shree_Clinic')
@@ -431,18 +433,18 @@ class _BackupScreenState extends State<BackupScreen> {
 
                                         final file = File(path);
                                         await file.writeAsBytes(bytes);
-                                        _showToast('✓ Backup saved locally: $fileName');
+                                        _showToast(l10n.backupSavedLocally(fileName));
 
                                         final syncMgr = context.read<SyncManager>();
                                         if (syncMgr.syncState != SyncState.offline) {
                                           final upload = await showDialog<bool>(
                                             context: context,
                                             builder: (ctx) => AlertDialog(
-                                              title: const Text('Upload to Drive?'),
-                                              content: const Text('Backup saved locally. Upload to Google Drive as well?'),
+                                              title: Text(l10n.uploadToDriveQuestion),
+                                              content: Text(l10n.backupSavedUploadPrompt),
                                               actions: [
-                                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-                                                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Upload')),
+                                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.no)),
+                                                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.upload)),
                                               ],
                                             ),
                                           );
@@ -497,7 +499,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Cloud Backup',
+                                          l10n.cloudBackupTitle,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 18,
@@ -506,8 +508,8 @@ class _BackupScreenState extends State<BackupScreen> {
                                         ),
                                         Text(
                                           googleUser != null
-                                              ? 'Google Drive backup active'
-                                              : 'Secure your clinic data on Google Drive',
+                                              ? l10n.googleDriveBackupActive
+                                              : l10n.secureOnGoogleDrive,
                                           style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                                         ),
                                       ],
@@ -524,7 +526,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      'Connect Google Drive to securely upload and sync patients, visit logs, and appointment rosters. Your backups are kept securely on your personal Drive.',
+                                      l10n.connectDriveDescription,
                                       style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                                     ),
                                   ),
@@ -548,7 +550,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                 _fetchCloudBackupHistory();
                                               } catch (e) {
                                                 if (context.mounted) {
-                                                  _showToast('Failed to connect: $e', isError: true);
+                                                  _showToast(l10n.failedToConnect(e.toString()), isError: true);
                                                 }
                                               }
                                             },
@@ -560,7 +562,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                             )
                                           : const Icon(Icons.link, size: 20),
                                       label: Text(
-                                        settings.isGoogleSigningIn ? 'Connecting...' : 'Connect Google Drive',
+                                        settings.isGoogleSigningIn ? l10n.connecting : l10n.connectGoogleDrive,
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                     ),
@@ -591,7 +593,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                googleUser.displayName ?? 'Google Account',
+                                                googleUser.displayName ?? l10n.googleAccountLabel,
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: AppTheme.textPrimary,
@@ -625,11 +627,11 @@ class _BackupScreenState extends State<BackupScreen> {
                                               });
                                             } catch (e) {
                                               if (context.mounted) {
-                                                _showToast('Failed to disconnect: $e', isError: true);
+                                                _showToast(l10n.failedToDisconnect(e.toString()), isError: true);
                                               }
                                             }
                                           },
-                                          child: const Text('Disconnect', style: TextStyle(fontSize: 12)),
+                                          child: Text(l10n.disconnect, style: TextStyle(fontSize: 12)),
                                         ),
                                       ],
                                     ),
@@ -640,7 +642,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('Last Sync', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                                      Text(l10n.lastSyncLabel, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
                                       Text(
                                         settings.lastSyncTime.contains('Never') 
                                             ? 'Never' 
@@ -653,8 +655,8 @@ class _BackupScreenState extends State<BackupScreen> {
 
                                   // Auto Sync Settings toggles
                                   SwitchListTile(
-                                    title: const Text('Auto-sync Backups', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                                    subtitle: Text('Upload records automatically', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                    title: Text(l10n.autoSyncBackups, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                    subtitle: Text(l10n.uploadRecordsAutomatically, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                                     value: _autoSync,
                                     contentPadding: EdgeInsets.zero,
                                     onChanged: _saveAutoSync,
@@ -665,7 +667,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text('Auto-sync Frequency', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                                        Text(l10n.autoSyncFrequency, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
                                         DropdownButton<String>(
                                           value: _syncFrequency,
                                           dropdownColor: AppTheme.surface,
@@ -686,8 +688,8 @@ class _BackupScreenState extends State<BackupScreen> {
                                   ],
                                   
                                   SwitchListTile(
-                                    title: const Text('WiFi Only Sync', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                                    subtitle: Text('Do not sync on cellular networks', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                    title: Text(l10n.wifiOnlySync, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                    subtitle: Text(l10n.doNotSyncOnCellular, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                                     value: _wifiOnly,
                                     contentPadding: EdgeInsets.zero,
                                     onChanged: _saveWifiOnly,
@@ -701,11 +703,11 @@ class _BackupScreenState extends State<BackupScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Daily Background Backup',
+                                            l10n.dailyBackgroundBackup,
                                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
                                           ),
                                           Text(
-                                            'Scheduled at $_backupTimeStr',
+                                            l10n.scheduledAt(_backupTimeStr),
                                             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                                           ),
                                         ],
@@ -731,7 +733,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              'Syncing $unsyncedCount records...',
+                                              l10n.syncingNRecords(unsyncedCount),
                                               style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold),
                                             ),
                                             const SizedBox(
@@ -769,9 +771,9 @@ class _BackupScreenState extends State<BackupScreen> {
                                                       await settings.triggerSync();
                                                       _fetchDriveUsage();
                                                       _fetchCloudBackupHistory();
-                                                      _showToast('Synced successfully');
+                                                      _showToast(l10n.syncedSuccessfully);
                                                     } else {
-                                                      _showToast('Sync failed. Retry?', isError: true);
+                                                      _showToast(l10n.syncFailedRetry, isError: true);
                                                     }
                                                   } catch (e) {
                                                     if (context.mounted) {
@@ -780,7 +782,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                   }
                                                 },
                                           icon: const Icon(Icons.sync, size: 20),
-                                          label: Text(isSyncing ? 'Syncing...' : 'Sync Now'),
+                                          label: Text(isSyncing ? l10n.syncingData : l10n.syncNowBtn),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -811,7 +813,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                   }
                                                 },
                                           icon: const Icon(Icons.cloud_upload_outlined, size: 20),
-                                          label: Text(isSyncing ? 'Uploading...' : 'Upload to Drive'),
+                                          label: Text(isSyncing ? l10n.uploading : l10n.uploadToDriveBtn),
                                         ),
                                       ),
                                     ],
@@ -837,7 +839,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Backup History',
+                                      l10n.backupHistory,
                                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary),
                                     ),
                                     if (signedIn && !_isLoadingHistory)
@@ -860,21 +862,21 @@ class _BackupScreenState extends State<BackupScreen> {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        'Connect Google Drive to view cloud backup history.',
+                                        l10n.connectDriveToViewHistory,
                                         style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),
                                   ),
                                 ] else if (_isLoadingHistory) ...[
-                                  const Center(
+                                  Center(
                                     child: Padding(
                                       padding: EdgeInsets.symmetric(vertical: 24.0),
                                       child: Column(
                                         children: [
                                           CircularProgressIndicator(),
                                           SizedBox(height: 12),
-                                          Text('Fetching history from Google Drive...', style: TextStyle(fontSize: 13)),
+                                          Text(l10n.fetchingHistory, style: TextStyle(fontSize: 13)),
                                         ],
                                       ),
                                     ),
@@ -888,7 +890,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        'No backups found in Google Drive.',
+                                        l10n.noBackupsInDrive,
                                         style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                                         textAlign: TextAlign.center,
                                       ),
@@ -913,7 +915,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  'Backup file (${_formatSize(b.size)})',
+                                                  l10n.backupFileSize(_formatSize(b.size)),
                                                   style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                                                 ),
                                                 const SizedBox(height: 4),
@@ -923,7 +925,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
-                                                  '$recordCount records synced',
+                                                  l10n.nRecordsSynced(recordCount),
                                                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primary),
                                                 ),
                                               ],
@@ -938,7 +940,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                               ),
                                               onPressed: () => _confirmAndRestore(b),
                                             icon: const Icon(Icons.restore, size: 14),
-                                            label: const Text('Restore', style: TextStyle(fontSize: 12)),
+                                            label: Text(l10n.restore, style: TextStyle(fontSize: 12)),
                                           ),
                                         ],
                                       ),

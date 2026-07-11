@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/animated_list_item.dart';
@@ -9,12 +10,13 @@ import '../../widgets/standard_header.dart';
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
-  String _formatTimestamp(DateTime dateTime) {
+  String _formatTimestamp(BuildContext context, DateTime dateTime) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n.justNow;
     } else if (difference.inMinutes < 60) {
       return '${difference.inMinutes} mins ago';
     } else if (difference.inHours < 24) {
@@ -28,6 +30,7 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<NotificationProvider>();
     final notifications = provider.notifications;
 
@@ -37,16 +40,16 @@ class NotificationsScreen extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           StandardHeader(
-            title: 'Notifications',
+            title: l10n.notificationsTitle,
             trailingActions: notifications.isNotEmpty
                 ? [
                     IconButton(
-                      tooltip: 'Mark all as read',
+                      tooltip: l10n.markAllAsRead,
                       icon: const Icon(Icons.mark_chat_read_outlined),
                       onPressed: () => provider.markAllAsRead(),
                     ),
                     IconButton(
-                      tooltip: 'Clear all',
+                      tooltip: l10n.clearAll,
                       icon: const Icon(Icons.delete_sweep_outlined),
                       onPressed: () => provider.clearNotifications(),
                     ),
@@ -76,7 +79,7 @@ class NotificationsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              'No new notifications',
+                              l10n.noNewNotifications,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -85,7 +88,7 @@ class NotificationsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'You\'re all caught up!',
+                              l10n.allCaughtUp,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppTheme.textHint,
@@ -178,7 +181,7 @@ class NotificationsScreen extends StatelessWidget {
                                           ),
                                           const SizedBox(height: 6),
                                           Text(
-                                            _formatTimestamp(note.timestamp),
+                                            _formatTimestamp(context, note.timestamp),
                                             style: TextStyle(color: AppTheme.textHint, fontSize: 11),
                                           ),
                                         ],

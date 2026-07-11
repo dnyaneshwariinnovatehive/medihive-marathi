@@ -233,7 +233,7 @@ gcloud run deploy {SERVICE_NAME} --image {IMAGE_NAME} --region {REGION} \\
     print("  ✅  Firebase Admin SDK - secure push notifications")
     print("  ✅  Google Sheets - fixed sheet, service account auth")
     print("  ✅  Google Drive - OAuth token, fixed folder")
-    print("  ✅  Patient IDs - P001, P002 format (desktop compatible)")
+    print("  ✅  Patient IDs - P001, P002 format (sequential)")
     print("  ✅  Existing sync architecture - UNCHANGED")
     print("  ✅  Existing device registration - UNCHANGED")
     print("  ✅  No ngrok dependency - Cloud Run HTTPS URL")

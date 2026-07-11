@@ -28,6 +28,7 @@ class OpdRecordRepository {
     final db = await _db;
     return db.insert(tableOpdVisits, {
       ...row,
+      'sync_status': row['sync_status'] ?? 'pending',
       'updated_at': row['updated_at'] ?? row['created_at'] ?? now,
     });
   }

@@ -12,12 +12,22 @@ class OPDRecord:
         return dict(row)
 
     @staticmethod
-    def all(patient_id=None):
+    def all(patient_id=None, clinic_id=None):
         db = get_db()
-        if patient_id:
+        if patient_id and clinic_id:
+            rows = db.execute(
+                "SELECT * FROM opd_records WHERE patient_id = %s AND clinic_id = %s ORDER BY visit_date DESC",
+                (patient_id, clinic_id)
+            ).fetchall()
+        elif patient_id:
             rows = db.execute(
                 "SELECT * FROM opd_records WHERE patient_id = %s ORDER BY visit_date DESC",
                 (patient_id,)
+            ).fetchall()
+        elif clinic_id:
+            rows = db.execute(
+                "SELECT * FROM opd_records WHERE clinic_id = %s ORDER BY visit_date DESC",
+                (clinic_id,)
             ).fetchall()
         else:
             rows = db.execute("SELECT * FROM opd_records ORDER BY visit_date DESC").fetchall()
@@ -25,9 +35,15 @@ class OPDRecord:
         return [OPDRecord.dict_from_row(r) for r in rows]
 
     @staticmethod
-    def get(record_id):
+    def get(record_id, clinic_id=None):
         db = get_db()
-        row = db.execute("SELECT * FROM opd_records WHERE id = %s", (record_id,)).fetchone()
+        if clinic_id:
+            row = db.execute(
+                "SELECT * FROM opd_records WHERE id = %s AND clinic_id = %s",
+                (record_id, clinic_id)
+            ).fetchone()
+        else:
+            row = db.execute("SELECT * FROM opd_records WHERE id = %s", (record_id,)).fetchone()
         db.close()
         return OPDRecord.dict_from_row(row)
 
@@ -41,8 +57,8 @@ class OPDRecord:
                 total_fee, discount, discount_type, payment_mode, charge_type,
                 previous_visit_date, follow_up_reason,
                 next_visit, blood_group, image_links, panchakarma_notes, created_at, updated_at,
-                is_synced, user_id, clinic_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+                user_id, clinic_id, device_id, sync_status, last_synced_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             data['id'], data['patient_id'], data.get('type', 'consultation'),
             data.get('symptoms', ''), data.get('diagnosis', ''),
@@ -58,14 +74,17 @@ class OPDRecord:
             data.get('panchakarma_notes', ''),
             now, now,
             data.get('user_id', ''),
-            data.get('clinic_id', '')
+            data.get('clinic_id', ''),
+            data.get('device_id', ''),
+            data.get('sync_status', 'pending'),
+            data.get('last_synced_at', ''),
         ))
         db.commit()
         db.close()
         return OPDRecord.get(data['id'])
 
     @staticmethod
-    def update(record_id, data):
+    def update(record_id, data, clinic_id=None):
         now = datetime.utcnow().isoformat()
         allowed = ('type', 'symptoms', 'diagnosis', 'medicines', 'visit_date',
                    'clinical_notes', 'consultation_fee', 'medicine_fee',
@@ -73,7 +92,7 @@ class OPDRecord:
                    'payment_mode', 'charge_type', 'previous_visit_date',
                    'follow_up_reason', 'next_visit', 'blood_group',
                    'image_links', 'user_id', 'clinic_id',
-                   'panchakarma_notes')
+                   'panchakarma_notes', 'device_id', 'sync_status', 'last_synced_at')
         fields = []
         values = []
         for k in allowed:
@@ -81,40 +100,60 @@ class OPDRecord:
                 fields.append(f"{k} = %s")
                 values.append(data[k])
         if not fields:
-            return OPDRecord.get(record_id)
+            return OPDRecord.get(record_id, clinic_id=clinic_id)
         fields.append("updated_at = %s")
         values.append(now)
         values.append(record_id)
-        db = get_db()
-        db.execute(f"UPDATE opd_records SET {', '.join(fields)} WHERE id = %s", values)
+        if clinic_id:
+            values.append(clinic_id)
+            db = get_db()
+            db.execute(
+                f"UPDATE opd_records SET {', '.join(fields)} WHERE id = %s AND clinic_id = %s",
+                values
+            )
+        else:
+            db = get_db()
+            db.execute(f"UPDATE opd_records SET {', '.join(fields)} WHERE id = %s", values)
         db.commit()
         db.close()
-        return OPDRecord.get(record_id)
+        return OPDRecord.get(record_id, clinic_id=clinic_id)
 
     @staticmethod
-    def delete(record_id):
+    def delete(record_id, clinic_id=None):
         from models.deleted_entity import DeletedEntity
-        DeletedEntity.record('opd_visit', record_id)
+        DeletedEntity.record('opd_visit', record_id, clinic_id=clinic_id or '')
         db = get_db()
-        db.execute("DELETE FROM opd_records WHERE id = %s", (record_id,))
+        if clinic_id:
+            db.execute(
+                "DELETE FROM opd_records WHERE id = %s AND clinic_id = %s",
+                (record_id, clinic_id)
+            )
+        else:
+            db.execute("DELETE FROM opd_records WHERE id = %s", (record_id,))
         db.commit()
         db.close()
 
     @staticmethod
-    def upsert(data):
-        existing = OPDRecord.get(data['id'])
+    def upsert(data, clinic_id=None):
+        existing = OPDRecord.get(data['id'], clinic_id=clinic_id)
         if existing:
-            return OPDRecord.update(data['id'], data)
+            return OPDRecord.update(data['id'], data, clinic_id=clinic_id)
         return OPDRecord.create(data)
 
     @staticmethod
-    def set_image_links(record_id, links_text):
+    def set_image_links(record_id, links_text, clinic_id=None):
         now = datetime.utcnow().isoformat()
         db = get_db()
-        db.execute(
-            "UPDATE opd_records SET image_links = %s, updated_at = %s WHERE id = %s",
-            (links_text, now, record_id)
-        )
+        if clinic_id:
+            db.execute(
+                "UPDATE opd_records SET image_links = %s, updated_at = %s WHERE id = %s AND clinic_id = %s",
+                (links_text, now, record_id, clinic_id)
+            )
+        else:
+            db.execute(
+                "UPDATE opd_records SET image_links = %s, updated_at = %s WHERE id = %s",
+                (links_text, now, record_id)
+            )
         db.commit()
         db.close()
 
@@ -129,17 +168,12 @@ class OPDRecord:
         return [OPDRecord.dict_from_row(r) for r in rows]
 
     @staticmethod
-    def updated_since(timestamp, user_id=None, clinic_id=None):
+    def updated_since(timestamp, clinic_id=None):
         db = get_db()
         if clinic_id:
             rows = db.execute(
                 "SELECT * FROM opd_records WHERE updated_at > %s AND clinic_id = %s ORDER BY updated_at",
                 (timestamp, clinic_id)
-            ).fetchall()
-        elif user_id:
-            rows = db.execute(
-                "SELECT * FROM opd_records WHERE updated_at > %s AND (user_id = %s OR user_id = '') ORDER BY updated_at",
-                (timestamp, user_id)
             ).fetchall()
         else:
             rows = db.execute(
@@ -148,3 +182,24 @@ class OPDRecord:
             ).fetchall()
         db.close()
         return [OPDRecord.dict_from_row(r) for r in rows]
+
+    @staticmethod
+    def full_restore(clinic_id):
+        db = get_db()
+        rows = db.execute(
+            "SELECT * FROM opd_records WHERE clinic_id = %s ORDER BY updated_at",
+            (clinic_id,)
+        ).fetchall()
+        db.close()
+        return [OPDRecord.dict_from_row(r) for r in rows]
+
+    @staticmethod
+    def mark_synced(record_id, clinic_id, synced_at):
+        db = get_db()
+        db.execute(
+            "UPDATE opd_records SET sync_status = 'synced', last_synced_at = %s, updated_at = %s "
+            "WHERE id = %s AND clinic_id = %s",
+            (synced_at, synced_at, record_id, clinic_id)
+        )
+        db.commit()
+        db.close()

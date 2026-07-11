@@ -40,6 +40,10 @@ class PatientRepository {
       'age': row['age'],
       'blood_group': row['blood_group'],
       'address': row['address'],
+      'clinic_id': row['clinic_id'],
+      'device_id': row['device_id'],
+      'sync_status': row['sync_status'] ?? 'pending',
+      'last_synced_at': row['last_synced_at'],
       'created_at': row['created_at'] ?? now,
       'updated_at': row['updated_at'] ?? row['created_at'] ?? now,
     });

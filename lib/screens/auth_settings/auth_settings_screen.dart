@@ -7,6 +7,7 @@ import '../../providers/settings_provider.dart';
 import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
 import '../../services/backup_code_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class AuthSettingsScreen extends StatefulWidget {
   const AuthSettingsScreen({super.key});
@@ -55,23 +56,24 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
   }
 
   Future<void> _updatePassword() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_newCtrl.text != _confirmCtrl.text) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('New passwords do not match!'),
+        content: Text(l10n.passwordsDoNotMatch),
         backgroundColor: AppTheme.danger,
       ));
       return;
     }
     if (_newCtrl.text.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Password must be at least 4 characters!'),
+        content: Text(l10n.passwordTooShort),
         backgroundColor: AppTheme.danger,
       ));
       return;
     }
     if (_currentCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Please enter your current password.'),
+        content: Text(l10n.pleaseEnterCurrentPassword),
         backgroundColor: AppTheme.danger,
       ));
       return;
@@ -84,7 +86,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
       if (_currentCtrl.text != savedPassword) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Current password is incorrect!'),
+            content: Text(l10n.currentPasswordIncorrect),
             backgroundColor: AppTheme.danger,
           ));
         }
@@ -96,14 +98,14 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
       _confirmCtrl.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Password changed successfully!'),
+          content: Text(l10n.passwordChangedSuccessfully),
           backgroundColor: AppTheme.primary,
         ));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to update password: $e'),
+          content: Text(l10n.failedToUpdatePassword(e.toString())),
           backgroundColor: AppTheme.danger,
         ));
       }
@@ -114,8 +116,9 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(backgroundColor: AppTheme.background, body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
-      StandardHeader(title: 'Authentication', showBack: true, onBack: () => context.go('/app/settings')),
+      StandardHeader(title: l10n.authenticationTitle, showBack: true, onBack: () => context.go('/app/settings')),
       SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
         SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -123,16 +126,16 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
               child: Icon(Icons.lock_outline, color: AppTheme.primary, size: 24)),
             SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Change Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
-              Text('Update your login credentials', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l10n.changePassword, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
+              Text(l10n.updateLoginCredentials, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ]),
           ]),
           SizedBox(height: 20),
-          _pwField('Current Password', _currentCtrl, _showCurrent, () => setState(() => _showCurrent = !_showCurrent)),
+          _pwField(l10n.currentPassword, _currentCtrl, _showCurrent, () => setState(() => _showCurrent = !_showCurrent)),
           SizedBox(height: 16),
-          _pwField('New Password', _newCtrl, _showNew, () => setState(() => _showNew = !_showNew)),
+          _pwField(l10n.newPassword, _newCtrl, _showNew, () => setState(() => _showNew = !_showNew)),
           SizedBox(height: 16),
-          _pwField('Confirm New Password', _confirmCtrl, _showConfirm, () => setState(() => _showConfirm = !_showConfirm)),
+          _pwField(l10n.confirmNewPassword, _confirmCtrl, _showConfirm, () => setState(() => _showConfirm = !_showConfirm)),
           SizedBox(height: 20),
           SizedBox(width: double.infinity, child: ElevatedButton(
             onPressed: _isUpdating ? null : _updatePassword,
@@ -140,7 +143,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
               padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: _isUpdating
                 ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textOnPrimary))
-                : Text('Update Password', style: TextStyle(fontWeight: FontWeight.w600)),
+                : Text(l10n.updatePassword, style: TextStyle(fontWeight: FontWeight.w600)),
           )),
         ])),
         SizedBox(height: 16),
@@ -152,8 +155,8 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
               child: Icon(Icons.mail_outline, color: AppTheme.primary, size: 24)),
             SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Connected Accounts', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
-              Text('Manage linked services', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l10n.connectedAccounts, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
+              Text(l10n.manageLinkedServices, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ]),
           ]),
           SizedBox(height: 16),
@@ -163,29 +166,29 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
                 Icon(Icons.g_mobiledata, size: 28, color: AppTheme.primary),
                 SizedBox(width: 12),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Google Account', style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
-                  Text(context.watch<SettingsProvider>().isGoogleConnected ? 'Connected via Google Drive' : 'Not connected', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(l10n.googleAccountLabel, style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+                  Text(context.watch<SettingsProvider>().isGoogleConnected ? l10n.connectedViaGoogleDrive : l10n.notConnected, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 ]),
               ]),
-              Text(context.watch<SettingsProvider>().isGoogleConnected ? 'Connected' : 'Disconnected', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.watch<SettingsProvider>().isGoogleConnected ? AppTheme.success : AppTheme.danger)),
+              Text(context.watch<SettingsProvider>().isGoogleConnected ? l10n.connected : l10n.disconnectedLabel, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.watch<SettingsProvider>().isGoogleConnected ? AppTheme.success : AppTheme.danger)),
             ])),
         ])),
         SizedBox(height: 16),
         SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Login Sessions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppTheme.textPrimary)),
+          Text(l10n.loginSessions, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppTheme.textPrimary)),
           SizedBox(height: 16),
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Current Device', style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
-                SizedBox(height: 4), Text('Session active', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                Text(l10n.currentDevice, style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+                SizedBox(height: 4), Text(l10n.sessionActive, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
               ]),
               Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppTheme.success.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text('Active', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.success))),
+                child: Text(l10n.activeLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.success))),
             ])),
         ])),
         SizedBox(height: 80),
@@ -193,28 +196,32 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
     ]));
   }
 
-  Widget _pwField(String label, TextEditingController ctrl, bool show, VoidCallback toggle) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _pwField(String label, TextEditingController ctrl, bool show, VoidCallback toggle) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
     SizedBox(height: 8),
     TextField(controller: ctrl, obscureText: !show, decoration: InputDecoration(
-      hintText: 'Enter ${label.toLowerCase()}',
+      hintText: l10n.enterLabel(label.toLowerCase()),
       prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textTertiary, size: 20),
       suffixIcon: GestureDetector(onTap: toggle, child: Icon(show ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textTertiary, size: 20)),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border)),
     )),
   ]);
+  }
 
   // ─── 2FA Methods ──────────────────────────────────────────────
 
   Widget _build2FASection() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(children: [
       Row(children: [
         Container(width: 48, height: 48, decoration: BoxDecoration(color: (_is2FAEnabled ? AppTheme.success : AppTheme.primary).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Icon(_is2FAEnabled ? Icons.security : Icons.smartphone, color: _is2FAEnabled ? AppTheme.success : AppTheme.primary, size: 24)),
         SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Two-Factor Authentication', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
-          Text(_is2FAEnabled ? 'Extra security is active' : 'Add extra security layer', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          Text(l10n.twoFactorAuthentication, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
+          Text(_is2FAEnabled ? l10n.extraSecurityActive : l10n.addExtraSecurityLayer, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
         ]),
       ]),
       SizedBox(height: 16),
@@ -230,15 +237,16 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
   }
 
   Widget _build2FAEnable() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(children: [
       Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceTint, borderRadius: BorderRadius.circular(12)),
-        child: Text('Enable two-factor authentication to add an extra layer of security to your account. You\'ll need to enter a backup code in addition to your password.',
+        child: Text(l10n.enable2FADescription,
           style: TextStyle(fontSize: 14, color: AppTheme.textPrimary))),
       const SizedBox(height: 16),
       SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _start2FASetup,
         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: AppTheme.textOnPrimary, padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-        child: const Text('Enable 2FA', style: TextStyle(fontWeight: FontWeight.w600)))),
+        child: Text(l10n.enable2FA, style: TextStyle(fontWeight: FontWeight.w600)))),
     ]);
   }
 
@@ -257,6 +265,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
   }
 
   Widget _build2FASetup() {
+    final l10n = AppLocalizations.of(context)!;
     if (_setupCodes == null) {
       return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
     }
@@ -273,7 +282,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
           Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 20),
           const SizedBox(width: 10),
           Expanded(child: Text(
-            'Save these backup codes now. You will not see them again after this screen. Each code can only be used once.',
+            l10n.saveBackupCodesWarning,
             style: TextStyle(fontSize: 13, color: AppTheme.warning, fontWeight: FontWeight.w500),
           )),
         ]),
@@ -306,7 +315,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
           border: Border.all(color: AppTheme.border),
         ),
         child: Column(children: [
-          Text('Confirm by entering one of the backup codes above:', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+          Text(l10n.confirmBackupCode, style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
           const SizedBox(height: 12),
           TextField(
             controller: _setupCodeCtrl,
@@ -335,7 +344,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
               onPressed: _isVerifyingSetup ? null : () => setState(() => _isSettingUp2FA = false),
               style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Cancel'))),
+              child: Text(l10n.cancel))),
             const SizedBox(width: 12),
             Expanded(child: ElevatedButton(
               onPressed: _isVerifyingSetup ? null : _verify2FASetup,
@@ -343,7 +352,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               child: _isVerifyingSetup
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textOnPrimary))
-                  : const Text('Verify & Enable', style: TextStyle(fontWeight: FontWeight.w600)))),
+                  : Text(l10n.verifyAndEnable, style: TextStyle(fontWeight: FontWeight.w600)))),
           ]),
         ])),
     ]);
@@ -365,15 +374,16 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
   }
 
   Future<void> _verify2FASetup() async {
+    final l10n = AppLocalizations.of(context)!;
     final code = _setupCodeCtrl.text.trim().toUpperCase();
     if (code.length != 9 || !code.contains('-')) {
-      setState(() => _setupError = 'Enter a valid backup code (e.g. ABCD-1234)');
+      setState(() => _setupError = l10n.validBackupCodeHint);
       return;
     }
 
     final codes = _setupCodes;
     if (codes == null || !codes.contains(code)) {
-      setState(() => _setupError = 'Invalid code. Enter one of the codes displayed above.');
+      setState(() => _setupError = l10n.invalidCodeEnterAbove);
       return;
     }
 
@@ -390,45 +400,47 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
         _isVerifyingSetup = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('2FA enabled successfully!'),
+        content: Text(l10n.twoFAEnabledSuccess),
         backgroundColor: AppTheme.primary,
       ));
     }
   }
 
   Widget _build2FADisable() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(children: [
       Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
           Icon(Icons.check_circle, color: AppTheme.success, size: 20),
           const SizedBox(width: 12),
-          Expanded(child: Text('Two-factor authentication is enabled. Your account has an extra layer of security.',
+          Expanded(child: Text(l10n.twoFAEnabledDescription,
             style: TextStyle(fontSize: 14, color: AppTheme.textPrimary))),
         ])),
       const SizedBox(height: 16),
       SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _confirmDisable2FA,
         style: OutlinedButton.styleFrom(foregroundColor: AppTheme.danger, padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: BorderSide(color: AppTheme.danger, width: 1.5)),
-        child: const Text('Disable 2FA', style: TextStyle(fontWeight: FontWeight.w600)))),
+        child: Text(l10n.disable2FABtn, style: TextStyle(fontWeight: FontWeight.w600)))),
     ]);
   }
 
   Future<void> _confirmDisable2FA() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(children: [
           Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 24),
           const SizedBox(width: 8),
-          const Text('Disable 2FA'),
+          Text(l10n.disable2FABtn),
         ]),
-        content: const Text('Are you sure? Two-factor authentication adds an important layer of security to your account.'),
+        content: Text(l10n.disable2FAWarning),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: AppTheme.textSecondary))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel, style: TextStyle(color: AppTheme.textSecondary))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger, foregroundColor: AppTheme.textOnPrimary),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Disable'),
+            child: Text(l10n.disable),
           ),
         ],
       ),
@@ -439,7 +451,7 @@ class _AuthSettingsScreenState extends State<AuthSettingsScreen> {
       if (mounted) {
         setState(() => _is2FAEnabled = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('2FA disabled'),
+          content: Text(l10n.twoFADisabled),
           backgroundColor: AppTheme.primary,
         ));
       }

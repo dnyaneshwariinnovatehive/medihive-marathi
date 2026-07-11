@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/medical_pulse.dart';
 
@@ -76,6 +77,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: FadeTransition(
         opacity: _exitFade,
@@ -149,7 +151,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 FadeTransition(
                   opacity: _taglineFade,
                   child: Text(
-                    'Smart Clinic Management',
+                    l10n.smartClinicManagement,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withValues(alpha: 0.75),

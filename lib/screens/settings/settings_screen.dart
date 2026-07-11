@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/settings_group_tile.dart';
+import '../../widgets/language_toggle_button.dart';
 import '../../widgets/standard_header.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -104,6 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
         var isSaving = false;
         return StatefulBuilder(
           builder: (context, setDialogState) => Dialog(
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             onPressed: isSaving ? null : () => Navigator.pop(ctx),
-                            child: const Text('Cancel'),
+                            child: Text(l10n.cancel),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -179,11 +182,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       await onSave();
                                       if (context.mounted) {
                                         Navigator.pop(ctx);
-                                        _showToast('$title updated successfully!');
+                                        _showToast(l10n.savedSuccessfully(title));
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        _showToast('Failed to save: $e', isError: true);
+                                        _showToast(l10n.failedToSave(e.toString()), isError: true);
                                       }
                                     } finally {
                                       if (context.mounted) {
@@ -200,9 +203,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                        color: AppTheme.textOnPrimary,
                                      ),
                                    )
-                                 : Text(
-                                     'Save Changes',
-                                     style: TextStyle(color: AppTheme.textOnPrimary),
+                                  : Text(
+                                      l10n.saveChanges,
+                                      style: TextStyle(color: AppTheme.textOnPrimary),
                                    ),
                           ),
                         ),
@@ -219,6 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDoctorProfileDialog(SettingsProvider settings) {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController(text: settings.doctorName);
     final specialtyController = TextEditingController(
       text: settings.doctorSpecialty,
@@ -231,22 +235,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     _showSettingsEditDialog(
       icon: Icons.person,
-      title: 'Doctor Profile',
+      title: l10n.doctorProfile,
       fields: [
-        _buildTextField('Full Name', nameController),
+        _buildTextField(l10n.fullName, nameController),
         const SizedBox(height: 12),
-        _buildTextField('Specialty / Designation', specialtyController),
+        _buildTextField(l10n.specialtyDesignation, specialtyController),
         const SizedBox(height: 12),
-        _buildTextField('Medical License Number', licenseController),
+        _buildTextField(l10n.medicalLicenseNumber, licenseController),
         const SizedBox(height: 12),
         _buildTextField(
-          'Email Address',
+          l10n.emailAddress,
           emailController,
           keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 12),
         _buildTextField(
-          'Phone Number',
+          l10n.phoneNumber,
           phoneController,
           keyboardType: TextInputType.phone,
         ),
@@ -254,17 +258,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       validate: () {
         if (nameController.text.trim().isEmpty ||
             licenseController.text.trim().isEmpty) {
-          return 'Name and License are required!';
+          return l10n.nameAndLicenseRequired;
         }
         final email = emailController.text.trim();
         if (email.isNotEmpty &&
             !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-          return 'Please enter a valid email address.';
+          return l10n.validEmailAddress;
         }
         final phone = phoneController.text.trim();
         if (phone.isNotEmpty &&
             !RegExp(r'^\+?[\d\s\-()]{7,20}$').hasMatch(phone)) {
-          return 'Please enter a valid phone number.';
+          return l10n.validPhoneNumber;
         }
         return null;
       },
@@ -281,6 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showClinicInfoDialog(SettingsProvider settings) {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController(text: settings.clinicName);
     final phoneController = TextEditingController(text: settings.clinicPhone);
     final addressController = TextEditingController(
@@ -293,22 +298,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     _showSettingsEditDialog(
       icon: Icons.business,
-      title: 'Clinic Information',
+      title: l10n.clinicInformation,
       fields: [
-        _buildTextField('Clinic Name', nameController),
+        _buildTextField(l10n.clinicNameField, nameController),
         const SizedBox(height: 12),
         _buildTextField(
-          'Clinic Phone / Contact',
+          l10n.clinicPhoneContact,
           phoneController,
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 12),
-        _buildTextField('Full Address', addressController, maxLines: 2),
+        _buildTextField(l10n.fullAddressField, addressController, maxLines: 2),
         const SizedBox(height: 12),
-        _buildTextField('Working Hours', hoursController),
+        _buildTextField(l10n.workingHours, hoursController),
         const SizedBox(height: 12),
         _buildTextField(
-          'Website (optional)',
+          l10n.websiteOptional,
           websiteController,
           keyboardType: TextInputType.url,
         ),
@@ -316,7 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       validate: () {
         if (nameController.text.trim().isEmpty ||
             addressController.text.trim().isEmpty) {
-          return 'Clinic Name and Address are required!';
+          return l10n.clinicNameAddressRequired;
         }
         return null;
       },
@@ -336,13 +341,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const StandardHeader(title: 'Settings'),
+          StandardHeader(title: l10n.settingsTitle),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -408,7 +414,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'License: ${settings.doctorLicense}',
+                            l10n.licenseLabel(settings.doctorLicense),
                             style: TextStyle(
                                 color: AppTheme.textHint,
                               fontSize: 12,
@@ -430,39 +436,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionLabel('Account'),
+                  _sectionLabel(l10n.account),
                   _group([
                     SettingsGroupTile(
                       icon: Icons.person_outline,
-                      label: 'Doctor Profile',
+                      label: l10n.doctorProfile,
                       onTap: () => _showDoctorProfileDialog(settings),
                     ),
                     SettingsGroupTile(
                       icon: Icons.business,
-                      label: 'Clinic Information',
+                      label: l10n.clinicInformation,
                       onTap: () => _showClinicInfoDialog(settings),
                     ),
 
                   ]),
                   SizedBox(height: 20),
-                  _sectionLabel('Data & Security'),
+                  _sectionLabel(l10n.dataAndSecurity),
                   _group([
                     SettingsGroupTile(
                       icon: Icons.cloud_outlined,
-                      label: 'Backup & Cloud Sync',
+                      label: l10n.backupAndCloudSync,
                       iconBgColor: AppTheme.success.withValues(alpha: 0.1),
                       iconColor: AppTheme.success,
                       onTap: () => context.go('/app/backup'),
                     ),
                     SettingsGroupTile(
                       icon: Icons.shield_outlined,
-                      label: 'Authentication',
+                      label: l10n.authentication,
                       onTap: () => context.go('/app/authentication'),
                       showDivider: false,
                     ),
                     SettingsGroupTile(
                       icon: Icons.upload_file_outlined,
-                      label: 'Import from Desktop',
+                      label: l10n.importFromDesktop,
                       onTap: () => context.go('/app/settings/import'),
                       iconBgColor: AppTheme.primarySurface,
                       iconColor: AppTheme.primary,
@@ -470,20 +476,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
                   SizedBox(height: 20),
-                  _sectionLabel('Google Cloud Backup'),
+                  _sectionLabel(l10n.googleCloudBackup),
                   _buildGoogleDriveSection(settings),
                   SizedBox(height: 20),
-                  _sectionLabel('Preferences'),
+                  _sectionLabel(l10n.preferences),
                   _group([
+                    _buildLanguageTile(l10n),
                     SettingsGroupTile(
                       icon: Icons.notifications_outlined,
-                      label: 'Notifications',
+                      label: l10n.notifications,
                       badge: unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount.toString()) : null,
                       onTap: () => context.push('/app/settings/notifications'),
                     ),
                     SettingsGroupTile(
                       icon: Icons.dark_mode_outlined,
-                      label: 'Dark Mode',
+                      label: l10n.darkMode,
                       isToggle: true,
                       toggleValue: settings.darkMode,
                       onToggleChanged: (value) {
@@ -493,11 +500,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
                   SizedBox(height: 20),
-                  _sectionLabel('Support'),
+                  _sectionLabel(l10n.support),
                   _group([
                     SettingsGroupTile(
                       icon: Icons.help_outline,
-                      label: 'Help Center',
+                      label: l10n.helpCenter,
                       onTap: () => context.go('/app/help'),
                       showDivider: false,
                     ),
@@ -509,12 +516,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       showDialog(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text('Logout'),
-                          content: Text('Are you sure you want to logout?'),
+                          title: Text(l10n.logout),
+                          content: Text(l10n.logoutConfirm),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: Text('Cancel'),
+                              child: Text(l10n.cancel),
                             ),
                             TextButton(
                               onPressed: () async {
@@ -529,7 +536,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 }
                               },
                               child: Text(
-                                'Logout',
+                                l10n.logout,
                                 style: TextStyle(color: AppTheme.danger),
                               ),
                             ),
@@ -551,7 +558,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Icon(Icons.logout, color: AppTheme.danger, size: 20),
                           SizedBox(width: 12),
                           Text(
-                            'Logout',
+                            l10n.logout,
                             style: TextStyle(
                               color: AppTheme.danger,
                               fontWeight: FontWeight.w600,
@@ -567,7 +574,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'MediHive $_appVersion',
+                          l10n.appVersion(_appVersion),
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,
@@ -575,7 +582,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Healthcare Management System',
+                          l10n.healthcareManagementSystem,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.textTertiary,
@@ -589,6 +596,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageTile(l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primarySurface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.language, color: AppTheme.primary, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Text(
+                l10n.language,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+          ),
+          LanguageToggleButton(),
         ],
       ),
     );
@@ -618,6 +655,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   );
 
   Widget _buildGoogleDriveSection(SettingsProvider settings) {
+    final l10n = AppLocalizations.of(context)!;
     if (settings.isGoogleSigningIn) {
       return Container(
         padding: EdgeInsets.all(20),
@@ -633,8 +671,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: 12),
               Text(
                 settings.isSyncing
-                    ? 'Syncing data...'
-                    : 'Connecting to Google Drive...',
+                    ? l10n.syncingData
+                    : l10n.connectingToGoogleDrive,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -686,7 +724,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Google Drive Sync',
+                      l10n.googleDriveSync,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -695,8 +733,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     Text(
                       user != null
-                          ? 'Cloud Backup Active'
-                          : 'Keep your clinic data secure',
+                          ? l10n.cloudBackupActive
+                          : l10n.keepDataSecure,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
@@ -718,7 +756,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Icon(Icons.check, color: AppTheme.success, size: 12),
                       SizedBox(width: 4),
                       Text(
-                        'Connected',
+                        l10n.connected,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -763,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(height: 16),
           if (user == null) ...[
             Text(
-              'Connect your Google Drive to enable automated cloud backups. This ensures your patient records and OPD records are backed up securely and can be restored at any time.',
+              l10n.connectGoogleDrive,
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -778,17 +816,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   try {
                     await settings.signInGoogle();
                     if (!context.mounted) return;
-                    if (settings.googleAuthError != null) {
-                      _showToast(
-                        'Google Sign-In failed: ${settings.googleAuthError}',
-                        isError: true,
-                      );
-                    } else {
-                      _showToast('Google Drive connected successfully!');
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      _showToast('Google Sign-In failed: $e', isError: true);
+                      if (settings.googleAuthError != null) {
+                        _showToast(
+                          l10n.googleSignInFailedMessage(settings.googleAuthError!),
+                          isError: true,
+                        );
+                      } else {
+                        _showToast(l10n.googleDriveConnected);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        _showToast(l10n.googleSignInFailedMessage(e.toString()), isError: true);
                     }
                   }
                 },
@@ -808,7 +846,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 label: Text(
-                  'Connect Google Drive for Backup',
+                  l10n.connectGoogleDriveForBackup,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -850,7 +888,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.displayName ?? 'Google User',
+                        user.displayName ?? l10n.googleUserFallback,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -880,7 +918,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Last Sync Time',
+                    l10n.lastSyncTime,
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -909,17 +947,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (settings.googleAuthError != null) {
                           _showToast(settings.googleAuthError!, isError: true);
                         } else {
-                          _showToast('Backup synchronised successfully!');
+                          _showToast(l10n.backupSynced);
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          _showToast('Sync failed: $e', isError: true);
+                          _showToast(l10n.syncFailedMessage(e.toString()), isError: true);
                         }
                       }
                     },
                     icon: Icon(Icons.sync, size: 18),
                     label: Text(
-                      'Sync Now',
+                      l10n.syncNow,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -939,17 +977,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       try {
                         await settings.signOutGoogle();
                         if (context.mounted) {
-                          _showToast('Google Drive disconnected.');
+                          _showToast(l10n.googleDriveDisconnected);
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          _showToast('Failed to disconnect: $e', isError: true);
+                          _showToast(l10n.disconnectFailedMessage(e.toString()), isError: true);
                         }
                       }
                     },
                     icon: Icon(Icons.power_settings_new, size: 18),
                     label: Text(
-                      'Disconnect',
+                      l10n.disconnect,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -969,4 +1007,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
 }

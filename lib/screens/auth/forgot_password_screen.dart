@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -48,6 +49,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   }
 
   Future<void> _verifyUsername() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() {
@@ -67,20 +69,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     } else {
       setState(() {
         _isSubmitting = false;
-        _errorMessage = 'Username not found. Please check and try again.';
+        _errorMessage = l10n.usernameNotFound;
       });
     }
   }
 
   Future<void> _resetPassword() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_newPasswordCtrl.text != _confirmPasswordCtrl.text) {
-      setState(() => _errorMessage = 'Passwords do not match!');
+      setState(() => _errorMessage = l10n.passwordsDoNotMatch);
       return;
     }
     if (_newPasswordCtrl.text.length < 4) {
-      setState(() => _errorMessage = 'Password must be at least 4 characters!');
+      setState(() => _errorMessage = l10n.passwordTooShort);
       return;
     }
 
@@ -96,8 +99,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     await prefs.setString('app_username', username);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Password reset successfully! Please login with your new password.'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.passwordResetSuccess),
         backgroundColor: AppTheme.primary,
       ));
       context.go('/login');
@@ -106,6 +109,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -155,7 +159,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _stepTwo ? 'Set New Password' : 'Reset Password',
+                          _stepTwo ? l10n.setNewPassword : l10n.resetPassword,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -165,8 +169,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         const SizedBox(height: 6),
                         Text(
                           _stepTwo
-                              ? 'Enter your new password'
-                              : 'Enter your username to reset your password',
+                              ? l10n.enterNewPassword
+                              : l10n.enterUsernameToReset,
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.white.withValues(alpha: 0.7),
@@ -186,7 +190,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               obscureText: !_showNew,
                               textInputAction: TextInputAction.next,
                               decoration: InputDecoration(
-                                labelText: 'New Password',
+                                labelText: l10n.newPassword,
                                 filled: true,
                                 fillColor: AppTheme.surfaceVariant,
                                 prefixIcon: const Icon(Icons.lock_outline, size: 22, color: AppTheme.primary),
@@ -198,8 +202,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Enter a new password';
-                                if (v.length < 4) return 'At least 4 characters';
+                                if (v == null || v.trim().isEmpty) return l10n.enterNewPassword;
+                                if (v.length < 4) return l10n.atLeast4Characters;
                                 return null;
                               },
                             ),
@@ -211,7 +215,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _resetPassword(),
                               decoration: InputDecoration(
-                                labelText: 'Confirm New Password',
+                                labelText: l10n.confirmNewPassword,
                                 filled: true,
                                 fillColor: AppTheme.surfaceVariant,
                                 prefixIcon: const Icon(Icons.lock_outline, size: 22, color: AppTheme.primary),
@@ -223,7 +227,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Confirm your new password';
+                                if (v == null || v.trim().isEmpty) return l10n.confirmYourPassword;
                                 return null;
                               },
                             ),
@@ -234,7 +238,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _verifyUsername(),
                               decoration: InputDecoration(
-                                labelText: 'Username',
+                                labelText: l10n.username,
                                 filled: true,
                                 fillColor: AppTheme.surfaceVariant,
                                 prefixIcon: const Padding(
@@ -245,7 +249,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Enter your username';
+                                if (v == null || v.trim().isEmpty) return l10n.enterYourUsername;
                                 return null;
                               },
                             ),
@@ -279,13 +283,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                               ),
                               child: _isSubmitting
                                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                                  : Text(_stepTwo ? 'RESET PASSWORD' : 'VERIFY', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                                   : Text(_stepTwo ? l10n.resetPassword.toUpperCase() : l10n.verify.toUpperCase(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
                             ),
                           ),
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: _isSubmitting ? null : () => context.go('/login'),
-                            child: Text('Back to Login', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+                            child: Text(l10n.backToLogin, style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
                           ),
                         ]),
                       ),

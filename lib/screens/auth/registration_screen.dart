@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../widgets/language_toggle_button.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -14,9 +17,13 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _clinicNameCtrl = TextEditingController();
+  final _clinicPhoneCtrl = TextEditingController();
+  final _clinicAddressCtrl = TextEditingController();
 
   bool _showPassword = false;
   bool _showConfirm = false;
@@ -26,9 +33,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
+    _clinicNameCtrl.dispose();
+    _clinicPhoneCtrl.dispose();
+    _clinicAddressCtrl.dispose();
     super.dispose();
   }
 
@@ -45,20 +56,36 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       _errorMessage = null;
     });
 
-    final auth = context.read<AuthProvider>();
-    auth.setUsername(_usernameCtrl.text.trim());
-    auth.setPassword(_passwordCtrl.text);
-    auth.setRememberMe(true);
+    try {
+      final data = await ApiService.registerClinic(
+        username: _usernameCtrl.text.trim(),
+        password: _passwordCtrl.text,
+        name: _nameCtrl.text.trim(),
+        clinicName: _clinicNameCtrl.text.trim(),
+        clinicEmail: _emailCtrl.text.trim(),
+        clinicPhone: _clinicPhoneCtrl.text.trim(),
+        clinicAddress: _clinicAddressCtrl.text.trim(),
+      );
 
-    final user = await auth.signIn();
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        auth.setUsername(_usernameCtrl.text.trim());
+        auth.setPassword(_passwordCtrl.text);
+        auth.setRememberMe(true);
+        await auth.saveClinicInfo(data);
 
-    if (mounted) {
-      if (user) {
-        context.go('/app');
-      } else {
+        final success = await auth.signIn();
+        if (success && mounted) {
+          context.go('/app');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorMessage = 'Registration failed. Try a different username.';
+          _errorMessage = e.toString().contains('already exists')
+              ? 'Username already exists. Try another.'
+              : 'Registration failed. Check your connection.';
         });
       }
     }
@@ -66,6 +93,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -98,75 +127,102 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         topRight: Radius.circular(28),
                       ),
                     ),
-                    child: Column(children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
+                    child: Stack(
+                      children: [
+                        Column(children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.local_hospital, size: 48, color: Colors.white),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Create Clinic Account',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withValues(alpha: 0.95),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Register your clinic to get started',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ]),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: LanguageToggleButton(isCompact: true),
                         ),
-                        child: const Icon(Icons.person_add, size: 48, color: Colors.white),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Register a new account to get started',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                     child: Form(
                       key: _formKey,
                       child: Column(children: [
+                        // Clinic Info Section
+                        _sectionHeader('Clinic Information'),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _clinicNameCtrl,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          decoration: _inputDecoration('Clinic Name', Icons.local_hospital),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Clinic name required' : null,
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _clinicPhoneCtrl,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          keyboardType: TextInputType.phone,
+                          decoration: _inputDecoration('Phone (optional)', Icons.phone),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _clinicAddressCtrl,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          maxLines: 2,
+                          decoration: _inputDecoration('Address (optional)', Icons.location_on),
+                        ),
+                        const SizedBox(height: 20),
+                        // Doctor Info Section
+                        _sectionHeader('Doctor Information'),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _nameCtrl,
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Full Name',
-                            filled: true,
-                            fillColor: AppTheme.surfaceVariant,
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(left: 16, right: 8),
-                              child: Icon(Icons.person_outline, size: 22, color: AppTheme.primary),
-                            ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Enter your name';
-                            return null;
-                          },
+                          decoration: _inputDecoration('Full Name', Icons.person),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
                         ),
                         const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _emailCtrl,
+                          enabled: !_isSubmitting,
+                          textInputAction: TextInputAction.next,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: _inputDecoration('Email (optional)', Icons.email),
+                        ),
+                        const SizedBox(height: 20),
+                        // Login Credentials Section
+                        _sectionHeader('Login Credentials'),
+                        const SizedBox(height: 12),
                         TextFormField(
                           controller: _usernameCtrl,
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Username',
-                            filled: true,
-                            fillColor: AppTheme.surfaceVariant,
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(left: 16, right: 8),
-                              child: Icon(Icons.person_outline, size: 22, color: AppTheme.primary),
-                            ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
-                          ),
+                          decoration: _inputDecoration('Username', Icons.person_outline),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) return 'Enter a username';
                             if (v.length < 3) return 'At least 3 characters';
@@ -179,18 +235,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           enabled: !_isSubmitting,
                           obscureText: !_showPassword,
                           textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            filled: true,
-                            fillColor: AppTheme.surfaceVariant,
-                            prefixIcon: const Icon(Icons.lock_outline, size: 22, color: AppTheme.primary),
-                            suffixIcon: IconButton(
-                              icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 22),
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
-                            ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
-                          ),
+                          decoration: _inputDecoration('Password', Icons.lock_outline, suffix: IconButton(
+                            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 22),
+                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                          )),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) return 'Enter a password';
                             if (v.length < 4) return 'At least 4 characters';
@@ -204,22 +252,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           obscureText: !_showConfirm,
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _register(),
-                          decoration: InputDecoration(
-                            labelText: 'Confirm Password',
-                            filled: true,
-                            fillColor: AppTheme.surfaceVariant,
-                            prefixIcon: const Icon(Icons.lock_outline, size: 22, color: AppTheme.primary),
-                            suffixIcon: IconButton(
-                              icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility, size: 22),
-                              onPressed: () => setState(() => _showConfirm = !_showConfirm),
-                            ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Confirm your password';
-                            return null;
-                          },
+                          decoration: _inputDecoration('Confirm Password', Icons.lock_outline, suffix: IconButton(
+                            icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility, size: 22),
+                            onPressed: () => setState(() => _showConfirm = !_showConfirm),
+                          )),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Confirm your password' : null,
                         ),
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 12),
@@ -250,7 +287,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             ),
                             child: _isSubmitting
                                 ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                                : const Text('CREATE ACCOUNT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                                : const Text('CREATE CLINIC', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -267,6 +304,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Row(
+      children: [
+        Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 10),
+        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon, {Widget? suffix}) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: AppTheme.surfaceVariant,
+      prefixIcon: Padding(padding: const EdgeInsets.only(left: 16, right: 8), child: Icon(icon, size: 22, color: AppTheme.primary)),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 1.5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
     );
   }
 }

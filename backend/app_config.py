@@ -22,11 +22,7 @@ DB_POOL_MAX = int(os.environ.get('DB_POOL_MAX', '5'))
 # The pool handles this with automatic retries.
 CONNECT_TIMEOUT = int(os.environ.get('CONNECT_TIMEOUT', '10'))
 
-# Legacy SQLite path — retained for test compatibility, not used in production
-DATABASE_PATH = os.environ.get(
-    'DATABASE_PATH',
-    os.path.join(BASE_DIR, 'medihive.db')
-)
+DATABASE_PATH = os.path.join(BASE_DIR, 'medihive.db')
 
 # WhatsApp Cloud API
 WHATSAPP_TOKEN = os.environ.get('WHATSAPP_TOKEN', '')
@@ -71,10 +67,9 @@ GOOGLE_CREDENTIALS_JSON = os.environ.get('GOOGLE_CREDENTIALS_JSON', '')
 GOOGLE_CREDENTIALS_PATH = GOOGLE_CREDENTIALS_FILE
 GOOGLE_SHEET_NAME = os.environ.get('GOOGLE_SHEET_NAME', "MediHive - Patient Records")
 
-# Google Drive OAuth Token
 DRIVE_TOKEN_PATH = os.environ.get(
     'DRIVE_TOKEN_PATH',
-    os.path.join(BASE_DIR, '..', 'drive_token.json')
+    os.path.join(BASE_DIR, 'drive_token.json')
 )
 DRIVE_TOKEN_JSON = os.environ.get('DRIVE_TOKEN_JSON', '')
 

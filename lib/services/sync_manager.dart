@@ -1,21 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'api_service.dart';
 import 'connectivity_service.dart';
-import 'google_auth_service.dart';
-import 'google_drive_sync_service.dart';
 import '../models/appointment_model.dart';
-import 'background_backup_handler.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/opd_record_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 import '../repositories/patient_images_repository.dart';
+import '../repositories/device_registration_repository.dart';
 import '../database/database_helper.dart';
+import 'dart:math' show Random;
 
 enum SyncState {
   offline,
@@ -25,225 +23,346 @@ enum SyncState {
 }
 
 class SyncManager extends ChangeNotifier {
-  static T _tryInit<T>(String name, T Function() fn) {
-    print('INIT $name START');
-    try {
-      final v = fn();
-      print('INIT $name SUCCESS');
-      return v;
-    } catch (e, st) {
-      print('INIT $name FAILED: $e');
-      print(st);
-      rethrow;
-    }
-  }
-
-  final ConnectivityService _connectivityService = _tryInit('ConnectivityService', () => ConnectivityService());
-
-  GoogleAuthService? _googleAuthService;
-  GoogleAuthService get _authService {
-    _googleAuthService ??= _tryInit('GoogleAuthService', () => GoogleAuthService());
-    return _googleAuthService!;
-  }
-
-  GoogleDriveSyncService? _driveSyncService;
-  GoogleDriveSyncService get _driveService {
-    _driveSyncService ??= _tryInit('GoogleDriveSyncService', () => GoogleDriveSyncService());
-    return _driveSyncService!;
-  }
-
-  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final ConnectivityService _connectivity = ConnectivityService();
+  final PatientRepository _patientRepo = PatientRepository();
+  final OpdRecordRepository _opdRepo = OpdRecordRepository();
+  final SyncQueueRepository _syncQueueRepo = SyncQueueRepository();
+  final PatientImagesRepository _imagesRepo = PatientImagesRepository();
+  final DeviceRegistrationRepository _deviceRegRepo = DeviceRegistrationRepository();
 
   SyncState _syncState = SyncState.synced;
   bool _pendingSyncRequested = false;
   Timer? _debounceTimer;
   Timer? _pollTimer;
   StreamSubscription<bool>? _connectivitySubscription;
-
-  final Map<String, int> _imageUploadRetries = {};
-
-  bool _isSignedIn = false;
-  StreamSubscription? _googleAuthSub;
+  int _syncCount = 0;
+  String? _deviceId;
 
   SyncState get syncState => _syncState;
   bool get isSyncing => _syncState == SyncState.syncing;
+  int get syncCount => _syncCount;
+  String? get deviceId => _deviceId;
 
-  final PatientRepository _patientRepo = _tryInit('PatientRepository', () => PatientRepository());
-  final OpdRecordRepository _opdRepo = _tryInit('OpdRecordRepository', () => OpdRecordRepository());
-  final SyncQueueRepository _syncQueueRepo = _tryInit('SyncQueueRepository', () => SyncQueueRepository());
-  final PatientImagesRepository _patientImagesRepo = _tryInit('PatientImagesRepository', () => PatientImagesRepository());
-  int _cachedUnsyncedCount = 0;
-
-  static final SyncManager _instance = _tryInit('SyncManager._instance', () => SyncManager._internal());
-  factory SyncManager() {
-    print('FACTORY SyncManager() CALLED');
-    return _instance;
+  static final SyncManager _instance = SyncManager._internal();
+  factory SyncManager() => _instance;
+  SyncManager._internal() {
+    if (kIsWeb) return;
+    _init();
   }
 
-  SyncManager._internal() {
-    print('SYNC CONSTRUCTOR ENTER');
-    if (kIsWeb) {
-      debugPrint('SYNC CONSTRUCTOR EXIT: kIsWeb');
-      return;
-    }
-
-    _initializeState();
-    _refreshUnsyncedCount();
-    _initPolling();
-
-    print('SYNC scheduling initial timer');
-    Timer(const Duration(seconds: 5), () {
-      print('SYNC INITIAL TIMER FIRED');
-      _trySync();
-    });
-
-    _connectivitySubscription = _connectivityService.isConnected.listen((connected) {
-      print('SYNC CONNECTIVITY CHANGED: $connected');
+  Future<void> _init() async {
+    _deviceId = await _loadOrCreateDeviceId();
+    _connectivitySubscription = _connectivity.isConnected.listen((connected) {
       if (!connected) {
         _syncState = SyncState.offline;
         notifyListeners();
       } else {
         _debounceTimer?.cancel();
-        _debounceTimer = Timer(const Duration(seconds: 3), () {
-          debugPrint('SYNC CONNECTIVITY DEBOUNCE TIMER FIRED');
-          _trySync();
-        });
+        _debounceTimer = Timer(const Duration(seconds: 3), _trySync);
       }
     });
-
-    _googleAuthSub = _authService.onAuthStateChanged.listen((account) {
-      _isSignedIn = account != null;
-      debugPrint('SYNC AUTH CHANGED: signedIn=$_isSignedIn');
-      if (_isSignedIn && _connectivityService.currentStatus) {
-        _debounceTimer?.cancel();
-        _debounceTimer = Timer(const Duration(seconds: 3), () {
-          debugPrint('SYNC AUTH DEBOUNCE TIMER FIRED');
-          _trySync();
-        });
-      }
-    });
-    print('SYNC CONSTRUCTOR EXIT');
-  }
-
-  void _initializeState() {
-    final connected = _connectivityService.currentStatus;
-    _syncState = connected ? SyncState.synced : SyncState.offline;
-    notifyListeners();
-  }
-
-  Future<void> _refreshUnsyncedCount() async {
-    try {
-      int count = await _syncQueueRepo.countPending();
-      try {
-        final apptBox = Hive.box<AppointmentModel>('appointments');
-        count += apptBox.values.where((a) => !a.isSynced).length;
-      } catch (_) {}
-      _cachedUnsyncedCount = count;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('SyncManager._refreshUnsyncedCount failed: $e');
-    }
-  }
-
-  void _initPolling() {
     _pollTimer = Timer.periodic(const Duration(minutes: 2), (_) => _trySync());
+    Timer(const Duration(seconds: 5), _trySync);
+    await _registerDevice();
   }
 
-  int getUnsyncedCount() => _cachedUnsyncedCount;
+  Future<void> _registerDevice() async {
+    if (_deviceId == null) return;
+    try {
+      await ApiService.cloudRegisterDevice(
+        deviceId: _deviceId!,
+        deviceName: _getDeviceName(),
+        clinicId: '',
+        appVersion: '1.0.0',
+      );
+    } catch (_) {}
+  }
 
   Future<void> _trySync() async {
-    print('SYNC _trySync ENTER');
-    debugPrint('========== SYNC ENTER _trySync ==========');
-    if (kIsWeb) {
-      debugPrint('SYNC EXIT _trySync: kIsWeb');
-      return;
-    }
-    debugPrint('SYNC _trySync: connectivity=${_connectivityService.currentStatus}');
-    if (!_connectivityService.currentStatus) {
-      debugPrint('SYNC EXIT _trySync: no connectivity');
-      return;
-    }
-    debugPrint('SYNC _trySync: syncState=$_syncState');
-    if (_syncState == SyncState.syncing) {
-      debugPrint('SYNC EXIT _trySync: already syncing');
-      return;
-    }
+    if (kIsWeb) return;
+    if (!_connectivity.currentStatus) return;
+    if (_syncState == SyncState.syncing) return;
 
     _syncState = SyncState.syncing;
     notifyListeners();
 
-    // ── Ensure we have a valid API token ────────────────
-    // If the token is missing (e.g. app started in offline/local-auth mode),
-    // try to re-login so sync push/pull don't fail with 401.
     try {
       await ApiService.ensureToken();
-    } catch (e) {
-      debugPrint('SYNC token check failed: $e');
-    }
-
-    try {
-      // 1. Sync with Flask API
-      debugPrint('SYNC ENTER _syncWithFlask');
-      await _syncWithFlask();
-      debugPrint('SYNC EXIT _syncWithFlask (success)');
-
-      // NOTE: Excel backup (.xlsx files) is intentionally NOT called here.
-      // The Flask API push (above) writes OPD data directly to the existing
-      // Google Sheet. Images are uploaded to the existing "MediHive Images"
-      // Drive folder. Creating .xlsx backup files during sync is disabled
-      // to prevent duplicate file creation in Google Drive.
-      // Use backupToDriveOnly() for manual Excel backups.
-
+      await _syncWithBackend();
+      _syncCount++;
       _syncState = SyncState.synced;
       notifyListeners();
 
-      // If a forceSyncNow was requested while we were syncing, run again
       if (_pendingSyncRequested) {
         _pendingSyncRequested = false;
-        debugPrint('SYNC running deferred sync from pendingSyncRequested');
-        _trySync(); // fire-and-forget to avoid deep recursion
+        _trySync();
       }
-
-      debugPrint('========== SYNC COMPLETE ==========');
     } catch (e) {
-      debugPrint('SyncManager._trySync failed: $e');
-      debugPrint('========== SYNC ERROR ==========');
+      debugPrint('SYNC error: $e');
       _syncState = SyncState.error;
       notifyListeners();
     }
   }
 
-  // ─── ID Conversion Helpers ──────────────────────────
+  Future<void> _syncWithBackend() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastSync = prefs.getString('last_flask_sync') ?? '';
 
-  int _toSqlitePatientId(String hiveId) =>
-      int.tryParse(hiveId.replaceAll(RegExp(r'^P0*'), '')) ?? 0;
+    // ── Push ──
+    final pending = await _syncQueueRepo.getPending();
+    final pushPatients = <Map<String, dynamic>>[];
+    final pushOpd = <Map<String, dynamic>>[];
+    final pushAppts = <Map<String, dynamic>>[];
+    final deletedEntities = <Map<String, String>>[];
 
-  String _patientToStringId(int sqliteId) =>
-      'P${sqliteId.toString().padLeft(3, '0')}';
+    for (final entry in pending) {
+      final entityType = entry['entity_type'] as String? ?? '';
+      final entityId = entry['entity_id'] as String? ?? '';
+      final operation = entry['operation'] as String? ?? 'upsert';
 
-  String _opdToStringId(int sqliteId) => 'R$sqliteId';
+      if (operation == 'delete') {
+        deletedEntities.add({'entity_type': entityType, 'entity_id': entityId});
+        continue;
+      }
 
-  // ─── Push Data Builders ────────────────────────────
+      if (entityType == 'patient') {
+        final row = await _patientRepo.getBySyncId(entityId);
+        if (row != null) {
+          pushPatients.add(_patientRowToMap(row));
+        }
+      } else if (entityType == 'opd_visit') {
+        final row = await _opdRepo.getByOpdId(entityId);
+        if (row != null) {
+          pushOpd.add(_opdRowToMap(row));
+        }
+      }
+    }
 
-  String _resolveUpdatedAt(Map<String, dynamic> row) {
-    final updatedAt = row['updated_at'] as String?;
-    if (updatedAt != null && updatedAt.isNotEmpty) return updatedAt;
-    final createdAt = row['created_at'] as String?;
-    if (createdAt != null && createdAt.isNotEmpty) return createdAt;
-    return DateTime.now().toIso8601String();
+    try {
+      final apptBox = Hive.box<AppointmentModel>('appointments');
+      for (final a in apptBox.values) {
+        if (!a.isSynced) {
+          pushAppts.add(a.toJson());
+        }
+      }
+    } catch (_) {}
+
+    if (pushPatients.isNotEmpty || pushOpd.isNotEmpty || pushAppts.isNotEmpty || deletedEntities.isNotEmpty) {
+      final response = await ApiService.syncPush(
+        patients: pushPatients,
+        opdRecords: pushOpd,
+        appointments: pushAppts,
+        deletedEntities: deletedEntities,
+        deviceId: _deviceId ?? '',
+      );
+
+      final tempMapped = response['temp_ids_mapped'] as Map<String, dynamic>? ?? {};
+      for (final entry in tempMapped.entries) {
+        await _patientRepo.updateSyncId(entry.key, entry.value as String);
+      }
+
+      final now = DateTime.now().toIso8601String();
+      for (final entry in pending) {
+        await _syncQueueRepo.update(entry['id'] as int, {
+          'status': 'synced',
+          'last_attempt': now,
+        });
+      }
+
+      try {
+        final box = Hive.box<AppointmentModel>('appointments');
+        for (final a in pushAppts) {
+          final id = a['id'] as String;
+          final existing = box.get(id);
+          if (existing != null) {
+            box.put(id, existing.copyWith(isSynced: true, updatedAt: DateTime.now()));
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ── Upload images ──
+    await _uploadPendingImages();
+
+    // ── Pull ──
+    final pullSync = lastSync.isEmpty ? '2000-01-01T00:00:00' : lastSync;
+    try {
+      final data = await ApiService.syncPull(pullSync);
+
+      await _applyRemotePatients(data['patients'] as List<dynamic>? ?? []);
+      await _applyRemoteOpdRecords(data['opd_records'] as List<dynamic>? ?? []);
+      await _applyRemoteAppointments(data['appointments'] as List<dynamic>? ?? []);
+      await _applyRemoteDeletes(data['deleted_entities'] as List<dynamic>? ?? []);
+
+      await prefs.setString(
+        'last_flask_sync',
+        data['server_time']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      );
+    } catch (e) {
+      debugPrint('SYNC pull failed (non-fatal): $e');
+    }
   }
 
-  Future<String> _patientSyncId(Map<String, dynamic> row) async {
-    final syncId = row['sync_id'] as String?;
-    if (syncId != null && syncId.isNotEmpty) return syncId;
-    return _patientToStringId(row['id'] as int);
+  Future<void> _uploadPendingImages() async {
+    try {
+      final docBox = Hive.box('opd_documents');
+      for (final key in docBox.keys) {
+        final opdId = key.toString();
+        final raw = docBox.get(opdId);
+        if (raw == null) continue;
+
+        final bytes = base64Decode(raw.toString());
+        final tempFile = File('${Directory.systemTemp.path}/${opdId}_${DateTime.now().microsecondsSinceEpoch}.jpg');
+        try {
+          await tempFile.writeAsBytes(bytes);
+          await ApiService.cloudUploadImages(opdId, [tempFile]);
+          await docBox.delete(opdId);
+        } catch (e) {
+          debugPrint('SYNC image upload failed for $opdId: $e');
+        } finally {
+          if (await tempFile.exists()) await tempFile.delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('SYNC image upload error: $e');
+    }
   }
 
-  Future<Map<String, dynamic>> _patientRowToPushMap(Map<String, dynamic> row) async {
+  Future<void> _applyRemotePatients(List<dynamic> remotePatients) async {
+    for (final json in remotePatients) {
+      try {
+        final map = Map<String, dynamic>.from(json as Map);
+        final remoteId = map['id']?.toString() ?? '';
+        final remoteUpdated = DateTime.tryParse(map['updated_at']?.toString() ?? '');
+        final existing = await _patientRepo.getBySyncId(remoteId);
+        final localUpdated = DateTime.tryParse(
+          existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
+        );
+
+        if (existing == null || (remoteUpdated != null && localUpdated != null && remoteUpdated.isAfter(localUpdated))) {
+          if (existing != null) {
+            await _patientRepo.update(existing['id'] as int, _remotePatientToRow(map, existing['id'] as int, remoteId));
+          } else {
+            final maxId = await _patientRepo.getMaxId();
+            await _patientRepo.insert(_remotePatientToRow(map, maxId + 1, remoteId));
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _applyRemoteOpdRecords(List<dynamic> remoteOpd) async {
+    for (final json in remoteOpd) {
+      try {
+        final map = Map<String, dynamic>.from(json as Map);
+        final remoteId = map['id']?.toString() ?? '';
+        final remoteUpdated = DateTime.tryParse(map['updated_at']?.toString() ?? '');
+        final existing = await _opdRepo.getByOpdId(remoteId);
+        final localUpdated = DateTime.tryParse(
+          existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
+        );
+
+        if (existing == null || (remoteUpdated != null && localUpdated != null && remoteUpdated.isAfter(localUpdated))) {
+          final localId = existing != null ? existing['id'] as int : (await _opdRepo.getMaxId()) + 1;
+          final row = await _remoteOpdToRow(map, localId);
+          if (existing != null) {
+            await _opdRepo.update(localId, row);
+          } else {
+            await _opdRepo.insert(row);
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _applyRemoteAppointments(List<dynamic> remoteAppts) async {
+    for (final json in remoteAppts) {
+      try {
+        final map = Map<String, dynamic>.from(json as Map);
+        final apptBox = Hive.box<AppointmentModel>('appointments');
+        final existing = apptBox.get(map['id']);
+        final remoteUpdated = DateTime.tryParse(map['updated_at']?.toString() ?? '');
+        if (existing == null ||
+            (remoteUpdated != null && existing.updatedAt.isBefore(remoteUpdated))) {
+          apptBox.put(map['id'], AppointmentModel.fromJson(map));
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _applyRemoteDeletes(List<dynamic> remoteDeleted) async {
+    for (final del in remoteDeleted) {
+      try {
+        final d = Map<String, dynamic>.from(del as Map);
+        final etype = d['entity_type']?.toString() ?? '';
+        final eid = d['entity_id']?.toString() ?? '';
+
+        if (etype == 'patient') {
+          final local = await _patientRepo.getBySyncId(eid);
+          if (local != null) {
+            final localId = local['id'] as int;
+            await _opdRepo.deleteByPatientId(localId);
+            await _patientRepo.delete(localId);
+          }
+        } else if (etype == 'opd_visit') {
+          final local = await _opdRepo.getByOpdId(eid);
+          if (local != null) {
+            await _opdRepo.delete(local['id'] as int);
+          }
+        } else if (etype == 'appointment') {
+          try {
+            final apptBox = Hive.box<AppointmentModel>('appointments');
+            if (apptBox.containsKey(eid)) await apptBox.delete(eid);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> forceSyncNow() async {
+    if (_syncState == SyncState.syncing) {
+      _pendingSyncRequested = true;
+      return;
+    }
+    await _trySync();
+  }
+
+  Future<bool> fullRestore() async {
+    if (!_connectivity.currentStatus) return false;
+    _syncState = SyncState.syncing;
+    notifyListeners();
+
+    try {
+      await ApiService.ensureToken();
+      final data = await ApiService.fullRestore();
+      await _applyRemotePatients(data['patients'] as List<dynamic>? ?? []);
+      await _applyRemoteOpdRecords(data['opd_records'] as List<dynamic>? ?? []);
+      await _applyRemoteAppointments(data['appointments'] as List<dynamic>? ?? []);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'last_flask_sync',
+        data['server_time']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      );
+      _syncState = SyncState.synced;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('FULL RESTORE error: $e');
+      _syncState = SyncState.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ─── Data helpers ──
+
+  Map<String, dynamic> _patientRowToMap(Map<String, dynamic> row) {
     final createdAt = row['created_at'] as String? ?? '';
     final createdDt = DateTime.tryParse(createdAt) ?? DateTime.now();
+    final syncId = row['sync_id'] as String? ?? 'P${row['id']}';
     return {
-      'id': await _patientSyncId(row),
+      'id': syncId,
       'name': row['full_name'],
       'dob': row['dob'] ?? '',
       'age': row['age'] ?? 0,
@@ -253,28 +372,17 @@ class SyncManager extends ChangeNotifier {
       'address': row['address'] ?? '',
       'created_at': createdDt.toIso8601String(),
       'updated_at': _resolveUpdatedAt(row),
-      'is_synced': 1,
     };
   }
 
-  Future<Map<String, dynamic>> _opdRowToPushMap(Map<String, dynamic> row) async {
+  Map<String, dynamic> _opdRowToMap(Map<String, dynamic> row) {
     final createdAt = row['created_at'] as String? ?? '';
     final createdDt = DateTime.tryParse(createdAt) ?? DateTime.now();
     final visitDt = row['visit_datetime'] as String? ?? '';
     final localPatientId = row['patient_id'] as int? ?? 0;
-    String patientSyncId;
-    String patientBloodGroup = '';
-    try {
-      final patient = await _patientRepo.getById(localPatientId);
-      patientSyncId = patient?['sync_id'] as String? ?? _patientToStringId(localPatientId);
-      patientBloodGroup = patient?['blood_group'] as String? ?? '';
-    } catch (_) {
-      patientSyncId = _patientToStringId(localPatientId);
-    }
-    final pkNotes = row['panchakarma_notes'] ?? '';
-    print('SYNC DEBUG: _opdRowToPushMap panchakarma_notes="${pkNotes}"');
+    final patientSyncId = 'P$localPatientId';
     return {
-      'id': row['opd_id']?.toString() ?? _opdToStringId(row['id'] as int),
+      'id': row['opd_id']?.toString() ?? 'R${row['id']}',
       'patient_id': patientSyncId,
       'type': row['opd_type'] ?? 'consultation',
       'symptoms': row['symptoms'] ?? '',
@@ -282,7 +390,6 @@ class SyncManager extends ChangeNotifier {
       'medicines': row['medicines'] ?? '',
       'visit_date': DateTime.tryParse(visitDt)?.toIso8601String() ?? createdDt.toIso8601String(),
       'clinical_notes': row['clinical_notes'] ?? '',
-      'panchakarma_notes': pkNotes,
       'consultation_fee': (row['consultation_fee'] as num?)?.toString() ?? '',
       'medicine_fee': (row['medicine_fee'] as num?)?.toString() ?? '',
       'panchakarma_fee': (row['panchakarma_fee'] as num?)?.toString() ?? '',
@@ -291,17 +398,13 @@ class SyncManager extends ChangeNotifier {
       'discount_type': row['discount_type'] ?? '',
       'payment_mode': row['payment_mode'] ?? '',
       'charge_type': row['charge_type'] ?? '',
-      'previous_visit_date': '',
       'follow_up_reason': row['followup_status'] ?? '',
       'next_visit': row['next_visit_date'] ?? '',
-      'blood_group': patientBloodGroup,
+      'blood_group': row['blood_group'] ?? '',
       'created_at': createdDt.toIso8601String(),
       'updated_at': _resolveUpdatedAt(row),
-      'is_synced': 1,
     };
   }
-
-  // ─── Pull Data Writers ─────────────────────────────
 
   Map<String, dynamic> _remotePatientToRow(Map<String, dynamic> remote, int sqliteId, String syncId) {
     return {
@@ -309,7 +412,6 @@ class SyncManager extends ChangeNotifier {
       'sync_id': syncId,
       'full_name': remote['name']?.toString() ?? '',
       'mobile_number': remote['mobile']?.toString() ?? '',
-      'alternate_mobile': null,
       'gender': remote['gender']?.toString() ?? 'Not Specified',
       'dob': remote['dob']?.toString() ?? '',
       'age': int.tryParse(remote['age']?.toString() ?? '') ?? 0,
@@ -325,9 +427,9 @@ class SyncManager extends ChangeNotifier {
     int localPatientId;
     try {
       final patient = await _patientRepo.getBySyncId(remotePatientId);
-      localPatientId = patient?['id'] as int? ?? _toSqlitePatientId(remotePatientId);
+      localPatientId = patient?['id'] as int? ?? 0;
     } catch (_) {
-      localPatientId = _toSqlitePatientId(remotePatientId);
+      localPatientId = 0;
     }
     return {
       'id': sqliteId,
@@ -339,7 +441,6 @@ class SyncManager extends ChangeNotifier {
       'diagnosis': remote['diagnosis']?.toString() ?? '',
       'symptoms': remote['symptoms']?.toString() ?? '',
       'clinical_notes': remote['clinical_notes']?.toString() ?? '',
-      'panchakarma_notes': remote['panchakarma_notes']?.toString() ?? '',
       'consultation_fee': double.tryParse(remote['consultation_fee']?.toString() ?? '') ?? 0.0,
       'medicine_fee': double.tryParse(remote['medicine_fee']?.toString() ?? '') ?? 0.0,
       'payment_mode': remote['payment_mode']?.toString() ?? '',
@@ -352,640 +453,33 @@ class SyncManager extends ChangeNotifier {
     };
   }
 
-  // ─── Sync Logic ────────────────────────────────────
+  String _resolveUpdatedAt(Map<String, dynamic> row) {
+    final updatedAt = row['updated_at'] as String?;
+    if (updatedAt != null && updatedAt.isNotEmpty) return updatedAt;
+    final createdAt = row['created_at'] as String?;
+    if (createdAt != null && createdAt.isNotEmpty) return createdAt;
+    return DateTime.now().toIso8601String();
+  }
 
-  Future<void> _syncWithFlask() async {
-    print('SYNC _syncWithFlask ENTER');
-    debugPrint('SYNC _syncWithFlask ENTER');
+  Future<String> _loadOrCreateDeviceId() async {
+    final existing = await _deviceRegRepo.get();
+    if (existing != null) return existing['device_id'] as String;
+    final newId = 'DEV${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
+    await _deviceRegRepo.insert({'device_id': newId, 'device_name': '', 'clinic_id': ''});
+    return newId;
+  }
 
-    // Ensure we have a valid API token before attempting sync.
-    // This handles cases where the app started in local-auth mode
-    // without a JWT token.
+  String _getDeviceName() {
     try {
-      await ApiService.ensureToken();
-    } catch (e) {
-      debugPrint('SYNC _syncWithFlask: token acquisition failed: $e');
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final lastSync = prefs.getString('last_flask_sync') ?? '';
-    debugPrint('SYNC lastSync=$lastSync');
-
-    // ── Push (sync_queue driven) ─────────────────────
-
-    final pushPatients = <Map<String, dynamic>>[];
-    final pushOpd = <Map<String, dynamic>>[];
-    final pushAppts = <Map<String, dynamic>>[];
-    final syncedApptModels = <AppointmentModel>[];
-
-    final pendingEntries = await _syncQueueRepo.getPending();
-    debugPrint('SYNC pendingEntries count=${pendingEntries.length}');
-    final processedPatientIds = <String>{};
-    final processedOpdIds = <String>{};
-    final deletedEntities = <Map<String, String>>[];
-
-    for (final entry in pendingEntries) {
-      final entityType = entry['entity_type'] as String? ?? '';
-      final entityId = entry['entity_id'] as String? ?? '';
-      final operation = entry['operation'] as String? ?? 'upsert';
-      debugPrint('SYNC processing entry type=$entityType id=$entityId operation=$operation');
-
-      if (operation == 'delete') {
-        deletedEntities.add({'entity_type': entityType, 'entity_id': entityId});
-        continue;
-      }
-
-      if (entityType == 'patient' && !processedPatientIds.contains(entityId)) {
-        processedPatientIds.add(entityId);
-        try {
-          final row = await _patientRepo.getBySyncId(entityId);
-          if (row != null) {
-            pushPatients.add(await _patientRowToPushMap(row));
-            debugPrint('SYNC added patient $entityId to push');
-          } else {
-            debugPrint('SYNC patient row null for $entityId');
-          }
-        } catch (e) {
-          debugPrint('SYNC patient fetch error for $entityId: $e');
-        }
-      } else if (entityType == 'opd_visit' &&
-           !processedOpdIds.contains(entityId)) {
-        processedOpdIds.add(entityId);
-
-        final row = await _opdRepo.getByOpdId(entityId);
-
-        if (row != null) {
-          debugPrint('SYNC FOUND OPD: $entityId');
-          pushOpd.add(await _opdRowToPushMap(row));
-        } else {
-          debugPrint('SYNC OPD NOT FOUND: $entityId');
-        }
-      }
-    }
-
-    try {
-      final apptBox = Hive.box<AppointmentModel>('appointments');
-      for (final a in apptBox.values) {
-        if (!a.isSynced) {
-          pushAppts.add(a.toJson());
-          syncedApptModels.add(a);
-        }
-      }
-    } catch (_) {}
-
-    debugPrint('SYNC pushPatients=${pushPatients.length} pushOpd=${pushOpd.length} pushAppts=${pushAppts.length} pendingEntries=${pendingEntries.length}');
-    if (pushOpd.isNotEmpty) {
-      for (final opd in pushOpd) {
-        debugPrint('SYNC PUSH OPD: id=${opd['id']} patient_id=${opd['patient_id']} '
-            'diagnosis=${opd['diagnosis']} symptoms=${opd['symptoms']} '
-            'clinical_notes=${opd['clinical_notes']} panchakarma_notes=${opd['panchakarma_notes']} '
-            'consultation_fee=${opd['consultation_fee']} medicine_fee=${opd['medicine_fee']} '
-            'panchakarma_fee=${opd['panchakarma_fee']} total_fee=${opd['total_fee']} '
-            'discount=${opd['discount']} discount_type=${opd['discount_type']} '
-            'payment_mode=${opd['payment_mode']} follow_up_reason=${opd['follow_up_reason']} '
-            'next_visit=${opd['next_visit']} visit_date=${opd['visit_date']}');
-      }
-    }
-    if (pushPatients.isNotEmpty || pushOpd.isNotEmpty || pushAppts.isNotEmpty) {
-      try {
-        debugPrint('SYNC CALLING API SYNC PUSH');
-        final pushResponse = await ApiService.syncPush(
-          patients: pushPatients,
-          opdRecords: pushOpd,
-          appointments: pushAppts,
-          deletedEntities: deletedEntities,
-        );
-        debugPrint('SYNC API SYNC PUSH SUCCESS');
-
-        // ── Check for sheet warnings (207 Multi-Status) ──────────
-        // When the backend saves data locally but fails to write to
-        // Google Sheets, it returns sheet_warnings. Entries should NOT
-        // be marked synced — the outer catch will increment retry_count
-        // and leave them as 'pending' for retry on next sync cycle.
-        final sheetWarnings = pushResponse['sheet_warnings'] as List<dynamic>?;
-        if (sheetWarnings != null && sheetWarnings.isNotEmpty) {
-          debugPrint('SYNC SHEET WARNINGS DETECTED: $sheetWarnings');
-          throw ApiException(
-            207,
-            'Data saved on server but Google Sheet was not updated. '
-            'Sheet warnings: ${sheetWarnings.join("; ")}. '
-            'Verify the service account has Editor access.',
-          );
-        }
-
-        // Process temp ID mappings from server
-        final tempMapped = pushResponse['temp_ids_mapped'] as Map<String, dynamic>? ?? {};
-        if (tempMapped.isNotEmpty) {
-          debugPrint('SYNC processing temp IDs: $tempMapped');
-          for (final entry in tempMapped.entries) {
-            final tempId = entry.key;
-            final realId = entry.value as String;
-            await _patientRepo.updateSyncId(tempId, realId);
-          }
-          debugPrint('SYNC temp IDs updated');
-        }
-
-        // Mark queue entries as synced
-        final now = DateTime.now();
-        for (final entry in pendingEntries) {
-          await _syncQueueRepo.update(entry['id'] as int, {
-            'status': 'synced',
-            'last_attempt': now.toIso8601String(),
-          });
-        }
-        debugPrint('SYNC marked ${pendingEntries.length} queue entries synced');
-
-        // Mark Hive appointments as synced
-        for (final a in syncedApptModels) {
-          try {
-            final box = Hive.box<AppointmentModel>('appointments');
-            box.put(a.id, a.copyWith(isSynced: true, updatedAt: now));
-          } catch (_) {}
-        }
-        debugPrint('SYNC marked ${syncedApptModels.length} appointments synced');
-      } catch (e) {
-        debugPrint('SYNC PUSH FAILED: $e');
-        // Mark entries as failed or exhausted
-        for (final entry in pendingEntries) {
-          final retryCount = (entry['retry_count'] as int? ?? 0) + 1;
-          final status = retryCount >= 5 ? 'failed' : 'pending';
-          await _syncQueueRepo.update(entry['id'] as int, {
-            'retry_count': retryCount,
-            'status': status,
-            'last_error': e.toString(),
-            'last_attempt': DateTime.now().toIso8601String(),
-          });
-        }
-        debugPrint('SYNC rethrowing after marking ${pendingEntries.length} entries');
-        rethrow;
-      }
-    } else if (pendingEntries.isNotEmpty) {
-      debugPrint('SYNC no pushable data — closing ${pendingEntries.length} entries');
-      // No pushable data (all entities deleted) — close entries
-      for (final entry in pendingEntries) {
-        await _syncQueueRepo.update(entry['id'] as int, {
-          'status': 'synced',
-          'last_attempt': DateTime.now().toIso8601String(),
-        });
-      }
-    } else {
-      debugPrint('SYNC nothing to push, no pending entries');
-    }
-
-    // ── Include OPDs with pending images from SQLite patient_images ──
-    try {
-      final pendingOpdVids = await _patientImagesRepo.getDistinctOpdVisitIdsWithPending();
-      print('IMAGES: found ${pendingOpdVids.length} OPD visit IDs with pending SQLite images');
-      for (final vid in pendingOpdVids) {
-        final row = await _opdRepo.getById(vid);
-        if (row != null) {
-          final opdId = row['opd_id']?.toString() ?? '';
-          processedOpdIds.add(opdId);
-          print('IMAGES: added OPD $opdId from SQLite patient_images (visit_id=$vid)');
-        }
-      }
-    } catch (e) {
-      print('IMAGES: error reading SQLite patient_images: $e');
-    }
-
-    // ── Include OPDs with pending images from previous failed uploads ──
-    {
-      final docBox = Hive.box('opd_documents');
-      final keys = docBox.keys.toList();
-      print('IMAGES: found ${keys.length} entries in Hive opd_documents box');
-      for (final key in keys) {
-        processedOpdIds.add(key.toString());
-        print('IMAGES: added OPD $key from Hive opd_documents');
-      }
-    }
-
-    print('IMAGES: total OPDs to process for image upload: ${processedOpdIds.length}');
-    print('IMAGES: OPD IDs: $processedOpdIds');
-
-    // ── Upload images for pushed OPDs ────────────────
-    for (final opdId in processedOpdIds) {
-      try {
-        print('IMAGES: processing OPD $opdId');
-        final row = await _opdRepo.getByOpdId(opdId);
-        if (row == null) {
-          print('IMAGES: OPD $opdId not found in local DB');
-          final docBox = Hive.box('opd_documents');
-          if (docBox.containsKey(opdId)) {
-            print('IMAGES: cleanup - removing stale Hive entry for OPD $opdId');
-            await docBox.delete(opdId);
-          }
-          continue;
-        }
-        final sqliteId = row['id'] as int;
-        print('IMAGES: OPD $opdId found in local DB (sqlite_id=$sqliteId)');
-
-        final pendingImages =
-            await _patientImagesRepo.getPendingByOpdVisitId(sqliteId);
-        print('IMAGES: pending SQLite images for OPD $opdId: ${pendingImages.length}');
-
-        if (pendingImages.isNotEmpty) {
-          // ── PATH A: Upload from SQLite patient_images ──
-          final files = <File>[];
-          for (final img in pendingImages) {
-            final path = img['file_path'] as String;
-            final file = File(path);
-            final exists = await file.exists();
-            print('IMAGES: SQLite image path=$path exists=$exists');
-            if (exists) files.add(file);
-          }
-          if (files.isNotEmpty) {
-            print('IMAGES: PATH A - uploading ${files.length} file(s) from SQLite for OPD $opdId');
-            await ApiService.pushImages(opdId, files);
-            await _patientImagesRepo.markSyncedByOpdVisitId(sqliteId);
-            _imageUploadRetries.remove(opdId);
-            print('IMAGES: PATH A - upload SUCCESS for OPD $opdId (from patient_images)');
-          } else {
-            print('IMAGES: PATH A - no valid files found on disk for OPD $opdId');
-          }
-        } else {
-          // ── PATH B: Upload from Hive opd_documents (fallback) ──
-          final docBox = Hive.box('opd_documents');
-          final raw = docBox.get(opdId);
-          final hasHiveEntry = raw != null;
-          print('IMAGES: PATH B - checking Hive opd_documents for OPD $opdId: found=$hasHiveEntry');
-          if (raw != null) {
-            final rawStr = raw.toString();
-            print('IMAGES: PATH B - Hive value type=${raw.runtimeType} length=${rawStr.length}');
-            final bytes = base64Decode(rawStr);
-            print('IMAGES: PATH B - decoded base64: ${bytes.length} bytes');
-            final tempFile = File(
-              '${Directory.systemTemp.path}/${opdId}_${DateTime.now().microsecondsSinceEpoch}.jpg',
-            );
-            try {
-              await tempFile.writeAsBytes(bytes);
-              print('IMAGES: PATH B - temp file written: ${tempFile.path} (${bytes.length} bytes)');
-              print('IMAGES: PATH B - calling ApiService.pushImages for OPD $opdId');
-              await ApiService.pushImages(opdId, [tempFile]);
-              await docBox.delete(opdId);
-              _imageUploadRetries.remove(opdId);
-              print('IMAGES: PATH B - upload SUCCESS for OPD $opdId (from opd_documents Hive)');
-            } catch (e) {
-              print('IMAGES: PATH B - upload FAILED for OPD $opdId: $e');
-              if (e is ApiException && e.statusCode == 404) {
-                print('IMAGES: PATH B - OPD $opdId not found on Flask, removing stale Hive entry');
-                await docBox.delete(opdId);
-              }
-              rethrow;
-            } finally {
-              if (await tempFile.exists()) {
-                await tempFile.delete();
-                print('IMAGES: PATH B - temp file deleted');
-              }
-            }
-          } else {
-            print('IMAGES: PATH B - no Hive entry for OPD $opdId in image loop');
-          }
-        }
-      } catch (e, st) {
-        print('IMAGES: ERROR for OPD $opdId: $e');
-        print('IMAGES: stack trace: $st');
-        final retries = (_imageUploadRetries[opdId] ?? 0) + 1;
-        _imageUploadRetries[opdId] = retries;
-        print('IMAGES: retry count for OPD $opdId: $retries/3');
-        if (retries >= 3) {
-          print('IMAGES: giving up on OPD $opdId image after $retries failures');
-          final docBox = Hive.box('opd_documents');
-          if (docBox.containsKey(opdId)) {
-            await docBox.delete(opdId);
-            print('IMAGES: removed stale Hive entry for OPD $opdId');
-          }
-          _imageUploadRetries.remove(opdId);
-        }
-      }
-    }
-
-    // ── Pull ─────────────────────────────────────────
-    debugPrint('SYNC PULL START (lastSync=$lastSync)');
-
-    // On first ever sync (fresh install), use epoch default so ALL
-    // existing records are downloaded. The server already defaults
-    // last_sync to 2000-01-01T00:00:00 when empty, but we pass it
-    // explicitly for clarity.
-    final pullSync = lastSync.isEmpty ? '2000-01-01T00:00:00' : lastSync;
-    try {
-      final data = await ApiService.syncPull(pullSync);
-      debugPrint('SYNC PULL SUCCESS');
-
-      final remotePatients = data['patients'] as List<dynamic>? ?? [];
-      final remoteOpd = data['opd_records'] as List<dynamic>? ?? [];
-      final remoteAppts = data['appointments'] as List<dynamic>? ?? [];
-
-      for (final json in remotePatients) {
-        try {
-          final map = Map<String, dynamic>.from(json as Map);
-          final remoteId = map['id']?.toString() ?? '';
-          final remoteUpdatedAt = DateTime.tryParse(map['updated_at']?.toString() ?? '');
-
-          final existing = await _patientRepo.getBySyncId(remoteId);
-          final localUpdatedAt = DateTime.tryParse(
-            existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
-          );
-
-          if (existing == null ||
-              (remoteUpdatedAt != null && localUpdatedAt != null && remoteUpdatedAt.isAfter(localUpdatedAt))) {
-            if (existing != null) {
-              final sqliteId = existing['id'] as int;
-              await _patientRepo.update(sqliteId, _remotePatientToRow(map, sqliteId, remoteId));
-            } else {
-              final maxId = await _patientRepo.getMaxId();
-              final newId = maxId + 1;
-              await _patientRepo.insert(_remotePatientToRow(map, newId, remoteId));
-            }
-          }
-        } catch (_) {}
-      }
-
-      for (final json in remoteOpd) {
-        try {
-          final map = Map<String, dynamic>.from(json as Map);
-          final remoteId = map['id']?.toString() ?? '';
-          final remoteUpdatedAt = DateTime.tryParse(map['updated_at']?.toString() ?? '');
-
-          final existing = await _opdRepo.getByOpdId(remoteId);
-          final localUpdatedAt = DateTime.tryParse(
-            existing?['updated_at'] as String? ?? existing?['created_at'] as String? ?? '',
-          );
-
-          if (existing == null ||
-              (remoteUpdatedAt != null && localUpdatedAt != null && remoteUpdatedAt.isAfter(localUpdatedAt))) {
-            final localId = existing != null
-                ? existing['id'] as int
-                : (await _opdRepo.getMaxId()) + 1;
-            final row = await _remoteOpdToRow(map, localId);
-            if (existing != null) {
-              await _opdRepo.update(localId, row);
-            } else {
-              await _opdRepo.insert(row);
-            }
-
-            // Ensure follow-up appointment in Hive if next_visit_date is set
-            final nextVisit = map['next_visit']?.toString() ?? '';
-            if (nextVisit.isNotEmpty) {
-              final visitDate = DateTime.tryParse(nextVisit);
-              if (visitDate != null) {
-                try {
-                  final apptBox = Hive.box<AppointmentModel>('appointments');
-                  final patientId = map['patient_id']?.toString() ?? '';
-                final apptId = 'followup_${remoteId}_$nextVisit';
-                if (!apptBox.containsKey(apptId)) {
-                    await apptBox.put(apptId, AppointmentModel(
-                      id: apptId,
-                      patientId: patientId,
-                      dateTime: visitDate,
-                      notes: 'Follow-up',
-                      isSynced: true,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    ));
-                    debugPrint('SYNC: created Hive follow-up appointment for OPD $remoteId');
-                  }
-                } catch (_) {}
-              }
-            }
-          }
-        } catch (_) {}
-      }
-
-      for (final json in remoteAppts) {
-        try {
-          final map = Map<String, dynamic>.from(json as Map);
-          final apptBox = Hive.box<AppointmentModel>('appointments');
-          final existing = apptBox.get(map['id']);
-          final remoteUpdatedAt = DateTime.tryParse(map['updated_at']?.toString() ?? '');
-          if (existing == null ||
-              (remoteUpdatedAt != null && existing.updatedAt.isBefore(remoteUpdatedAt))) {
-            apptBox.put(map['id'], AppointmentModel.fromJson(map));
-          }
-        } catch (_) {}
-      }
-
-      // ── Process deleted entities ────────────────────
-      final remoteDeleted = data['deleted_entities'] as List<dynamic>? ?? [];
-      debugPrint('SYNC processing ${remoteDeleted.length} deleted entities');
-      for (final del in remoteDeleted) {
-        try {
-          final d = Map<String, dynamic>.from(del as Map);
-          final etype = d['entity_type']?.toString() ?? '';
-          final eid = d['entity_id']?.toString() ?? '';
-          debugPrint('SYNC processing delete: type=$etype id=$eid');
-
-          if (etype == 'patient') {
-            final local = await _patientRepo.getBySyncId(eid);
-            if (local != null) {
-              final localId = local['id'] as int;
-              final opds = await _opdRepo.getByPatientId(localId);
-              for (final opd in opds) {
-                final opdSqlId = opd['id'] as int;
-                await _patientImagesRepo.deleteByOpdVisitId(opdSqlId);
-              }
-              await _opdRepo.deleteByPatientId(localId);
-              await _patientRepo.delete(localId);
-              await _syncQueueRepo.clearByEntity('patient', eid);
-              debugPrint('SYNC deleted local patient $eid + OPDs');
-            }
-          } else if (etype == 'opd_visit') {
-            final local = await _opdRepo.getByOpdId(eid);
-            if (local != null) {
-              final localId = local['id'] as int;
-              await _patientImagesRepo.deleteByOpdVisitId(localId);
-              await _opdRepo.delete(localId);
-              await _syncQueueRepo.clearByEntity('opd_visit', eid);
-              debugPrint('SYNC deleted local OPD $eid');
-            }
-          } else if (etype == 'appointment') {
-            try {
-              final apptBox = Hive.box<AppointmentModel>('appointments');
-              if (apptBox.containsKey(eid)) {
-                await apptBox.delete(eid);
-                debugPrint('SYNC deleted local appointment $eid');
-              }
-            } catch (_) {}
-          }
-        } catch (e) {
-          debugPrint('SYNC error processing delete $e');
-        }
-      }
-
-      await prefs.setString(
-        'last_flask_sync',
-        data['server_time']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
-      );
+      return Platform.isAndroid ? 'Android' : Platform.isIOS ? 'iOS' : 'Unknown';
     } catch (_) {
-      // Pull might fail — push already succeeded
+      return 'Unknown';
     }
-  }
-
-  Future<void> forceSyncNow() async {
-    print('FORCE SYNC START');
-    if (_syncState == SyncState.syncing) {
-      debugPrint('FORCE SYNC: already syncing, scheduling deferred sync');
-      _pendingSyncRequested = true;
-      return;
-    }
-    await _trySync();
-    print('FORCE SYNC END');
-  }
-
-  Future<bool> triggerManualSync() async {
-    if (kIsWeb) return false;
-    if (_syncState == SyncState.syncing) {
-      _pendingSyncRequested = true;
-      return false;
-    }
-
-    _syncState = SyncState.syncing;
-    notifyListeners();
-
-    String? errorMessage;
-    try {
-      await _syncWithFlask();
-    } catch (e) {
-      errorMessage = e.toString();
-      print('MANUAL SYNC ERROR: $e');
-    }
-
-    // NOTE: .xlsx file creation is intentionally skipped during manual sync.
-    // OPD data was already pushed to Flask API (which writes to the existing
-    // Google Sheet). Images are uploaded to the existing "MediHive Images"
-    // Drive folder. Use backupToDriveOnly() for manual Excel backups.
-
-    if (errorMessage == null) {
-      _syncState = SyncState.synced;
-    } else {
-      _syncState = SyncState.error;
-    }
-    notifyListeners();
-    return errorMessage == null;
-  }
-
-  Future<bool> backupToDriveOnly() async {
-    if (kIsWeb) return false;
-    if (_syncState == SyncState.syncing) return false;
-
-    _syncState = SyncState.syncing;
-    notifyListeners();
-
-    try {
-      if (!_isSignedIn) {
-        _isSignedIn = await _authService.isSignedIn();
-      }
-      if (!_isSignedIn) {
-        _syncState = SyncState.error;
-        notifyListeners();
-        return false;
-      }
-      await _driveService.syncPendingRecords();
-      _syncState = SyncState.synced;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _syncState = SyncState.error;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Duration calculateInitialDelay(TimeOfDay scheduledTime) {
-    final now = DateTime.now();
-    var scheduledDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      scheduledTime.hour,
-      scheduledTime.minute,
-    );
-    if (scheduledDateTime.isBefore(now)) {
-      scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
-    }
-    return scheduledDateTime.difference(now);
-  }
-
-  Future<void> scheduleDailyBackup(TimeOfDay time) async {
-    if (kIsWeb) return;
-    try {
-      await scheduleDailyBackupTask(time);
-    } catch (e) {
-      debugPrint('scheduleDailyBackup error: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> clearAllData() async {
-    /// Clears ALL data:
-    /// 1. Calls backend API to clear Google Sheet + backend SQLite
-    /// 2. Clears local SQLite (patients, opd_visits, sync_queue, patient_images, etc.)
-    /// 3. Clears Hive boxes (appointments, drafts, opd_documents)
-    /// 4. Resets sync-related SharedPreferences
-    /// Returns the response from the backend API.
-    debugPrint('CLEAR ALL DATA STARTED');
-
-    // 1. Call backend to clear sheet + backend DB
-    Map<String, dynamic> apiResponse;
-    try {
-      apiResponse = await ApiService.clearAllData();
-      debugPrint('CLEAR ALL DATA: backend response: $apiResponse');
-    } catch (e) {
-      debugPrint('CLEAR ALL DATA: backend call failed: $e');
-      rethrow;
-    }
-
-    // 2. Clear local SQLite tables
-    try {
-      final db = await DatabaseHelper().database;
-      await db.delete('patients');
-      await db.delete('opd_visits');
-      await db.delete('patient_images');
-      await db.delete('sync_queue');
-      await db.delete('calendar_notes');
-      await db.delete('clinic_settings');
-      debugPrint('CLEAR ALL DATA: local SQLite tables cleared');
-    } catch (e) {
-      debugPrint('CLEAR ALL DATA: local SQLite error: $e');
-    }
-
-    // 3. Clear Hive boxes
-    try {
-      if (Hive.isBoxOpen('appointments')) {
-        await Hive.box('appointments').clear();
-      }
-      if (Hive.isBoxOpen('drafts')) {
-        await Hive.box('drafts').clear();
-      }
-      if (Hive.isBoxOpen('opd_documents')) {
-        await Hive.box('opd_documents').clear();
-      }
-      debugPrint('CLEAR ALL DATA: Hive boxes cleared');
-    } catch (e) {
-      debugPrint('CLEAR ALL DATA: Hive clear error: $e');
-    }
-
-    // 4. Clear sync-related SharedPreferences
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('last_flask_sync');
-      await prefs.remove('google_drive_pending_sync');
-      await prefs.remove('google_drive_folder_id');
-      debugPrint('CLEAR ALL DATA: SharedPreferences reset');
-    } catch (e) {
-      debugPrint('CLEAR ALL DATA: SharedPreferences error: $e');
-    }
-
-    _cachedUnsyncedCount = 0;
-    _syncState = SyncState.synced;
-    notifyListeners();
-
-    debugPrint('CLEAR ALL DATA COMPLETED');
-    return apiResponse;
   }
 
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
-    _googleAuthSub?.cancel();
     _debounceTimer?.cancel();
     _pollTimer?.cancel();
     super.dispose();

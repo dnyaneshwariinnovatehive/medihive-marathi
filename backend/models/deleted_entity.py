@@ -19,7 +19,7 @@ class DeletedEntity:
             db.close()
 
     @staticmethod
-    def since(timestamp, user_id=None, clinic_id=None):
+    def since(timestamp, clinic_id=None):
         db = get_db()
         if clinic_id:
             rows = db.execute(
@@ -27,13 +27,6 @@ class DeletedEntity:
                 "WHERE deleted_at > %s AND clinic_id = %s "
                 "ORDER BY deleted_at",
                 (timestamp, clinic_id)
-            ).fetchall()
-        elif user_id:
-            rows = db.execute(
-                "SELECT entity_type, entity_id, deleted_at FROM deleted_entities "
-                "WHERE deleted_at > %s AND (user_id = %s OR user_id = '') "
-                "ORDER BY deleted_at",
-                (timestamp, user_id)
             ).fetchall()
         else:
             rows = db.execute(

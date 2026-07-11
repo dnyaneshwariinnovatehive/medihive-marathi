@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/services.dart'; // for SystemNavigator
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'theme/app_theme.dart'; // app theme definitions
+import 'l10n/app_localizations.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -17,6 +19,7 @@ import 'providers/opd_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/locale_provider.dart';
 import 'services/sync_manager.dart';
 import 'services/cloud_sync_manager.dart';
 import 'services/local_notification_service.dart';
@@ -30,6 +33,7 @@ import 'models/appointment_model.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/registration_screen.dart';
 import 'screens/auth/two_factor_verify_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/app_shell.dart';
@@ -207,6 +211,11 @@ class MediHiveApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) {
+          final lp = LocaleProvider();
+          lp.loadLocale();
+          return lp;
+        }),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => PatientProvider()),
@@ -219,8 +228,8 @@ class MediHiveApp extends StatelessWidget {
         }),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
-      child: Consumer<SettingsProvider>(
-        builder: (context, settings, _) {
+      child: Consumer2<SettingsProvider, LocaleProvider>(
+        builder: (context, settings, localeProvider, _) {
           AppTheme.isDarkMode = settings.darkMode;
           return MaterialApp.router(
             title: 'MediHive',
@@ -229,6 +238,17 @@ class MediHiveApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
+            locale: localeProvider.locale,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+              Locale('mr'),
+            ],
             routerConfig: _router,
             builder: (context, child) => child ?? const SizedBox.shrink(),
           );
@@ -296,6 +316,12 @@ final _router = GoRouter(
     GoRoute(
       path: '/2fa-verify',
       builder: (context, state) => const TwoFactorVerifyScreen(),
+    ),
+
+    // Registration → /register
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegistrationScreen(),
     ),
 
     // App shell with bottom navigation → /app/*

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/settings_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -14,6 +15,7 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
     final currentIndex = navigationShell.currentIndex;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -39,11 +41,11 @@ class AppShell extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home', currentIndex, () => navigationShell.goBranch(0), null),
-                _buildNavItem(1, Icons.assignment_outlined, Icons.assignment, 'OPD', currentIndex, () => navigationShell.goBranch(1), null),
-                _buildNavItem(2, Icons.people_outline, Icons.people, 'Patients', currentIndex, () => navigationShell.goBranch(2), null),
-                _buildNavItem(3, Icons.calendar_today_outlined, Icons.calendar_today, 'Calendar', currentIndex, () => navigationShell.goBranch(3), null),
-                _buildNavItem(4, Icons.settings_outlined, Icons.settings, 'Settings', currentIndex, () => navigationShell.goBranch(4), null),
+                _buildNavItem(0, Icons.home_outlined, Icons.home, l10n.home, currentIndex, () => navigationShell.goBranch(0), null),
+                _buildNavItem(1, Icons.assignment_outlined, Icons.assignment, l10n.opd, currentIndex, () => navigationShell.goBranch(1), null),
+                _buildNavItem(2, Icons.people_outline, Icons.people, l10n.patients, currentIndex, () => navigationShell.goBranch(2), null),
+                _buildNavItem(3, Icons.calendar_today_outlined, Icons.calendar_today, l10n.calendar, currentIndex, () => navigationShell.goBranch(3), null),
+                _buildNavItem(4, Icons.settings_outlined, Icons.settings, l10n.settings, currentIndex, () => navigationShell.goBranch(4), null),
               ],
             ),
           ),

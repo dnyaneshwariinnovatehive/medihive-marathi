@@ -64,8 +64,7 @@ def reset_pool():
 
 class DBConnection:
     """Wrapper around psycopg2 connection + RealDictCursor
-    that mimics sqlite3's connection.execute() interface
-    so model code requires minimal changes."""
+    providing a simple execute/commit/rollback/close interface."""
 
     def __init__(self, conn):
         self._conn = conn
@@ -159,9 +158,11 @@ def _init_db():
                 last_visit_date  TEXT DEFAULT '',
                 created_at      TEXT NOT NULL,
                 updated_at      TEXT NOT NULL,
-                is_synced       INTEGER DEFAULT 0,
                 user_id         TEXT DEFAULT '',
-                clinic_id       TEXT DEFAULT ''
+                clinic_id       TEXT DEFAULT '',
+                device_id       TEXT DEFAULT '',
+                sync_status     TEXT DEFAULT 'pending',
+                last_synced_at  TEXT DEFAULT ''
             );
         """)
         db.execute("""
@@ -190,9 +191,11 @@ def _init_db():
                 panchakarma_notes   TEXT DEFAULT '',
                 created_at          TEXT NOT NULL,
                 updated_at          TEXT NOT NULL,
-                is_synced           INTEGER DEFAULT 0,
                 user_id             TEXT DEFAULT '',
-                clinic_id           TEXT DEFAULT ''
+                clinic_id           TEXT DEFAULT '',
+                device_id           TEXT DEFAULT '',
+                sync_status         TEXT DEFAULT 'pending',
+                last_synced_at      TEXT DEFAULT ''
             );
         """)
         
@@ -213,6 +216,24 @@ def _init_db():
             db.execute("ALTER TABLE opd_records ADD COLUMN discount_type TEXT DEFAULT 'None'")
         except Exception:
             db.rollback()
+        # Sync columns migration
+        for col in ['device_id', 'sync_status', 'last_synced_at']:
+            try:
+                db.execute(f"ALTER TABLE patients ADD COLUMN {col} TEXT DEFAULT ''")
+            except Exception:
+                db.rollback()
+            try:
+                db.execute(f"ALTER TABLE opd_records ADD COLUMN {col} TEXT DEFAULT ''")
+            except Exception:
+                db.rollback()
+            try:
+                db.execute(f"ALTER TABLE appointments ADD COLUMN {col} TEXT DEFAULT ''")
+            except Exception:
+                db.rollback()
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'doctor'")
+        except Exception:
+            db.rollback()
         db.execute("""
             CREATE TABLE IF NOT EXISTS appointments (
                 id          TEXT PRIMARY KEY,
@@ -222,9 +243,11 @@ def _init_db():
                 notes       TEXT DEFAULT '',
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL,
-                is_synced   INTEGER DEFAULT 0,
                 user_id     TEXT DEFAULT '',
-                clinic_id   TEXT DEFAULT ''
+                clinic_id   TEXT DEFAULT '',
+                device_id   TEXT DEFAULT '',
+                sync_status TEXT DEFAULT 'pending',
+                last_synced_at TEXT DEFAULT ''
             );
         """)
         db.execute("""
@@ -234,7 +257,8 @@ def _init_db():
                 password    TEXT NOT NULL,
                 name        TEXT DEFAULT 'Doctor',
                 created_at  TEXT NOT NULL,
-                clinic_id   TEXT DEFAULT ''
+                clinic_id   TEXT DEFAULT '',
+                role        TEXT DEFAULT 'doctor'
             );
         """)
         default_admin_password_hash = hashlib.sha256(
@@ -291,15 +315,6 @@ def _init_db():
         """)
         db.execute("""
             CREATE INDEX IF NOT EXISTS idx_deleted_type_id ON deleted_entities(entity_type, entity_id);
-        """)
-        db.execute("""
-            CREATE TABLE IF NOT EXISTS last_sync (
-                id          SERIAL PRIMARY KEY,
-                user_id     TEXT NOT NULL UNIQUE,
-                last_sync   TEXT NOT NULL,
-                created_at  TEXT NOT NULL,
-                updated_at  TEXT NOT NULL
-            );
         """)
         db.execute("""
             CREATE TABLE IF NOT EXISTS settings (

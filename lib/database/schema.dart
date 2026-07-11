@@ -1,4 +1,4 @@
-const int databaseVersion = 4;
+const int databaseVersion = 5;
 
 const String tablePatients = 'patients';
 const String tableOpdVisits = 'opd_visits';
@@ -25,6 +25,9 @@ String get createPatientsTable => '''
     blood_group VARCHAR,
     address VARCHAR,
     clinic_id TEXT,
+    device_id TEXT,
+    sync_status TEXT DEFAULT 'pending',
+    last_synced_at DATETIME,
     created_at DATETIME,
     updated_at DATETIME,
     PRIMARY KEY (id)
@@ -52,6 +55,9 @@ String get createOpdVisitsTable => '''
     next_visit_date DATE,
     followup_status VARCHAR,
     clinic_id TEXT,
+    device_id TEXT,
+    sync_status TEXT DEFAULT 'pending',
+    last_synced_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     medicines TEXT,

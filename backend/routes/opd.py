@@ -1,12 +1,13 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.opd_record import OPDRecord
 from models.patient import Patient
+from database import get_db
 from datetime import datetime
 from pathlib import Path
 from config import IMAGE_STORAGE_PATH, GOOGLE_SHEET_ID, IS_CLOUD
-from desktop_google.drive_service import upload_images_to_drive, upload_image_fileobj_to_drive
-from desktop_google.sheets_service import upsert_opd_row_in_sheet, _get_client, _get_opd_worksheet
+from drive_utils import upload_images_to_drive, upload_image_fileobj_to_drive
+from sheets_utils import upsert_opd_row_in_sheet, _get_client, _get_opd_worksheet
 from services.log_service import get_logger
 
 logger = get_logger(__name__)
@@ -14,18 +15,31 @@ logger = get_logger(__name__)
 opd_bp = Blueprint('opd', __name__)
 
 
+def _get_clinic_id(user_id):
+    db = get_db()
+    user = db.execute(
+        "SELECT clinic_id FROM users WHERE id = %s", (user_id,)
+    ).fetchone()
+    db.close()
+    return user['clinic_id'] if user and user['clinic_id'] else None
+
+
 @opd_bp.route('', methods=['GET'])
 @jwt_required()
 def list_opd():
+    user_id = get_jwt_identity()
+    clinic_id = _get_clinic_id(user_id)
     patient_id = request.args.get('patient_id')
-    records = OPDRecord.all(patient_id=patient_id)
+    records = OPDRecord.all(patient_id=patient_id, clinic_id=clinic_id)
     return jsonify({'records': records}), 200
 
 
 @opd_bp.route('/<record_id>', methods=['GET'])
 @jwt_required()
 def get_opd(record_id):
-    record = OPDRecord.get(record_id)
+    user_id = get_jwt_identity()
+    clinic_id = _get_clinic_id(user_id)
+    record = OPDRecord.get(record_id, clinic_id=clinic_id)
     if record is None:
         return jsonify({'error': 'Record not found'}), 404
     return jsonify({'record': record}), 200
@@ -34,19 +48,22 @@ def get_opd(record_id):
 @opd_bp.route('', methods=['POST'])
 @jwt_required()
 def create_opd():
+    user_id = get_jwt_identity()
+    clinic_id = _get_clinic_id(user_id)
     data = request.get_json()
     if not data or not data.get('id') or not data.get('patient_id'):
         return jsonify({'error': 'id and patient_id required'}), 400
 
+    data['clinic_id'] = clinic_id
+    data['user_id'] = user_id
     record = OPDRecord.create(data)
 
-    # Update patient's last diagnosis and last visit
-    patient = Patient.get(data['patient_id'])
+    patient = Patient.get(data['patient_id'], clinic_id=clinic_id)
     if patient:
         Patient.update(data['patient_id'], {
             'last_diagnosis': data.get('diagnosis', patient.get('last_diagnosis', '')),
             'last_visit_date': data.get('visit_date', datetime.utcnow().isoformat()),
-        })
+        }, clinic_id=clinic_id)
 
     return jsonify({'record': record}), 201
 
@@ -54,10 +71,12 @@ def create_opd():
 @opd_bp.route('/<record_id>', methods=['PUT'])
 @jwt_required()
 def update_opd(record_id):
+    user_id = get_jwt_identity()
+    clinic_id = _get_clinic_id(user_id)
     data = request.get_json()
     if not data:
         return jsonify({'error': 'Request body required'}), 400
-    record = OPDRecord.update(record_id, data)
+    record = OPDRecord.update(record_id, data, clinic_id=clinic_id)
     if record is None:
         return jsonify({'error': 'Record not found'}), 404
     return jsonify({'record': record}), 200
@@ -66,7 +85,9 @@ def update_opd(record_id):
 @opd_bp.route('/<record_id>', methods=['DELETE'])
 @jwt_required()
 def delete_opd(record_id):
-    OPDRecord.delete(record_id)
+    user_id = get_jwt_identity()
+    clinic_id = _get_clinic_id(user_id)
+    OPDRecord.delete(record_id, clinic_id=clinic_id)
     return jsonify({'message': 'Deleted'}), 200
 
 

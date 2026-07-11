@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../../models/prescription.dart';
 import '../../providers/settings_provider.dart';
@@ -76,6 +77,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   }
 
   Future<void> _loadData() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final patientRepo = PatientRepository();
       var patientRow = await patientRepo.getBySyncId(widget.patientId);
@@ -92,7 +94,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
       if (patientRow == null || sqliteId == 0) {
         _hasError = true;
-        _errorMessage = 'Patient not found';
+        _errorMessage = l10n.patientNotFound;
         _dataLoaded = true;
         if (mounted) setState(() {});
         return;
@@ -103,7 +105,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
       if (records.isEmpty) {
         _hasError = true;
-        _errorMessage = 'No prescription records found for this patient';
+        _errorMessage = l10n.noPrescriptionRecords;
         _dataLoaded = true;
         if (mounted) setState(() {});
         return;
@@ -197,7 +199,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       _initMedicineFields();
     } catch (e) {
       _hasError = true;
-      _errorMessage = 'Failed to load prescription: $e';
+        _errorMessage = l10n.failedToLoadPrescription(e.toString());
     }
     _dataLoaded = true;
     if (mounted) setState(() {});
@@ -258,6 +260,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   }
 
   Future<void> _saveChanges() async {
+    final l10n = AppLocalizations.of(context)!;
     final newDiagnosis = _diagnosisController.text.trim();
     final newNotes = _notesController.text.trim();
     final newPanchakarmaNotes = _panchakarmaNotesController.text.trim();
@@ -306,7 +309,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save prescription: $e'),
+          content: Text(l10n.failedToSavePrescription(e.toString())),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -340,9 +343,9 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
     setState(() => _isEditing = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Prescription saved'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(l10n.prescriptionSaved),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -362,13 +365,15 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (!_dataLoaded) {
       return Scaffold(
         backgroundColor: AppTheme.background,
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const StandardHeader(title: 'Prescription', showBack: true),
+            StandardHeader(title: l10n.prescription, showBack: true),
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             ),
@@ -383,7 +388,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const StandardHeader(title: 'Prescription', showBack: true),
+            StandardHeader(title: l10n.prescription, showBack: true),
             SliverFillRemaining(
               child: Center(
                 child: Padding(
@@ -421,7 +426,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           StandardHeader(
-            title: 'Prescription',
+            title: l10n.prescription,
             showBack: true,
             onBack: () => context.go('/app/patients/${widget.patientId}'),
           ),
@@ -616,8 +621,8 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                             CrossAxisAlignment
                                                                 .start,
                                                         children: [
-                                                          Text(
-                                                            'Diagnosis',
+                                                           Text(
+                                                             l10n.diagnosisLabel,
                                                             style: TextStyle(
                                                               fontSize: 13,
                                                               color: AppTheme
@@ -655,7 +660,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                         ],
                                                       )
                                                     : _infoCol(
-                                                        'Diagnosis',
+                                                        l10n.diagnosisLabel,
                                                         _rx.diagnosis,
                                                       ),
                                               ),
@@ -678,7 +683,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _sectionTitle('Medicines Prescribed'),
+                              _sectionTitle(l10n.medicinesPrescribed),
                               SizedBox(height: 12),
                               if (_isEditing)
                                 ..._medicineFields.asMap().entries.map(
@@ -738,7 +743,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                               fontSize: 13,
                                             ),
                                             decoration: InputDecoration(
-                                              labelText: 'Medicine Name',
+                                                  labelText: l10n.medicineName,
                                               isDense: true,
                                               contentPadding:
                                                   EdgeInsets.symmetric(
@@ -762,7 +767,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                     fontSize: 13,
                                                   ),
                                                   decoration: InputDecoration(
-                                                    labelText: 'Dosage',
+                                                     labelText: l10n.dosage,
                                                     isDense: true,
                                                     contentPadding:
                                                         EdgeInsets.symmetric(
@@ -807,7 +812,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                           ),
                                         ),
                                         SizedBox(height: 8),
-                                        _infoCol('Dosage', e.value.dosage),
+                                        _infoCol(l10n.dosage, e.value.dosage),
                                       ],
                                     ),
                                   ),
@@ -819,7 +824,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                     onPressed: _addMedicine,
                                     icon: Icon(Icons.add, size: 16),
                                     label: Text(
-                                      'Add Medicine',
+                                      l10n.addMedicine,
                                       style: TextStyle(fontSize: 13),
                                     ),
                                     style: OutlinedButton.styleFrom(
@@ -849,7 +854,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _sectionTitle('Instructions'),
+                              _sectionTitle(l10n.instructions),
                               SizedBox(height: 8),
                               if (_isEditing)
                                 TextField(
@@ -884,7 +889,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   ),
                                 ),
                               SizedBox(height: 12),
-                              _sectionTitle('Panchakarma Notes'),
+                              _sectionTitle(l10n.panchakarmaNotes),
                               SizedBox(height: 8),
                               if (_isEditing)
                                 TextField(
@@ -914,7 +919,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   child: Text(
                                     _rx.panchakarmaNotes.isNotEmpty
                                         ? _rx.panchakarmaNotes
-                                        : 'No Panchakarma notes',
+                                        : l10n.noPanchakarmaNotes,
                                     style: TextStyle(
                                       color: AppTheme.textPrimary,
                                     ),
@@ -930,7 +935,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                     color: AppTheme.primary,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Next Visit',
+                                    labelText: l10n.nextVisitDate,
                                     isDense: true,
                                     contentPadding: EdgeInsets.all(12),
                                     border: OutlineInputBorder(
@@ -961,7 +966,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Next Visit',
+                                        l10n.nextVisitDate,
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: AppTheme.textSecondary,
@@ -997,8 +1002,8 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                       ),
                     ),
                   ),
-                  child: Text(
-                    'This is a computer-generated prescription',
+                                      child: Text(
+                                        l10n.computerGeneratedRx,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
@@ -1022,7 +1027,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                           .showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            'Tap the edit icon to make changes',
+                                            l10n.tapEditIcon,
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                           duration: Duration(seconds: 1),
@@ -1030,7 +1035,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                       );
                                     },
                               icon: Icon(Icons.save_outlined, size: 18),
-                              label: Text('Save'),
+                              label: Text(l10n.save),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(
@@ -1090,14 +1095,14 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Error saving prescription: $e',
+                                        l10n.errorSavingPrescription(e.toString()),
                                       ),
                                     ),
                                   );
                                 }
                               },
                               icon: Icon(Icons.download, size: 18),
-                              label: Text('Download'),
+                              label: Text(l10n.download),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(
@@ -1131,14 +1136,14 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Error printing prescription: $e',
+                                        l10n.errorPrintingPrescription(e.toString()),
                                       ),
                                     ),
                                   );
                                 }
                               },
                               icon: Icon(Icons.print, size: 18),
-                              label: Text('Print'),
+                              label: Text(l10n.printLabel),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(

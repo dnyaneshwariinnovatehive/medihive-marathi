@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/backup_code_service.dart';
@@ -25,6 +26,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
   }
 
   Future<void> _verify() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() {
@@ -42,7 +44,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
       if (mounted && remaining > 0 && remaining <= 3) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('You have $remaining backup code${remaining == 1 ? '' : 's'} remaining'),
+            content: Text(l10n.backupCodesRemaining(remaining)),
             backgroundColor: AppTheme.warning,
             behavior: SnackBarBehavior.floating,
           ),
@@ -52,7 +54,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
     } else {
       setState(() {
         _isVerifying = false;
-        _errorMessage = 'Invalid backup code. Please try again.';
+        _errorMessage = l10n.invalidBackupCode;
       });
     }
   }
@@ -64,6 +66,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -112,7 +115,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Two-Factor Authentication',
+                          l10n.twoFactorVerifyTitle,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20,
@@ -122,7 +125,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Enter one of your backup codes',
+                          l10n.enterBackupCode,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
@@ -180,7 +183,7 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
                             onFieldSubmitted: (_) => _verify(),
                             validator: (value) {
                               if (value == null || value.trim().length != 9) {
-                                return 'Enter a valid backup code (e.g. ABCD-1234)';
+                                return l10n.enterValidBackupCode;
                               }
                               return null;
                             },
@@ -239,14 +242,14 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text('VERIFY'),
+                                  : Text(l10n.verify),
                             ),
                           ),
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: _isVerifying ? null : _cancel,
                             child: Text(
-                              'Cancel',
+                              l10n.cancel,
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w500,

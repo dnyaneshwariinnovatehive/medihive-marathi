@@ -28,6 +28,7 @@ import '../../repositories/opd_record_repository.dart';
 import '../../repositories/patient_repository.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../l10n/app_localizations.dart';
 
 class OpdRegistrationScreen extends StatefulWidget {
   final String? editPatientId;
@@ -78,11 +79,12 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
         p.loadDraftFromHive();
       }
       if (p.hasDraft) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 3),
-            content: Text('Resuming saved draft — ${p.patientName}'),
-            action: SnackBarAction(label: 'Discard', onPressed: p.clearDraft),
+            content: Text('${l10n.resumingDraft} — ${p.patientName}'),
+            action: SnackBarAction(label: l10n.discard, onPressed: p.clearDraft),
           ),
         );
       }
@@ -139,6 +141,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   }
 
   Widget _buildMobileLookup(OpdProvider opd) {
+    final l10n = AppLocalizations.of(context)!;
     final patients = opd.matchedPatients;
     final isSingle = patients.length == 1;
 
@@ -157,7 +160,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
-                isSingle ? '' : 'Available Patients',
+                isSingle ? '' : l10n.availablePatients,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -236,7 +239,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                   Icon(Icons.person_add_outlined, size: 18, color: AppTheme.primary),
                   const SizedBox(width: 8),
                   Text(
-                    'Register New Patient',
+                    l10n.registerNewPatient,
                     style: TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.w600,
@@ -357,6 +360,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
     final opd = context.watch<OpdProvider>();
 
     return PopScope(
@@ -374,19 +378,19 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text('Save Draft'),
+                title: Text(l10n.saveDraft),
                 leading: const Icon(Icons.save, color: Colors.orange),
                 onTap: () {
                   provider.saveDraft();
                   Navigator.pop(context); // close sheet
                   Navigator.pop(context); // exit form
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Draft saved successfully')),
+                    SnackBar(content: Text(l10n.draftSaved)),
                   );
                 },
               ),
               ListTile(
-                title: const Text('Discard'),
+                title: Text(l10n.discard),
                 leading: const Icon(Icons.delete, color: Colors.red),
                 onTap: () {
                   provider.clearDraft();
@@ -395,7 +399,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 },
               ),
               ListTile(
-                title: const Text('Continue Editing'),
+                title: Text(l10n.continueEditing),
                 leading: const Icon(Icons.edit),
                 onTap: () => Navigator.pop(context),
               ),
@@ -412,16 +416,16 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  const StandardHeader(title: 'OPD Registration'),
+                  StandardHeader(title: l10n.opdRegistration),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                      child: MediStepProgressIndicator(
+                      child:                       MediStepProgressIndicator(
                         currentStep: opd.currentStep,
-                        stepLabels: const [
-                          'Patient Information',
-                          'Medical & Clinical Details',
-                          'Billing & Payment',
+                        stepLabels: [
+                          l10n.patientInformation,
+                          l10n.medicalClinicalDetails,
+                          l10n.billingPayment,
                         ],
                       ),
                     ),
@@ -470,8 +474,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 width: 2,
                               ),
                             ),
-                            child: const Text(
-                              'Previous',
+                            child: Text(
+                              l10n.previous,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.primary,
@@ -570,8 +574,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 setState(() => _isSubmitting = false);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Failed to save record. Please try again.'),
+                                    SnackBar(
+                                      content: Text(l10n.failedToSaveRecord),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
@@ -595,8 +599,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               barrierDismissible: false,
                               pageBuilder: (dialogContext, __, ___) =>
                                   SuccessOverlay(
-                                    title: 'Record Saved!',
-                                    subtitle: 'Patient added successfully',
+                                    title: l10n.recordSaved,
+                                    subtitle: l10n.patientAddedSuccessfully,
                                     onComplete: () {
                                       Navigator.of(
                                         dialogContext,
@@ -635,8 +639,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 ),
                               Text(
                                 opd.currentStep < 2
-                                    ? 'Next Step'
-                                    : 'Save OPD Record',
+                                    ? l10n.nextStep
+                                    : l10n.saveOpdRecord,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -671,6 +675,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   }
 
   Widget _buildStep1(OpdProvider opd, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,7 +685,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               Icon(Icons.person_outline, color: AppTheme.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Patient Information',
+                l10n.patientInformation,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
@@ -693,8 +698,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           ShakeWidget(
             shake: _shakeMobile,
             child: _textField(
-              'Mobile Number',
-              'Enter mobile number',
+              l10n.mobileNumber,
+              l10n.enterMobileNumber,
               opd.formData.mobile,
               (v) => _onMobileChanged(opd, v),
               keyboardType: TextInputType.phone,
@@ -702,11 +707,11 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               prefixIcon: Icons.phone_outlined,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Mobile number is required';
+                  return l10n.mobileRequired;
                 }
                 final numStr = value.trim().replaceAll(RegExp(r'[^0-9]'), '');
                 if (numStr.length != 10) {
-                  return 'Enter exactly 10 digits';
+                  return l10n.enterExactly10Digits;
                 }
                 return null;
               },
@@ -717,15 +722,15 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           ShakeWidget(
             shake: _shakeName,
             child: _textField(
-              'Full Name',
-              'Enter patient name',
+              l10n.fullName,
+              l10n.enterPatientName,
               opd.formData.name,
               (v) => opd.updateField('name', v),
               isRequired: true,
               textInputAction: TextInputAction.done,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Full name is required';
+                  return l10n.fullNameRequired;
                 }
                 return null;
               },
@@ -801,7 +806,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Date of Birth *',
+                                          l10n.dateOfBirth,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: _hasTriedSubmit && opd.formData.dob.isEmpty
@@ -821,7 +826,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                                 : '';
                                             return Text(
                                               opd.formData.dob.isEmpty
-                                                  ? 'Tap to select date'
+                                                  ? l10n.tapToSelectDate
                                                   : display,
                                               style: AppTheme.body.copyWith(
                                                 color: opd.formData.dob.isEmpty
@@ -881,8 +886,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _textField(
-                      'Age',
-                      'Years/Months',
+                      l10n.age,
+                      l10n.yearsMonths,
                       opd.formData.age,
                       (v) => opd.updateField('age', v),
                       validator: (value) {
@@ -893,7 +898,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           );
                           if (numStr.isNotEmpty &&
                               (int.tryParse(numStr) ?? -1) < 0) {
-                            return 'Invalid age';
+                            return l10n.invalidAge;
                           }
                         }
                         return null;
@@ -905,7 +910,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _label('Gender'),
+          _label(l10n.gender),
           ChipSelector(
             options: AppConstants.genders,
             selected: opd.formData.gender,
@@ -915,8 +920,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           ShakeWidget(
             shake: _shakeAddress,
             child: _textField(
-              'Address',
-              'Enter full address',
+              l10n.address,
+              l10n.enterFullAddress,
               opd.formData.address,
               (v) => opd.updateField('address', v),
               maxLines: 3,
@@ -924,14 +929,14 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               textInputAction: TextInputAction.done,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Address is required';
+                  return l10n.addressRequired;
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-          _label('Blood Group'),
+          _label(l10n.bloodGroup),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -955,6 +960,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   }
 
   Widget _buildStep2(OpdProvider opd, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -968,7 +974,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Medical & Clinical Details',
+                l10n.medicalClinicalDetails,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
@@ -979,21 +985,21 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           ),
           const SizedBox(height: 20),
           MediChipInputField(
-            label: 'Diagnosis',
-            hint: 'Search or add diagnosis...',
+            label: l10n.diagnosisLabel,
+            hint: l10n.searchOrAddDiagnosis,
             suggestions: MedicalData.diagnoses,
             initialValue: opd.formData.diagnosis,
             onChanged: (v) => opd.updateField('diagnosis', v),
           ),
           const SizedBox(height: 16),
           ChipInputField(
-            label: 'Symptoms',
+            label: l10n.symptoms,
             suggestions: kSymptoms,
             selectedItems: opd.selectedSymptoms,
             onChanged: opd.setSelectedSymptoms,
           ),
           const SizedBox(height: 16),
-          _label('Upload Documents (Optional)'),
+          _label(l10n.uploadDocumentsOptional),
           const SizedBox(height: 8),
           GestureDetector(
             onTap: () async {
@@ -1010,8 +1016,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                     _documentBytes = bytes;
                   });
                   messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Document uploaded successfully!'),
+                    SnackBar(
+                      content: Text(l10n.documentUploaded),
                       backgroundColor: AppTheme.success,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -1045,7 +1051,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Tap to upload documents',
+                          l10n.tapToUploadDocuments,
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,
@@ -1096,8 +1102,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              const Text(
-                                'Ready for submission',
+                              Text(
+                                l10n.readyForSubmission,
                                 style: TextStyle(
                                   color: AppTheme.success,
                                   fontSize: 12,
@@ -1124,22 +1130,22 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           ),
           const SizedBox(height: 16),
           _textField(
-            'Clinical Notes',
-            'Enter observations and notes',
+            l10n.clinicalNotes,
+            l10n.enterObservationsNotes,
             opd.formData.clinicalNotes,
             (v) => opd.updateField('clinicalNotes', v),
             maxLines: 3,
           ),
           const SizedBox(height: 16),
           _textField(
-            'Panchakarma Notes',
-            'Enter Panchakarma treatment notes',
+            l10n.panchakarmaNotes,
+            l10n.enterPanchakarmaNotes,
             opd.formData.panchakarmaNotes,
             (v) => opd.updateField('panchakarmaNotes', v),
             maxLines: 3,
           ),
           const SizedBox(height: 20),
-          _label('OPD Type'),
+          _label(l10n.opdType),
           ChipSelector(
             options: const ['Consultation', 'Follow-up'],
             selected: opd.visitType == 'follow_up'
@@ -1204,7 +1210,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Previous Visit Date',
+                                          l10n.previousVisitDate,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: AppTheme.textSecondary,
@@ -1214,7 +1220,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                                         const SizedBox(height: 4),
                                         Text(
                                           opd.formData.previousVisitDate.isEmpty
-                                              ? 'Tap to select date'
+                                              ? l10n.tapToSelectDate
                                               : display,
                                           style: AppTheme.body.copyWith(
                                             color:
@@ -1243,8 +1249,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                       ),
                       const SizedBox(height: 16),
                       _textField(
-                        'Follow-up Reason',
-                        'Enter reason for follow-up...',
+                        l10n.followUpReason,
+                        l10n.enterFollowUpReason,
                         opd.followUpReason,
                         (v) => opd.followUpReason = v,
                       ),
@@ -1262,7 +1268,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Prescriptions',
+                l10n.prescriptions,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
@@ -1297,8 +1303,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                     focusNode: focusNode,
                     style: const TextStyle(fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
-                      labelText: 'Prescribe Medicine',
-                      hintText: 'Type medicine name to search...',
+                      labelText: l10n.prescribeMedicine,
+                      hintText: l10n.typeMedicineSearch,
                       floatingLabelBehavior: FloatingLabelBehavior.always,
                       filled: true,
                       fillColor: AppTheme.surface,
@@ -1465,8 +1471,8 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               kDosageOptions.contains(item['dosage'])
                               ? item['dosage']
                               : kDosageOptions.first,
-                          decoration: const InputDecoration(
-                            labelText: 'Dosage',
+                          decoration: InputDecoration(
+                            labelText: l10n.dosage,
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 8,
@@ -1543,7 +1549,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Next Visit Date',
+                              l10n.nextVisitDate,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textSecondary,
@@ -1553,7 +1559,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                             const SizedBox(height: 4),
                             Text(
                               opd.formData.nextVisit.isEmpty
-                                  ? 'Tap to select date'
+                                  ? l10n.tapToSelectDate
                                   : display,
                               style: AppTheme.body.copyWith(
                                 color: opd.formData.nextVisit.isEmpty
@@ -1582,6 +1588,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
   }
 
   Widget _buildStep3(OpdProvider opd) {
+    final l10n = AppLocalizations.of(context)!;
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1591,7 +1598,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
               Icon(Icons.attach_money, color: AppTheme.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Billing & Payment',
+                l10n.billingPayment,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
@@ -1604,16 +1611,16 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
           // Consultation Fee *
           _textField(
-            'Consultation Fees',
+            l10n.consultationFees,
             '0',
             opd.formData.consultationFee,
             (v) => opd.updateField('consultationFee', v),
             keyboardType: TextInputType.number,
             isRequired: true,
             validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'Required';
+              if (value == null || value.trim().isEmpty) return l10n.required;
               if (double.tryParse(value.trim()) == null)
-                return 'Must be a valid number';
+                return l10n.mustBeValidNumber;
               return null;
             },
           ),
@@ -1621,7 +1628,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
           // Medicine Fee
           _textField(
-            'Medicine Fee',
+            l10n.medicineFee,
             '0',
             opd.formData.medicineFee,
             (v) => opd.updateField('medicineFee', v),
@@ -1631,7 +1638,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
           // Panchakarma Fee
           _textField(
-            'Panchakarma Fee',
+            l10n.panchakarmaFee,
             '0',
             opd.formData.panchakarmaFee,
             (v) => opd.updateField('panchakarmaFee', v),
@@ -1640,13 +1647,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           const SizedBox(height: 16),
 
           // Discount Type Dropdown
-          _label('Discount Type'),
+          _label(l10n.discountType),
           const SizedBox(height: 4),
           DropdownButtonFormField<String>(
             isExpanded: true,
             value: opd.formData.discountType,
             decoration: InputDecoration(
-              labelText: 'Discount Type',
+              labelText: l10n.discountType,
               labelStyle: TextStyle(color: AppTheme.textSecondary),
               filled: true,
               fillColor: AppTheme.surface,
@@ -1686,7 +1693,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
 
           // Discount Value (enabled only when discount type is not None)
           _textField(
-            'Discount Value',
+            l10n.discountValue,
             '0',
             opd.formData.discount,
             (v) => opd.updateField('discount', v),
@@ -1710,7 +1717,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Subtotal',
+                      l10n.subtotal,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13,
@@ -1756,7 +1763,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total Amount',
+                      l10n.totalAmount,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 14,
@@ -1778,7 +1785,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           const SizedBox(height: 20),
 
           // Payment Mode
-          _label('Payment Mode'),
+          _label(l10n.paymentMode),
           ChipSelector(
             options: AppConstants.paymentModes,
             selected: opd.formData.paymentMode,
@@ -1787,7 +1794,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
           const SizedBox(height: 16),
 
           // Charge Type
-          _label('Charge Type'),
+          _label(l10n.chargeType),
           ChipSelector(
             options: AppConstants.chargeTypes,
             selected: opd.formData.chargeType,

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/standard_header.dart';
 import '../../widgets/section_card.dart';
+import '../../l10n/app_localizations.dart';
 
 class HelpCenterScreen extends StatefulWidget {
   const HelpCenterScreen({super.key});
@@ -21,11 +22,12 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(backgroundColor: AppTheme.background, body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
-      StandardHeader(title: 'Help & Support', showBack: true, onBack: () => context.go('/app/settings')),
+      StandardHeader(title: l10n.helpAndSupport, showBack: true, onBack: () => context.go('/app/settings')),
       SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
-        _infoCard(Icons.code, Color(0x1A1A506C), AppTheme.primary, 'Developer Information', [
-          _row('For Technical queries:', ''),
+        _infoCard(Icons.code, Color(0x1A1A506C), AppTheme.primary, l10n.developerInformation, [
+          _row(l10n.forTechnicalQueries, ''),
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               _detailRow('Email:', 'ashwin.innovatehive@gmail.com', AppTheme.primary),
@@ -33,36 +35,35 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             ])),
         ]),
         SizedBox(height: 16),
-        _infoCard(Icons.info_outline, Color(0x1A2563EB), Color(0xFF2563EB), 'Application Info', [
+        _infoCard(Icons.info_outline, Color(0x1A2563EB), Color(0xFF2563EB), l10n.applicationInfo, [
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
-              _detailRow('App Name:', 'MediHive', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow('Version:', 'v1.0.7', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow('Platform:', 'Mobile (Android/iOS)', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow('Last Updated:', 'May 2026', AppTheme.textPrimary),
+              _detailRow(l10n.appNameLabel, 'MediHive', AppTheme.textPrimary), SizedBox(height: 8),
+              _detailRow(l10n.version, 'v1.0.7', AppTheme.textPrimary), SizedBox(height: 8),
+              _detailRow(l10n.platform, 'Mobile (Android/iOS)', AppTheme.textPrimary), SizedBox(height: 8),
+              _detailRow(l10n.lastUpdated, 'May 2026', AppTheme.textPrimary),
             ])),
         ]),
         SizedBox(height: 16),
-        _infoCard(Icons.storage, Color(0x1A22C55E), Color(0xFF22C55E), 'Backup Information', [
-          Text('Backup files are stored locally on your system.', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+        _infoCard(Icons.storage, Color(0x1A22C55E), Color(0xFF22C55E), l10n.backupInformation, [
+          Text(l10n.backupFilesStored, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
           SizedBox(height: 12),
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Location:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l10n.location, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
               SizedBox(height: 4),
               Text('Internal Storage/MediHive/backup', style: TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontFamily: 'monospace')),
             ])),
         ]),
         SizedBox(height: 16),
-        _infoCard(Icons.shield_outlined, Color(0x1A9333EA), Color(0xFF9333EA), 'Data & Privacy', [
+        _infoCard(Icons.shield_outlined, Color(0x1A9333EA), Color(0xFF9333EA), l10n.dataAndPrivacy, [
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceTint, borderRadius: BorderRadius.circular(12)),
-            child: Text('All patient data is stored locally on your system. MediHive does not upload or share any data with external servers. Your data remains completely private and secure on your local machine.',
+            child: Text(l10n.dataPrivacyDescription,
               style: TextStyle(fontSize: 14, color: AppTheme.textPrimary))),
         ]),
         SizedBox(height: 16),
-        // FAQ Section
         SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Frequently Asked Questions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
+          Text(l10n.frequentlyAskedQuestions, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: AppTheme.textPrimary)),
           SizedBox(height: 16),
           ..._faqs.asMap().entries.map((e) => Container(
             margin: EdgeInsets.only(bottom: 8),

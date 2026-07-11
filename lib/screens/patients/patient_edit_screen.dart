@@ -10,6 +10,7 @@ import '../../utils/sync_id_generator.dart';
 import '../../services/sync_manager.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/standard_header.dart';
+import '../../l10n/app_localizations.dart';
 
 class PatientEditScreen extends StatefulWidget {
   final String patientId;
@@ -153,13 +154,14 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           StandardHeader(
-            title: 'Edit Patient',
+            title: l10n.editPatient,
             showBack: true,
           ),
           if (_isLoading)
@@ -174,7 +176,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
                   children: [
                     Icon(Icons.person_off, size: 64, color: AppTheme.textSecondary),
                     const SizedBox(height: 16),
-                    Text('Patient not found', style: AppTheme.body),
+                    Text(l10n.patientNotFound, style: AppTheme.body),
                   ],
                 ),
               ),
@@ -191,27 +193,27 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Patient Information', style: AppTheme.subHeading),
+                            Text(l10n.patientInformationLabel, style: AppTheme.subHeading),
                             const SizedBox(height: 20),
-                            _buildField('Full Name', _nameController, Icons.person_outline, validator: (v) =>
-                                v == null || v.trim().isEmpty ? 'Name is required' : null),
+                            _buildField(l10n.fullName, _nameController, Icons.person_outline, validator: (v) =>
+                                v == null || v.trim().isEmpty ? l10n.nameRequired : null),
                             const SizedBox(height: 16),
-                            _buildField('Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
+                            _buildField(l10n.age, _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
                             const SizedBox(height: 16),
-                            _buildDropdown('Gender', _gender, _genders, (v) => setState(() => _gender = v!)),
+                            _buildDropdown(l10n.gender, _gender, _genders, (v) => setState(() => _gender = v!)),
                             const SizedBox(height: 16),
-                            _buildField('Mobile', _mobileController, Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Mobile number is required';
+                            _buildField(l10n.mobileNumber, _mobileController, Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) {
+                                if (v == null || v.trim().isEmpty) return l10n.mobileRequiredEdit;
                                 final cleaned = v.replaceAll(RegExp(r'[^0-9]'), '');
-                                if (cleaned.length < 10) return 'Enter at least 10 digits';
+                                if (cleaned.length < 10) return l10n.enterAtLeast10;
                                 return null;
                               }),
                             const SizedBox(height: 16),
-                            _buildField('Address', _addressController, Icons.location_on_outlined, maxLines: 2),
+                            _buildField(l10n.address, _addressController, Icons.location_on_outlined, maxLines: 2),
                             const SizedBox(height: 16),
-                            _buildField('Date of Birth', _dobController, Icons.calendar_today_outlined),
+                            _buildField(l10n.dateOfBirthLabel, _dobController, Icons.calendar_today_outlined),
                             const SizedBox(height: 16),
-                            _buildDropdown('Blood Group', _bloodGroup, _bloodGroups, (v) => setState(() => _bloodGroup = v!)),
+                            _buildDropdown(l10n.bloodGroup, _bloodGroup, _bloodGroups, (v) => setState(() => _bloodGroup = v!)),
                           ],
                         ),
                       ),
@@ -238,8 +240,8 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text(
-                                  'Save Changes',
+                              : Text(
+                                  l10n.saveChanges,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,

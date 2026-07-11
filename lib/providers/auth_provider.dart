@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../services/backup_code_service.dart';
+import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -17,6 +19,8 @@ class AuthProvider extends ChangeNotifier {
   bool _needs2FA = false;
   String _pendingUsername = '';
   String _loginError = '';
+  String _clinicId = '';
+  Map<String, dynamic>? _clinicInfo;
 
   AuthProvider() {
     loadSavedCredentials();
@@ -31,8 +35,17 @@ class AuthProvider extends ChangeNotifier {
   AppUser? get currentUser => _currentUser;
   bool get needs2FA => _needs2FA;
   String get loginError => _loginError;
+  String get clinicId => _clinicId;
+  Map<String, dynamic>? get clinicInfo => _clinicInfo;
 
   bool get isLoggedIn => _isAuthenticated;
+
+  Future<void> saveClinicInfo(Map<String, dynamic> data) async {
+    _clinicId = data['user']?['clinic_id'] as String? ?? '';
+    _clinicInfo = data['clinic'] as Map<String, dynamic>?;
+    final prefs = await SharedPreferences.getInstance();
+    if (_clinicId.isNotEmpty) await prefs.setString('clinic_id', _clinicId);
+  }
 
   void setUsername(String value) {
     _username = value;
@@ -80,6 +93,15 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
       _currentUser = user;
       await _storageService.setLoggedIn(_rememberMe);
+
+      // Load clinic_id from the API response
+      try {
+        final me = await ApiService.getMe();
+        _clinicId = me['user']?['clinic_id'] as String? ?? '';
+        final prefs = await SharedPreferences.getInstance();
+        if (_clinicId.isNotEmpty) await prefs.setString('clinic_id', _clinicId);
+      } catch (_) {}
+
       if (_rememberMe) {
         await _storageService.setRememberMe(true);
         await _storageService.setUsername(username);
@@ -144,6 +166,8 @@ class AuthProvider extends ChangeNotifier {
     _password = '';
     _needs2FA = false;
     _pendingUsername = '';
+    _clinicId = '';
+    _clinicInfo = null;
     await _authService.logout();
     await _storageService.clearAuth();
     notifyListeners();
@@ -155,6 +179,8 @@ class AuthProvider extends ChangeNotifier {
   Future<void> loadSavedCredentials() async {
     _rememberMe = await _storageService.getRememberMe();
     final wasLoggedIn = await _storageService.getLoggedIn();
+    final prefs = await SharedPreferences.getInstance();
+    _clinicId = prefs.getString('clinic_id') ?? '';
 
     if (wasLoggedIn) {
       final user = await _authService.signInSilently();

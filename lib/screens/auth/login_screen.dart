@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/app_localizations.dart';
+import '../../widgets/language_toggle_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -146,46 +148,56 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: AppTheme.headerGradient,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: AppTheme.headerGradient,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
+          child: Column(
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                width: 150,
+                height: 150,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                AppLocalizations.of(context)!.welcomeToMedihive,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white.withValues(alpha: 0.95),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                AppLocalizations.of(context)!.professionalHealthcare,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
-      child: Column(
-        children: [
-          Image.asset(
-            'assets/images/logo.png',
-            width: 150,
-            height: 150,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Welcome to Medihive',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white.withValues(alpha: 0.95),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Professional Healthcare Management',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: Colors.white.withValues(alpha: 0.65),
-            ),
-          ),
-        ],
-      ),
+        Positioned(
+          top: 12,
+          right: 12,
+          child: LanguageToggleButton(isCompact: true),
+        ),
+      ],
     );
   }
 
@@ -205,8 +217,8 @@ class _LoginScreenState extends State<LoginScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _staggeredItem(0, const Text(
-              'Sign in to your account',
+            _staggeredItem(0, Text(
+              AppLocalizations.of(context)!.signInToYourAccount,
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
@@ -225,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen>
               },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Enter your username';
+                  return AppLocalizations.of(context)!.enterUsername;
                 }
                 return null;
               },
@@ -234,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen>
                 fontSize: 15,
               ),
               decoration: InputDecoration(
-                labelText: 'Username',
+                labelText: AppLocalizations.of(context)!.username,
                 labelStyle: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
@@ -281,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen>
               autofillHints: const [AutofillHints.password],
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Enter your password';
+                  return AppLocalizations.of(context)!.enterPassword;
                 }
                 return null;
               },
@@ -290,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen>
                 fontSize: 15,
               ),
               decoration: InputDecoration(
-                labelText: 'Password',
+                labelText: AppLocalizations.of(context)!.password,
                 labelStyle: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
@@ -363,7 +375,7 @@ class _LoginScreenState extends State<LoginScreen>
                       : () =>
                           auth.setRememberMe(!auth.rememberMe),
                   child: Text(
-                    'Remember Me',
+                    AppLocalizations.of(context)!.rememberMe,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -374,8 +386,8 @@ class _LoginScreenState extends State<LoginScreen>
                 const Spacer(),
                 GestureDetector(
                   onTap: () => context.push('/forgot-password'),
-                  child: const Text(
-                    'Forgot Password',
+                  child: Text(
+                    AppLocalizations.of(context)!.forgotPassword,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -428,7 +440,7 @@ class _LoginScreenState extends State<LoginScreen>
                           color: Colors.white,
                         ),
                       )
-                    : const Text('LOG IN'),
+                    : Text(AppLocalizations.of(context)!.logIn),
               ),
             )),
             const SizedBox(height: 12),
@@ -450,9 +462,9 @@ class _LoginScreenState extends State<LoginScreen>
                         } else if (!success && mounted) {
                           ScaffoldMessenger.of(context)
                               .showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content:
-                                  Text('Google Sign-In failed'),
+                                  Text(AppLocalizations.of(context)!.googleSignInFailed),
                             ),
                           );
                         }
@@ -476,7 +488,15 @@ class _LoginScreenState extends State<LoginScreen>
                     color: Color(0xFF4285F4),
                   ),
                 ),
-                label: const Text('SIGN IN WITH GOOGLE'),
+                label: Text(AppLocalizations.of(context)!.signInWithGoogle),
+              ),
+            )),
+            const SizedBox(height: 16),
+            _staggeredItem(3, TextButton(
+              onPressed: auth.isLoading ? null : () => context.push('/register'),
+              child: Text(
+                'New clinic? Create an account',
+                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600, fontSize: 14),
               ),
             )),
           ],

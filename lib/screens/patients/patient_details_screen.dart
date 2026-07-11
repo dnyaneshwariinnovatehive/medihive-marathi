@@ -23,6 +23,7 @@ import '../../utils/helpers.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/visit_timeline_item.dart';
+import '../../l10n/app_localizations.dart';
 
 List<Map<String, String?>> _decodeMedicinesFromJson(String json) {
   final decoded = jsonDecode(json);
@@ -146,6 +147,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
 
   Future<void> _confirmDeleteOpd(int index) async {
     if (index >= _opdRows.length) return;
+    final l10n = AppLocalizations.of(context)!;
     final row = _opdRows[index];
     final opdId = row['opd_id'] as String? ?? '';
     final visitDate = row['visit_datetime'] as String? ?? '';
@@ -154,17 +156,17 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete OPD Record'),
+        title: Text(l10n.deleteOpdRecord),
         content: Text('Delete OPD record from $visitDate?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -218,6 +220,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
 
     if (!_loaded) {
       return Scaffold(
@@ -233,12 +236,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const StandardHeader(
-              title: 'Patient Details',
+            StandardHeader(
+              title: l10n.patientDetails,
               roundedCorners: false,
             ),
-            const SliverFillRemaining(
-              child: Center(child: Text('Patient not found')),
+            SliverFillRemaining(
+              child: Center(child: Text(l10n.patientNotFound)),
             ),
           ],
         ),
@@ -252,7 +255,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const StandardHeader(title: 'Patient Details', roundedCorners: false),
+          StandardHeader(title: l10n.patientDetails, roundedCorners: false),
           SliverToBoxAdapter(
             child: Column(
               children: [
@@ -338,10 +341,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                       SizedBox(height: 16),
                                       Row(
                                         children: [
-                                          _glassTile('Age', '${patient.age} years'),
+                                          _glassTile(l10n.age, '${patient.age} years'),
                                           SizedBox(width: 12),
                                           _glassTile(
-                                            'Blood Group',
+                                            l10n.bloodGroup,
                                             patient.bloodGroup,
                                           ),
                                         ],
@@ -381,7 +384,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Contact Information',
+                                l10n.contactInformation,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
@@ -391,19 +394,19 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                               SizedBox(height: 16),
                               _contactRow(
                                 Icons.phone,
-                                'Mobile Number',
+                                l10n.mobileNumber,
                                 patient.mobile,
                               ),
                               SizedBox(height: 12),
                               _contactRow(
                                 Icons.location_on,
-                                'Address',
+                                l10n.address,
                                 patient.address,
                               ),
                               SizedBox(height: 12),
                               _contactRow(
                                 Icons.calendar_today,
-                                'Date of Birth',
+                                l10n.dateOfBirthLabel,
                                 patient.dob,
                               ),
                             ],
@@ -419,7 +422,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Visit History',
+                                l10n.visitHistory,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
@@ -465,7 +468,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                   '/app/prescription/${widget.patientId}',
                                 ),
                                 icon: Icon(Icons.description, size: 20),
-                                label: Text('View Prescription'),
+                                label: Text(l10n.viewPrescription),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
@@ -594,9 +597,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Patient has no valid phone number',
+                                            l10n.noValidPhone,
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -628,7 +631,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          '✓ WhatsApp opened with prescription attached',
+                                          l10n.whatsappOpened,
                                         ),
                                         backgroundColor: AppTheme.success,
                                         behavior: SnackBarBehavior.floating,
@@ -647,7 +650,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                   }
                                 },
                                 icon: Icon(Icons.share, size: 20),
-                                label: Text('Share'),
+                                label: Text(l10n.share),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
@@ -670,7 +673,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                   final confirmed = await showDialog<bool>(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: const Text('Delete Patient'),
+                                      title: Text(l10n.deletePatient),
                                       content: Text(
                                         'Delete ${patient.name} and all associated records?',
                                       ),
@@ -678,7 +681,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                         TextButton(
                                           onPressed: () =>
                                               Navigator.pop(ctx, false),
-                                          child: const Text('Cancel'),
+                                          child: Text(l10n.cancel),
                                         ),
                                         TextButton(
                                           onPressed: () =>
@@ -686,7 +689,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                           style: TextButton.styleFrom(
                                             foregroundColor: AppTheme.danger,
                                           ),
-                                          child: const Text('Delete'),
+                                          child: Text(l10n.delete),
                                         ),
                                       ],
                                     ),

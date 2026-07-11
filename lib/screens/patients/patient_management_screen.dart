@@ -13,6 +13,7 @@ import '../../database/schema.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/pressable_card.dart';
 import '../../widgets/standard_header.dart';
+import '../../l10n/app_localizations.dart';
 
 class PatientManagementScreen extends StatefulWidget {
   const PatientManagementScreen({super.key});
@@ -134,6 +135,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
   @override
   Widget build(BuildContext context) {
     context.watch<SettingsProvider>();
+    final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<PatientProvider>();
     final count = provider.filteredPatients.length;
     if (count != _lastPatientCount) {
@@ -152,7 +154,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
           // ═══════════════════════════════════════════════════
           // PREMIUM GRADIENT HEADER
           // ═══════════════════════════════════════════════════
-          const StandardHeader(title: 'Patient Management'),
+          StandardHeader(title: l10n.patientManagement),
 
           // PATIENT COUNT
           SliverToBoxAdapter(
@@ -217,7 +219,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              _isToday ? 'Today' : 'Selected date',
+                              _isToday ? l10n.today : l10n.selectedDate,
                               style: AppTheme.caption.copyWith(
                                 color: AppTheme.textSecondary,
                                 fontSize: 11,
@@ -266,7 +268,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            _isToday ? 'No Patients Yet' : 'No Patients on This Date',
+                            _isToday ? l10n.noPatientsYet : l10n.noPatientsOnDate,
                             style: AppTheme.heading.copyWith(
                               color: AppTheme.textPrimary,
                             ),
@@ -274,7 +276,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           const SizedBox(height: 8),
                           if (_isToday) ...[
                             Text(
-                              'Add your first patient via OPD Registration',
+                              l10n.addPatientViaOpd,
                               style: AppTheme.body.copyWith(
                                 color: AppTheme.textSecondary,
                               ),
@@ -284,7 +286,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             ElevatedButton.icon(
                               onPressed: () => context.go('/app/opd'),
                               icon: const Icon(Icons.add, size: 18),
-                              label: const Text('New OPD'),
+                              label: Text(l10n.newOpd),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primary,
                                 padding: const EdgeInsets.symmetric(
@@ -317,7 +319,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           final gender = patient.gender;
                           final lastDiagnosis = patient.diagnosis.isNotEmpty
                               ? patient.diagnosis
-                              : 'No diagnosis';
+                              : l10n.noDiagnosis;
                           final lastVisitDate = patient.lastVisit;
 
                           return AnimatedListItem(

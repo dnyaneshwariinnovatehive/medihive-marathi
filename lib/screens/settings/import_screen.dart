@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/standard_header.dart';
 import '../../services/import_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -22,6 +23,7 @@ class _ImportScreenState extends State<ImportScreen> {
   String _errorMessage = '';
 
   Future<void> _pickFile() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -38,13 +40,14 @@ class _ImportScreenState extends State<ImportScreen> {
         });
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to pick file: $e');
+      setState(() => _errorMessage = l10n.failedToPickFile(e.toString()));
     }
   }
 
   Future<void> _startImport() async {
     if (_filePath == null) return;
 
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _status = ImportStatus.importing);
 
     try {
@@ -70,7 +73,7 @@ class _ImportScreenState extends State<ImportScreen> {
       if (mounted) {
         setState(() {
           _status = ImportStatus.error;
-          _errorMessage = 'Import failed unexpectedly: $e';
+          _errorMessage = l10n.importFailedError(e.toString());
         });
       }
     }
@@ -78,12 +81,13 @@ class _ImportScreenState extends State<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const StandardHeader(title: 'Import from Desktop', showBack: true),
+          StandardHeader(title: l10n.importFromDesktopTitle, showBack: true),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -108,6 +112,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildInfoCard() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -129,7 +134,7 @@ class _ImportScreenState extends State<ImportScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Select the clinic.db file from your desktop app to import patients, OPD visits, clinic settings, and calendar notes.',
+              l10n.selectDbFileDescription,
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -143,6 +148,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildFilePickerCard() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -166,7 +172,7 @@ class _ImportScreenState extends State<ImportScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Database File',
+                l10n.databaseFile,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -222,7 +228,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         Icon(Icons.folder_open, color: AppTheme.textHint, size: 22),
                         const SizedBox(width: 8),
                         Text(
-                          'Tap to select clinic.db file',
+                          l10n.tapToSelectDbFile,
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textHint,
@@ -263,6 +269,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildProgressCard() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -279,7 +286,7 @@ class _ImportScreenState extends State<ImportScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Importing data...',
+            l10n.importingData,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -288,7 +295,7 @@ class _ImportScreenState extends State<ImportScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Reading clinic.db and writing to MediHive',
+            l10n.readingAndWriting,
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
         ],
@@ -297,6 +304,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildResultCard() {
+    final l10n = AppLocalizations.of(context)!;
     final r = _result!;
     return Container(
       width: double.infinity,
@@ -318,7 +326,7 @@ class _ImportScreenState extends State<ImportScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Import Complete!',
+            l10n.importComplete,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -326,13 +334,13 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          _statRow(Icons.people_outline, 'Patients', '${r.patientsImported} imported', '${r.patientsSkipped} skipped'),
+          _statRow(Icons.people_outline, l10n.patients, '${r.patientsImported} ${l10n.importedLabel}', '${r.patientsSkipped} ${l10n.skippedLabel}'),
           const SizedBox(height: 12),
-          _statRow(Icons.medical_services_outlined, 'OPD Visits', '${r.opdVisitsImported} imported', '${r.opdVisitsSkipped} skipped'),
+          _statRow(Icons.medical_services_outlined, l10n.opdVisitsLabel, '${r.opdVisitsImported} ${l10n.importedLabel}', '${r.opdVisitsSkipped} ${l10n.skippedLabel}'),
           const SizedBox(height: 12),
-          _statRow(Icons.settings_outlined, 'Clinic Settings', r.settingsImported ? 'Yes' : 'No', ''),
+          _statRow(Icons.settings_outlined, l10n.clinicSettingsLabel, r.settingsImported ? 'Yes' : 'No', ''),
           const SizedBox(height: 12),
-          _statRow(Icons.calendar_today, 'Calendar Notes', '${r.notesImported} imported', ''),
+          _statRow(Icons.calendar_today, l10n.calendarNotesLabel, '${r.notesImported} ${l10n.importedLabel}', ''),
           if (r.patientsImported > 0 || r.opdVisitsImported > 0) ...[
             const SizedBox(height: 20),
             SizedBox(
@@ -340,7 +348,7 @@ class _ImportScreenState extends State<ImportScreen> {
               child: OutlinedButton.icon(
                 onPressed: () => context.go('/app/settings'),
                 icon: const Icon(Icons.arrow_back, size: 20),
-                label: const Text('Back to Settings'),
+                label: Text(l10n.backToSettings),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -376,6 +384,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildErrorCard() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -396,7 +405,7 @@ class _ImportScreenState extends State<ImportScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Import Failed',
+            l10n.importFailed,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.danger),
           ),
           const SizedBox(height: 8),
@@ -411,7 +420,7 @@ class _ImportScreenState extends State<ImportScreen> {
             child: ElevatedButton.icon(
               onPressed: _pickFile,
               icon: const Icon(Icons.refresh, size: 20),
-              label: const Text('Try Again'),
+              label: Text(l10n.tryAgain),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: AppTheme.textOnPrimary,

@@ -91,10 +91,10 @@ def main():
     # ─── 4. Sync Endpoints ───────────────────────────────
     print("[4/7] Sync Endpoints")
     endpoints = [
-        ("Sync Push", "POST", "/sync/push"),
-        ("Sync Pull", "POST", "/sync/pull"),
-        ("Cloud Upload", "POST", "/cloud/upload-changes"),
-        ("Cloud Download", "POST", "/cloud/download-changes"),
+        ("Sync Upload", "POST", "/sync/upload"),
+        ("Sync Download", "POST", "/sync/download"),
+        ("Device Register", "POST", "/sync/register-device"),
+        ("Heartbeat", "POST", "/sync/heartbeat"),
     ]
     for label, method, path in endpoints:
         try:
@@ -137,9 +137,7 @@ def main():
     # ─── 6. Patient ID Generation ────────────────────────
     print("[6/7] Patient ID Format Validation")
     check(True, "Format: P001, P002, P003",
-          "Sequential numeric IDs (not UUID/ULID/TEMP)")
-    check(True, "Desktop compatible",
-          "Same ID format as desktop SQLite app")
+          "Sequential numeric IDs")
     print()
 
     # ─── 7. Deployment Configuration ─────────────────────

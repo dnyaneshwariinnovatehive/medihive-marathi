@@ -1,15 +1,18 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/standard_header.dart';
+import '../../widgets/language_toggle_button.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/cloud_sync_manager.dart';
 import '../../models/patient.dart';
 import '../../widgets/section_card.dart';
+import '../../l10n/app_localizations.dart';
 
 import 'package:flutter/rendering.dart';
 
@@ -81,16 +84,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final dashboard = context.watch<DashboardProvider>();
     final settings = context.watch<SettingsProvider>();
     final appointments = context.watch<AppointmentProvider>();
+    final l10n = AppLocalizations.of(context)!;
 
     // Dynamic greeting based on time of day
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final greeting = hour < 12 ? l10n.goodMorning : hour < 17 ? l10n.goodAfternoon : l10n.goodEvening;
 
     // Dynamic date formatting
     final now = DateTime.now();
-    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    final formattedDate = '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+    final locale = Localizations.localeOf(context);
+    final formattedDate = DateFormat('EEEE, d MMMM yyyy', locale.languageCode).format(now);
 
     // Follow-ups due today
     final today = DateTime(now.year, now.month, now.day);
@@ -133,6 +136,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           // ═══════════════════════════════════════════════════
           StandardHeader(
             title: '$greeting, ${settings.doctorName}',
+            trailingActions: [
+              LanguageToggleButton(isCompact: true),
+            ],
           ),
 
           // DATE SUBTITLE
@@ -159,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Visits Grid (3 cards)
-                    _buildVisitsGrid(dashboard, followUpsDue: followUpsDue),
+                    _buildVisitsGrid(context, dashboard, followUpsDue: followUpsDue),
                     const SizedBox(height: 24),
 
                     // CLINIC OVERVIEW SECTION
@@ -167,7 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     const SizedBox(height: 24),
 
                     // REVENUE SPLIT
-                    _buildRevenueSplit(dashboard),
+                    _buildRevenueSplit(context, dashboard),
                     const SizedBox(height: 24),
 
                     // RECENT PATIENTS
@@ -185,6 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // Clinic Overview Line Chart with Curved lines and grid
   Widget _buildClinicOverview(BuildContext context, DashboardProvider dashboard) {
+    final l10n = AppLocalizations.of(context)!;
     double maxCount = dashboard.opdTrendData
         .map((e) => e.count.toDouble())
         .fold(0.0, (max, count) => count > max ? count : max);
@@ -204,7 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Clinic Overview',
+                AppLocalizations.of(context)!.clinicOverview,
                 style: AppTheme.subHeading.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
@@ -218,7 +225,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
                 padding: const EdgeInsets.all(2),
                 child: Row(
-                  children: ['7 Days', '30 Days', '6 Months'].map((range) {
+                  children: [l10n.days7, l10n.days30, l10n.months6].map((range) {
                     final isActive = dashboard.selectedRange == range;
                     return GestureDetector(
                       onTap: () => dashboard.setSelectedRange(range),
@@ -357,7 +364,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   // Revenue split card
-  Widget _buildRevenueSplit(DashboardProvider dashboard) {
+  Widget _buildRevenueSplit(BuildContext context, DashboardProvider dashboard) {
+    final l10n = AppLocalizations.of(context)!;
     const colors = [AppTheme.primary, AppTheme.success];
     return SectionCard(
       child: Column(
@@ -367,7 +375,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Revenue Split',
+                l10n.revenueSplit,
                 style: AppTheme.subHeading.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
@@ -380,7 +388,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
                 padding: const EdgeInsets.all(2),
                 child: Row(
-                  children: ['Weekly', 'Monthly', 'Yearly'].map((period) {
+                  children: [l10n.weekly, l10n.monthly, l10n.yearly].map((period) {
                     final isActive = dashboard.revenuePeriod == period;
                     return GestureDetector(
                       onTap: () => dashboard.setRevenuePeriod(period),
@@ -478,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total',
+                        Text(l10n.total,
                             style: AppTheme.caption.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary)),
@@ -500,6 +508,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // Recent Patients list with dividers
   Widget _buildRecentPatients(BuildContext context, List<Patient> recentPatientsList) {
+    final l10n = AppLocalizations.of(context)!;
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,7 +517,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent OPD Activity',
+                l10n.recentOpdActivity,
                 style: AppTheme.subHeading.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
@@ -519,7 +528,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 child: Row(
                   children: [
                     Text(
-                      'View All',
+                      l10n.viewAll,
                       style: AppTheme.caption.copyWith(
                         color: AppTheme.primary,
                         fontWeight: FontWeight.bold,
@@ -534,7 +543,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           ),
           const SizedBox(height: 12),
           if (recentPatientsList.isEmpty)
-            _buildEmptyState('No recent patients found', Icons.people_outline),
+            _buildEmptyState(l10n.noRecentPatients, Icons.people_outline),
           if (recentPatientsList.isNotEmpty)
             ...recentPatientsList.asMap().entries.map((entry) {
             final index = entry.key;
@@ -593,7 +602,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'ID: ${patient.id} • Age ${patient.age}',
+                                  l10n.patientIdAge(patient.id, patient.age.toString()),
                                   style: AppTheme.caption.copyWith(
                                     color: AppTheme.textSecondary,
                                   ),
@@ -623,7 +632,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Time: ${patient.lastVisit}',
+                                l10n.visitTime(patient.lastVisit),
                                 style: AppTheme.caption.copyWith(
                                   color: AppTheme.textSecondary,
                                   fontSize: 11,
@@ -647,34 +656,35 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildVisitsGrid(DashboardProvider dashboard, {required int followUpsDue}) {
+  Widget _buildVisitsGrid(BuildContext context, DashboardProvider dashboard, {required int followUpsDue}) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
         Expanded(child: _buildVisitCard(
           icon: Icons.calendar_today,
           value: dashboard.todaysOpd.toString(),
-          label: "Today's Visits",
-          onTap: () => _showRevenueSheet(context, 'Today', dashboard.todaysRevenue),
+          label: l10n.todaysVisits,
+          onTap: () => _showRevenueSheet(context, l10n.todayPeriod, dashboard.todaysRevenue),
         )),
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
           icon: Icons.date_range,
           value: dashboard.weeklyVisits.toString(),
-          label: 'Weekly Visits',
-          onTap: () => _showRevenueSheet(context, 'This Week', dashboard.weeklyRevenue),
+          label: l10n.weeklyVisits,
+          onTap: () => _showRevenueSheet(context, l10n.thisWeekPeriod, dashboard.weeklyRevenue),
         )),
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
           icon: Icons.calendar_month,
           value: dashboard.monthlyVisits.toString(),
-          label: 'Monthly Visits',
-          onTap: () => _showRevenueSheet(context, 'This Month', dashboard.monthlyRevenue),
+          label: l10n.monthlyVisits,
+          onTap: () => _showRevenueSheet(context, l10n.thisMonthPeriod, dashboard.monthlyRevenue),
         )),
         const SizedBox(width: 8),
         Expanded(child: _buildVisitCard(
           icon: Icons.repeat,
           value: followUpsDue.toString(),
-          label: 'Follow-ups Due',
+          label: l10n.followUpsDue,
           onTap: () => context.go('/app/calendar'),
         )),
       ],
@@ -735,6 +745,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   void _showRevenueSheet(BuildContext context, String period, String revenue) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.background,
@@ -765,7 +776,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
             const SizedBox(height: 16),
             Text(
-              '$period Revenue',
+              l10n.periodRevenue(period),
               style: AppTheme.subHeading.copyWith(
                 color: AppTheme.textSecondary,
               ),
@@ -792,7 +803,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(l10n.close, style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ],

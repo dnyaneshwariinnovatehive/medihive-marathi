@@ -199,6 +199,35 @@ static String get baseUrl =>
     await _handleResponse(res);
   }
 
+  // ─── Clinic Registration ──────────────────────────
+
+  static Future<Map<String, dynamic>> registerClinic({
+    required String username,
+    required String password,
+    String name = 'Doctor',
+    required String clinicName,
+    String clinicEmail = '',
+    String clinicPhone = '',
+    String clinicAddress = '',
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/auth/register-clinic'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+        'name': name,
+        'clinic_name': clinicName,
+        'clinic_email': clinicEmail,
+        'clinic_phone': clinicPhone,
+        'clinic_address': clinicAddress,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    final data = await _handleResponse(res);
+    await saveToken(data['token']);
+    return data;
+  }
+
   // ─── Clear All Data ───────────────────────────────
 
   static Future<Map<String, dynamic>> clearAllData() async {
@@ -215,7 +244,7 @@ static String get baseUrl =>
   static Future<Map<String, dynamic>> syncPull(String lastSync) async {
     await _loadToken();
     final res = await http.post(
-      Uri.parse('$baseUrl/sync/pull'),
+      Uri.parse('$baseUrl/sync/download'),
       headers: _headers(),
       body: jsonEncode({'last_sync': lastSync}),
     ).timeout(const Duration(seconds: 30));
@@ -227,24 +256,36 @@ static String get baseUrl =>
     required List<Map<String, dynamic>> opdRecords,
     required List<Map<String, dynamic>> appointments,
     List<Map<String, String>> deletedEntities = const [],
+    String deviceId = '',
   }) async {
     await _loadToken();
-    print("BASE URL = $baseUrl");
-    debugPrint('SYNC API syncPush: token=($_token != null) url=$baseUrl/sync/push patients=${patients.length} opdRecords=${opdRecords.length} appointments=${appointments.length} deleted=${deletedEntities.length}');
+    debugPrint('SYNC API syncPush: patients=${patients.length} opdRecords=${opdRecords.length} appointments=${appointments.length} deleted=${deletedEntities.length}');
     final body = <String, dynamic>{
       'patients': patients,
       'opd_records': opdRecords,
       'appointments': appointments,
+      'device_id': deviceId,
     };
     if (deletedEntities.isNotEmpty) {
       body['deleted_entities'] = deletedEntities;
     }
     final res = await http.post(
-      Uri.parse('$baseUrl/sync/push'),
+      Uri.parse('$baseUrl/sync/upload'),
       headers: _headers(),
       body: jsonEncode(body),
     ).timeout(const Duration(seconds: 120));
     debugPrint('SYNC API syncPush response: status=${res.statusCode}');
+    return _handleResponse(res);
+  }
+
+  // ─── Full Restore (Disaster Recovery) ─────────────
+
+  static Future<Map<String, dynamic>> fullRestore() async {
+    await _loadToken();
+    final res = await http.get(
+      Uri.parse('$baseUrl/sync/full-restore'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 60));
     return _handleResponse(res);
   }
 
@@ -278,14 +319,9 @@ static String get baseUrl =>
     required List<Map<String, dynamic>> appointments,
     List<Map<String, String>> deletedEntities = const [],
   }) async {
-    // LOG: First line inside cloudUpload
-    debugPrint('CLOUD_DEBUG: cloudUpload ENTERED deviceId=$deviceId clinicId=$clinicId patients=${patients.length} opd=${opdRecords.length} appts=${appointments.length}');
-    debugPrint('CLOUD_DEBUG: cloudUpload cloudBaseUrl="$cloudBaseUrl"');
-
     await _loadToken();
     final body = <String, dynamic>{
       'device_id': deviceId,
-      'clinic_id': clinicId,
       'patients': patients,
       'opd_records': opdRecords,
       'appointments': appointments,
@@ -293,32 +329,17 @@ static String get baseUrl =>
     if (deletedEntities.isNotEmpty) {
       body['deleted_entities'] = deletedEntities;
     }
-    final url = '$cloudBaseUrl/cloud/upload-changes';
+    final url = '$baseUrl/sync/upload';
     final encoded = jsonEncode(body);
 
-    // LOG: URL, payload, token before HTTP call
-    debugPrint('CLOUD_DEBUG: upload full URL="$url"');
-    debugPrint('CLOUD_DEBUG: upload body size=${encoded.length} bytes');
-    debugPrint('CLOUD_DEBUG: upload token=${_token != null ? "present (${_token!.length} chars)" : "null"}');
-
     try {
-      // LOG: Immediately before http.post
-      debugPrint('CLOUD_DEBUG: upload ABOUT to call http.post timeout=120s');
-
       final res = await http.post(
         Uri.parse(url),
         headers: _headers(),
         body: encoded,
       ).timeout(const Duration(seconds: 120));
-
-      // LOG: Immediately after http.post returned
-      debugPrint('CLOUD_DEBUG: upload AFTER http.post status=${res.statusCode}');
-      debugPrint('CLOUD_DEBUG: upload response body=${res.body.length > 500 ? "${res.body.substring(0, 500)}..." : res.body}');
-
       return _handleResponse(res);
     } catch (e) {
-      debugPrint('CLOUD_DEBUG: upload EXCEPTION caught: $e');
-      debugPrint('CLOUD_DEBUG: upload EXCEPTION type=${e.runtimeType}');
       rethrow;
     }
   }
@@ -330,11 +351,9 @@ static String get baseUrl =>
   }) async {
     await _loadToken();
     final res = await http.post(
-      Uri.parse('$cloudBaseUrl/cloud/download-changes'),
+      Uri.parse('$baseUrl/sync/download'),
       headers: _headers(),
       body: jsonEncode({
-        'device_id': deviceId,
-        'clinic_id': clinicId,
         'last_sync': lastSync,
       }),
     ).timeout(const Duration(seconds: 30));
@@ -411,7 +430,7 @@ static String get baseUrl =>
     String opdId,
     List<File> images,
   ) async {
-    final uri = Uri.parse('$cloudBaseUrl/cloud/upload-images/$opdId');
+    final uri = Uri.parse('$baseUrl/sync/upload-images/$opdId');
     final request = http.MultipartRequest('POST', uri);
 
     debugPrint('CLOUD IMAGE DEBUG: endpoint=$uri');
@@ -461,6 +480,31 @@ static String get baseUrl =>
     } catch (e) {
       debugPrint('FCM token registration error: $e');
     }
+  }
+
+  // ─── Settings ──────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getSettings() async {
+    await _loadToken();
+    final res = await http.get(
+      Uri.parse('$baseUrl/settings'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 5));
+    final data = await _handleResponse(res);
+    return data['settings'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateSettings(
+    Map<String, dynamic> settings,
+  ) async {
+    await _loadToken();
+    final res = await http.put(
+      Uri.parse('$baseUrl/settings'),
+      headers: _headers(),
+      body: jsonEncode({'settings': settings}),
+    ).timeout(const Duration(seconds: 5));
+    final data = await _handleResponse(res);
+    return data['settings'] as Map<String, dynamic>;
   }
 
   /// Sends a prescription PDF directly to a patient's WhatsApp via the
