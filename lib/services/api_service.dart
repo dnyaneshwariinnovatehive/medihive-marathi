@@ -37,14 +37,19 @@ static String get baseUrl =>
   static Future<void> ensureToken() async {
     await _loadToken();
     if (_token != null) return;
-
     final envUser = dotenv.env['LOCAL_USERNAME'];
     final envPass = dotenv.env['LOCAL_PASSWORD'];
     if (envUser != null && envPass != null && envUser.isNotEmpty && envPass.isNotEmpty) {
       try {
         debugPrint('API: No token found — attempting login with .env credentials');
-        await login(envUser, envPass);
+        final data = await login(envUser, envPass);
         debugPrint('API: Token obtained successfully');
+        final clinicId = data['user']?['clinic_id']?.toString() ?? '';
+        if (clinicId.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('clinic_id', clinicId);
+          debugPrint('API: Saved clinic_id=$clinicId from auto-login');
+        }
       } catch (e) {
         debugPrint('API: Token acquisition failed: $e');
         rethrow;
@@ -259,16 +264,20 @@ static String get baseUrl =>
     String deviceId = '',
   }) async {
     await _loadToken();
+    final prefs = await SharedPreferences.getInstance();
+final clinicId = prefs.getString('clinic_id') ?? '';
     debugPrint('SYNC API syncPush: patients=${patients.length} opdRecords=${opdRecords.length} appointments=${appointments.length} deleted=${deletedEntities.length}');
     final body = <String, dynamic>{
       'patients': patients,
       'opd_records': opdRecords,
       'appointments': appointments,
       'device_id': deviceId,
+      'clinic_id': clinicId,
     };
     if (deletedEntities.isNotEmpty) {
       body['deleted_entities'] = deletedEntities;
     }
+    debugPrint('SYNC PUSH clinic_id=$clinicId');
     final res = await http.post(
       Uri.parse('$baseUrl/sync/upload'),
       headers: _headers(),

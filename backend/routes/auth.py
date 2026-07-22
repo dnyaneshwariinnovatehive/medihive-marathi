@@ -63,16 +63,26 @@ def register():
         db.close()
         return jsonify({'error': 'Username already exists'}), 409
 
-    hashed = hashlib.sha256(password.encode()).hexdigest()
+    clinic_id = f'CLI{uuid.uuid4().hex[:8].upper()}'
     now = datetime.utcnow().isoformat()
+
+    db.execute("""
+        INSERT INTO clinics (id, name, email, phone, address, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO NOTHING
+    """, (clinic_id, f"{name}'s Clinic", '', '', '', now, now))
+
+    hashed = hashlib.sha256(password.encode()).hexdigest()
     row = db.execute(
-        "INSERT INTO users (username, password, name, created_at) VALUES (%s, %s, %s, %s) RETURNING id",
-        (username, hashed, name, now)
+        "INSERT INTO users (username, password, name, created_at, clinic_id) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+        (username, hashed, name, now, clinic_id)
     ).fetchone()
     db.commit()
     user_id = row['id']
 
     token = create_access_token(identity=str(user_id))
+
+    clinic = db.execute("SELECT * FROM clinics WHERE id = %s", (clinic_id,)).fetchone()
     db.close()
 
     return jsonify({
@@ -81,9 +91,10 @@ def register():
             'id': str(user_id),
             'username': username,
             'name': name,
-            'clinic_id': '',
+            'clinic_id': clinic_id,
             'role': 'doctor',
-        }
+        },
+        'clinic': dict(clinic) if clinic else None,
     }), 201
 
 

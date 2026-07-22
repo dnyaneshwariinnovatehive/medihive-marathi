@@ -55,6 +55,7 @@ class OpdProvider extends ChangeNotifier {
     updateField('gender', patientRow['gender']?.toString() ?? 'Male');
     updateField('address', patientRow['address']?.toString() ?? '');
     updateField('bloodGroup', patientRow['blood_group']?.toString() ?? 'O+');
+    updateField('weight', patientRow['weight']?.toString() ?? '');
     _matchedPatients = [];
     _showMobileLookup = false;
     notifyListeners();
@@ -67,6 +68,7 @@ class OpdProvider extends ChangeNotifier {
     updateField('gender', 'Male');
     updateField('address', '');
     updateField('bloodGroup', 'O+');
+    updateField('weight', '');
     _matchedPatients = [];
     _showMobileLookup = false;
     notifyListeners();
@@ -541,6 +543,8 @@ class OpdProvider extends ChangeNotifier {
         _formData.previousVisitDate = value;
       case 'followUpReason':
         _formData.followUpReason = value;
+      case 'weight':
+        _formData.weight = double.tryParse(value);
     }
     notifyListeners();
     autoSaveDraft();

@@ -20,6 +20,7 @@ import '../../widgets/standard_header.dart';
 import '../../services/prescription_pdf_service.dart';
 import '../../widgets/animated_list_item.dart';
 import '../../widgets/section_card.dart';
+import '../../utils/medicine_localizer.dart';
 
 class _MedicineFieldData {
   final TextEditingController name;
@@ -805,7 +806,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          '${e.key + 1}. ${e.value.name}',
+                                          '${e.key + 1}. ${localizeMedicineName(e.value.name, Localizations.localeOf(context))}',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w500,
                                             color: AppTheme.textPrimary,
@@ -1060,7 +1061,8 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                 try {
                                   final pdfData =
                                       await PrescriptionPdfService
-                                          .generatePdf(_rx);
+                                          .generatePdf(_rx,
+                                              locale: Localizations.localeOf(context));
                                   final dir =
                                       await getApplicationDocumentsDirectory();
                                   final docDir = Directory(
@@ -1127,7 +1129,8 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                 try {
                                   final pdfData =
                                       await PrescriptionPdfService
-                                          .generatePdf(_rx);
+                                          .generatePdf(_rx,
+                                              locale: Localizations.localeOf(context));
                                   await Printing.layoutPdf(
                                     onLayout: (_) => pdfData,
                                   );

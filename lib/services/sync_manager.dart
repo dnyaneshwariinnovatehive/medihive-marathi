@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'api_service.dart';
@@ -23,6 +24,9 @@ enum SyncState {
 }
 
 class SyncManager extends ChangeNotifier {
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   final ConnectivityService _connectivity = ConnectivityService();
   final PatientRepository _patientRepo = PatientRepository();
   final OpdRecordRepository _opdRepo = OpdRecordRepository();
@@ -80,17 +84,26 @@ class SyncManager extends ChangeNotifier {
 
   Future<void> _trySync() async {
     if (kIsWeb) return;
-    if (!_connectivity.currentStatus) return;
-    if (_syncState == SyncState.syncing) return;
+    if (!_connectivity.currentStatus) {
+      debugPrint('SYNC SKIP: no connectivity');
+      return;
+    }
+    if (_syncState == SyncState.syncing) {
+      debugPrint('SYNC SKIP: already syncing');
+      return;
+    }
 
+    debugPrint('SYNC START: state=$_syncState');
     _syncState = SyncState.syncing;
     notifyListeners();
 
     try {
       await ApiService.ensureToken();
+      debugPrint('SYNC: token ensured, starting _syncWithBackend');
       await _syncWithBackend();
       _syncCount++;
       _syncState = SyncState.synced;
+      debugPrint('SYNC SUCCESS: count=$_syncCount');
       notifyListeners();
 
       if (_pendingSyncRequested) {
@@ -98,7 +111,7 @@ class SyncManager extends ChangeNotifier {
         _trySync();
       }
     } catch (e) {
-      debugPrint('SYNC error: $e');
+      debugPrint('SYNC ERROR: $e');
       _syncState = SyncState.error;
       notifyListeners();
     }
@@ -110,6 +123,7 @@ class SyncManager extends ChangeNotifier {
 
     // ── Push ──
     final pending = await _syncQueueRepo.getPending();
+    debugPrint('SYNC PUSH: ${pending.length} pending queue entries');
     final pushPatients = <Map<String, dynamic>>[];
     final pushOpd = <Map<String, dynamic>>[];
     final pushAppts = <Map<String, dynamic>>[];
@@ -129,14 +143,20 @@ class SyncManager extends ChangeNotifier {
         final row = await _patientRepo.getBySyncId(entityId);
         if (row != null) {
           pushPatients.add(_patientRowToMap(row));
+        } else {
+          debugPrint('SYNC WARNING: patient sync_id=$entityId not found in DB');
         }
       } else if (entityType == 'opd_visit') {
         final row = await _opdRepo.getByOpdId(entityId);
         if (row != null) {
           pushOpd.add(_opdRowToMap(row));
+        } else {
+          debugPrint('SYNC WARNING: opd_visit opd_id=$entityId not found in DB');
         }
       }
     }
+
+    debugPrint('SYNC PUSH DATA: patients=${pushPatients.length} opd=${pushOpd.length} appts=${pushAppts.length} deleted=${deletedEntities.length}');
 
     try {
       final apptBox = Hive.box<AppointmentModel>('appointments');
@@ -148,6 +168,7 @@ class SyncManager extends ChangeNotifier {
     } catch (_) {}
 
     if (pushPatients.isNotEmpty || pushOpd.isNotEmpty || pushAppts.isNotEmpty || deletedEntities.isNotEmpty) {
+      debugPrint('SYNC PUSHING to backend...');
       final response = await ApiService.syncPush(
         patients: pushPatients,
         opdRecords: pushOpd,
@@ -156,6 +177,7 @@ class SyncManager extends ChangeNotifier {
         deviceId: _deviceId ?? '',
       );
 
+      debugPrint('SYNC PUSH response: ${response.keys.toList()}');
       final tempMapped = response['temp_ids_mapped'] as Map<String, dynamic>? ?? {};
       for (final entry in tempMapped.entries) {
         await _patientRepo.updateSyncId(entry.key, entry.value as String);
@@ -327,6 +349,26 @@ class SyncManager extends ChangeNotifier {
     await _trySync();
   }
 
+  Future<bool> triggerManualSync() async {
+    await forceSyncNow();
+    return _syncState == SyncState.synced;
+  }
+
+  Future<bool> backupToDriveOnly() async {
+    await forceSyncNow();
+    return _syncState == SyncState.synced;
+  }
+
+  int getUnsyncedCount() {
+    return _syncState == SyncState.offline ? 1 : 0;
+  }
+
+  Future<void> scheduleDailyBackup(TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('backup_hour', time.hour);
+    await prefs.setInt('backup_minute', time.minute);
+  }
+
   Future<bool> fullRestore() async {
     if (!_connectivity.currentStatus) return false;
     _syncState = SyncState.syncing;
@@ -372,6 +414,7 @@ class SyncManager extends ChangeNotifier {
       'address': row['address'] ?? '',
       'created_at': createdDt.toIso8601String(),
       'updated_at': _resolveUpdatedAt(row),
+      'weight': row['weight'],
     };
   }
 
@@ -390,6 +433,7 @@ class SyncManager extends ChangeNotifier {
       'medicines': row['medicines'] ?? '',
       'visit_date': DateTime.tryParse(visitDt)?.toIso8601String() ?? createdDt.toIso8601String(),
       'clinical_notes': row['clinical_notes'] ?? '',
+      'panchakarma_notes': row['panchakarma_notes'] ?? '',
       'consultation_fee': (row['consultation_fee'] as num?)?.toString() ?? '',
       'medicine_fee': (row['medicine_fee'] as num?)?.toString() ?? '',
       'panchakarma_fee': (row['panchakarma_fee'] as num?)?.toString() ?? '',
@@ -401,6 +445,7 @@ class SyncManager extends ChangeNotifier {
       'follow_up_reason': row['followup_status'] ?? '',
       'next_visit': row['next_visit_date'] ?? '',
       'blood_group': row['blood_group'] ?? '',
+      'previous_visit_date': row['next_visit_date'] ?? '',
       'created_at': createdDt.toIso8601String(),
       'updated_at': _resolveUpdatedAt(row),
     };
@@ -419,6 +464,7 @@ class SyncManager extends ChangeNotifier {
       'address': remote['address']?.toString() ?? '',
       'created_at': remote['created_at']?.toString() ?? DateTime.now().toIso8601String(),
       'updated_at': remote['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+      'weight': remote['weight'] != null ? (remote['weight'] as num).toDouble() : null,
     };
   }
 
@@ -441,12 +487,17 @@ class SyncManager extends ChangeNotifier {
       'diagnosis': remote['diagnosis']?.toString() ?? '',
       'symptoms': remote['symptoms']?.toString() ?? '',
       'clinical_notes': remote['clinical_notes']?.toString() ?? '',
+      'panchakarma_notes': remote['panchakarma_notes']?.toString() ?? '',
       'consultation_fee': double.tryParse(remote['consultation_fee']?.toString() ?? '') ?? 0.0,
       'medicine_fee': double.tryParse(remote['medicine_fee']?.toString() ?? '') ?? 0.0,
+      'panchakarma_fee': double.tryParse(remote['panchakarma_fee']?.toString() ?? '') ?? 0.0,
+      'total_fee': double.tryParse(remote['total_fee']?.toString() ?? '') ?? 0.0,
       'payment_mode': remote['payment_mode']?.toString() ?? '',
       'next_visit_date': remote['next_visit']?.toString() ?? '',
       'followup_status': remote['follow_up_reason']?.toString() ?? '',
       'discount_value': double.tryParse(remote['discount']?.toString() ?? '') ?? 0.0,
+      'discount_type': remote['discount_type']?.toString() ?? '',
+      'blood_group': remote['blood_group']?.toString() ?? '',
       'created_at': remote['created_at']?.toString() ?? DateTime.now().toIso8601String(),
       'updated_at': remote['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
       'medicines': remote['medicines']?.toString() ?? '',

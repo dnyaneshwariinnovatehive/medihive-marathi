@@ -89,6 +89,10 @@ class DatabaseHelper {
         try { await db.execute("ALTER TABLE opd_visits ADD COLUMN last_synced_at DATETIME"); } catch (_) {}
         debugPrint('Applied migration v5: added device_id, sync_status, last_synced_at to patients and opd_visits');
         break;
+      case 6:
+        try { await db.execute("ALTER TABLE patients ADD COLUMN weight FLOAT"); } catch (_) {}
+        debugPrint('Applied migration v6: added weight column to patients');
+        break;
       default:
         debugPrint('No migration defined for version $targetVersion');
     }

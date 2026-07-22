@@ -23,6 +23,7 @@ class OpdFormData {
   String paymentMode;
   String previousVisitDate;
   String followUpReason;
+  double? weight;
 
   OpdFormData({
     this.patientId = '',
@@ -49,6 +50,7 @@ class OpdFormData {
     this.paymentMode = 'Cash',
     this.previousVisitDate = '',
     this.followUpReason = '',
+    this.weight,
   });
 
   double get subtotal =>
@@ -92,6 +94,7 @@ class OpdFormData {
     paymentMode = 'Cash';
     previousVisitDate = '';
     followUpReason = '';
+    weight = null;
   }
 
   Map<String, dynamic> toJson() {
@@ -120,6 +123,7 @@ class OpdFormData {
       'paymentMode': paymentMode,
       'previousVisitDate': previousVisitDate,
       'followUpReason': followUpReason,
+      'weight': weight,
     };
   }
 
@@ -148,5 +152,6 @@ class OpdFormData {
     paymentMode = json['paymentMode'] ?? 'Cash';
     previousVisitDate = json['previousVisitDate'] ?? '';
     followUpReason = json['followUpReason'] ?? '';
+    weight = json['weight'] != null ? (json['weight'] as num).toDouble() : null;
   }
 }

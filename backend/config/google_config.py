@@ -21,7 +21,7 @@ class GoogleConfig:
 
     project_id: str = os.getenv("GOOGLE_PROJECT_ID", "")
     sheet_id: str = os.getenv("GOOGLE_SHEET_ID", "")
-    drive_root_folder_id: str = os.getenv("GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
+    drive_root_folder_id: str = os.getenv("DRIVE_ROOT_FOLDER_ID", "")
     client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
     client_secret: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     application_credentials: str = os.getenv(

@@ -226,12 +226,12 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String patientsCount(Object count) {
-    return '$count patients';
+    return '$count रुग्ण';
   }
 
   @override
   String patientsCount_one(Object count) {
-    return '$count patient';
+    return '$count रुग्ण';
   }
 
   @override
@@ -719,13 +719,13 @@ class AppLocalizationsMr extends AppLocalizations {
   String get smartClinicManagement => 'स्मार्ट क्लिनिक व्यवस्थापन';
 
   @override
-  String get weeklyLabel => 'Weekly';
+  String get weeklyLabel => 'साप्ताहिक';
 
   @override
-  String get monthlyLabel => 'Monthly';
+  String get monthlyLabel => 'मासिक';
 
   @override
-  String get yearlyLabel => 'Yearly';
+  String get yearlyLabel => 'वार्षिक';
 
   @override
   String get googleDriveSync => 'Google Drive सिंक';
@@ -1384,4 +1384,212 @@ class AppLocalizationsMr extends AppLocalizations {
   String disconnectFailedMessage(String error) {
     return 'डिस्कनेक्ट करण्यात अयशस्वी: $error';
   }
+
+  @override
+  String get chatPromptAddPatient => 'नवीन रुग्ण कसा जोडायचा?';
+
+  @override
+  String get chatPromptExportData => 'मागील महिन्याचा डेटा एक्स्पोर्ट करा';
+
+  @override
+  String get chatPromptAppointments => 'आजच्या भेटी दाखवा';
+
+  @override
+  String get chatPromptPrescription => 'औषधपत्र स्वरूपाबद्दल मदत';
+
+  @override
+  String get chatResponseAddPatient =>
+      'नवीन रुग्ण जोडण्यासाठी:\n\n1. डॅशबोर्डवरील \"OPD नोंद\" बटण टॅप करा.\n2. रुग्णाचे तपशील भरा: नाव, वय, लिंग, फोन नंबर आणि पत्ता.\n3. रुग्ण नोंदवण्यासाठी \"जतन करा\" टॅप करा.\n\nरुग्ण लगेच तुमच्या रुग्ण यादीत दिसेल.';
+
+  @override
+  String get chatResponseExport =>
+      'मागील महिन्याचा डेटा एक्स्पोर्ट करण्यासाठी:\n\n1. सेटिंग्ज → बॅकअप आणि पुनर्संचयनवर जा.\n2. \"एक्स्पोर्ट टू Excel\" टॅप करा.\n3. मागील महिन्यासाठी तारीख व्हायपास निवडा.\n4. काय समाविष्ट करायचे ते निवडा: रुग्ण, OPD नोंदी, भेटी.\n5. \"एक्स्पोर्ट\" टॅप करा — फाइल तुमच्या डिव्हाइसवर जतन केली जाईल.\n\nतुम्ही त्याच स्क्रीनवरून Google Drive वरही बॅकअप घेऊ शकता.';
+
+  @override
+  String get chatResponseAppointments =>
+      'आजच्या भेटी पाहण्यासाठी:\n\n1. डॅशबोर्डवरील \"दिनदर्शिका\" आयकन टॅप करा.\n2. आजची तारीख हायलाइट केलेली आहे — आजच्या सर्व भेटी यादीत दिसतील.\n3. तपशील पाहण्यासाठी किंवा संपादित करण्यासाठी कोणत्याही भेटीवर टॅप करा.\n\nतुम्ही दिनदर्शिका स्क्रीनवरून नवीन भेटी जोडू शकता.';
+
+  @override
+  String get chatResponsePrescription =>
+      'MediHive मधील औषधपत्रात समाविष्ट आहे:\n\n• रुग्णाचे नाव, वय, लिंग\n• निदान\n• मात्रा आणि कालावधीसह औषधे\n• क्लिनिकल टिपणे\n• डॉक्टरचे नाव, क्लिनिक माहिती आणि परवाना क्रमांक\n• सल्लामसलत आणि औषध शुल्क\n• फॉलो-अप तारीख (पर्यायी)\n\nऔषधपत्र तयार करण्यासाठी: रुग्ण तपशीलवर जा → \"औषधपत्र तयार करा\" टॅप करा.\nPDF आपोआप तयार होतो आणि WhatsApp द्वारे शेअर करता येतो.';
+
+  @override
+  String get chatOpenAction => 'उघडा →';
+
+  @override
+  String get faqBackupTitle => 'माझा डेटा कसा बॅकअप घ्यायचा?';
+
+  @override
+  String get faqBackupAnswer =>
+      'सेटिंग्ज > बॅकअप आणि क्लाउड सिंकवर जा आणि स्थानिक बॅकअप तयार करण्यासाठी किंवा क्लाउड स्टोरेजशी सिंक करण्यासाठी \"बॅकअप तयार करा\" वर क्लिक करा.';
+
+  @override
+  String get faqExportTitle => 'मी रुग्ण नोंदी एक्स्पोर्ट करू शकतो का?';
+
+  @override
+  String get faqExportAnswer =>
+      'होय, तुम्ही बॅकअप विभागातून रुग्ण नोंदी Excel फाइल्स म्हणून एक्स्पोर्ट करू शकता. कालावधी निवडा आणि \"संपूर्ण बॅकअप\" वर क्लिक करा.';
+
+  @override
+  String get faqShareTitle => 'मी WhatsApp द्वारे औषधपत्रे कसे शेअर करू?';
+
+  @override
+  String get faqShareAnswer =>
+      'औषधपत्र स्क्रीन उघडा आणि औषधपत्र थेट रुग्णाकडे पाठवण्यासाठी \"WhatsApp द्वारे शेअर करा\" बटणावर क्लिक करा.';
+
+  @override
+  String get faqPasswordTitle => 'मी माझा पासवर्ड कसा बदलू?';
+
+  @override
+  String get faqPasswordAnswer =>
+      'सेटिंग्ज > प्रमाणीकरणवर जा आणि तुमची लॉगिन माहिती अद्ययावत करण्यासाठी \"पासवर्ड बदला\" वर क्लिक करा.';
+
+  @override
+  String get emailLabel => 'ईमेल:';
+
+  @override
+  String get phoneLabel => 'फोन:';
+
+  @override
+  String get platformMobile => 'मोबाईल (Android/iOS)';
+
+  @override
+  String get lastUpdatedDate => 'मे 2026';
+
+  @override
+  String get backupStoragePath => 'आंतरिक स्टोरेज/MediHive/backup';
+
+  @override
+  String get createClinicAccount => 'क्लिनिक खाते तयार करा';
+
+  @override
+  String get registerClinicSubtitle => 'सुरू करण्यासाठी तुमचे क्लिनिक नोंदवा';
+
+  @override
+  String get clinicNameRequired => 'क्लिनिकचे नाव आवश्यक';
+
+  @override
+  String get phoneOptional => 'फोन (पर्यायी)';
+
+  @override
+  String get addressOptional => 'पत्ता (पर्यायी)';
+
+  @override
+  String get doctorInformationSection => 'डॉक्टर माहिती';
+
+  @override
+  String get enterYourName => 'तुमचे नाव प्रविष्ट करा';
+
+  @override
+  String get emailOptional => 'ईमेल (पर्यायी)';
+
+  @override
+  String get loginCredentialsSection => 'लॉगिन माहिती';
+
+  @override
+  String get enterUsernamePlaceholder => 'वापरकर्ता नाव प्रविष्ट करा';
+
+  @override
+  String get atLeast3Characters => 'किमान ३ अक्षरे';
+
+  @override
+  String get enterPasswordPlaceholder => 'पासवर्ड प्रविष्ट करा';
+
+  @override
+  String get atLeast4CharactersLabel => 'किमान ४ अक्षरे';
+
+  @override
+  String get confirmPasswordLabel => 'पासवर्ड पुष्टी करा';
+
+  @override
+  String get createClinicBtn => 'क्लिनिक तयार करा';
+
+  @override
+  String get alreadyHaveAccountSignIn => 'आधीच खाते आहे? साइन इन करा';
+
+  @override
+  String get passwordsDoNotMatchExclaim => 'पासवर्ड जुळत नाहीत!';
+
+  @override
+  String get usernameAlreadyExists =>
+      'वापरकर्ता नाव आधीपासून अस्तित्वात आहे. दुसरे वापरून पहा.';
+
+  @override
+  String get registrationFailed => 'नोंद अयशस्वी. तुमचे कनेक्शन तपासा.';
+
+  @override
+  String get newClinicCreateAccount => 'नवीन क्लिनिक? खाते तयार करा';
+
+  @override
+  String get appointmentReminders => 'भेटी आठवणे';
+
+  @override
+  String get appointmentRemindersDesc => 'आगामी भेटींसाठी आठवणे';
+
+  @override
+  String get appointmentReminderTitle => 'भेटीची आठवण';
+
+  @override
+  String appointmentReminderBody(String patientName) {
+    return 'तुमच्याकडे $patientName शी १० मिनिटांमध्ये भेट आहे';
+  }
+
+  @override
+  String get pushNotificationsChannel => 'पुश सूचना';
+
+  @override
+  String get pushNotificationsDesc => 'सर्व्हरवरून पुश सूचना';
+
+  @override
+  String backupGenFailed(String error) {
+    return 'बॅकअप तयार करण्यात अयशस्वी: $error';
+  }
+
+  @override
+  String googleDriveUsed(String usage) {
+    return 'Google Drive वापर: तुमच्या Drive स्टोरेजपैकी $usage';
+  }
+
+  @override
+  String get restoreInProgress => 'डेटा पुनर्संचयन होत आहे';
+
+  @override
+  String get dailyFrequency => 'दैनिक';
+
+  @override
+  String get weeklyFrequency => 'साप्ताहिक';
+
+  @override
+  String get onEverySave => 'प्रत्येक जतनावर';
+
+  @override
+  String get changeBtn => 'बदला';
+
+  @override
+  String get neverLabel => 'कधी नाही';
+
+  @override
+  String get unknownDate => 'अज्ञात तारीख';
+
+  @override
+  String get shareBackupText => 'MediHive बॅकअप - क्लिनिक डेटा एक्स्पोर्ट';
+
+  @override
+  String todayAt(String time) {
+    return 'आज $time वेळी';
+  }
+
+  @override
+  String yesterdayAt(String time) {
+    return 'काल $time वेळी';
+  }
+
+  @override
+  String get weight => 'वजन';
+
+  @override
+  String get enterWeight => 'वजन प्रविष्ट करा (किलो)';
+
+  @override
+  String get invalidWeight => 'कृपया वैध वजन प्रविष्ट करा (उदा. ७२.५)';
 }

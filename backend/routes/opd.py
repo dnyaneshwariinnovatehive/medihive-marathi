@@ -59,12 +59,6 @@ def create_opd():
     record = OPDRecord.create(data)
 
     patient = Patient.get(data['patient_id'], clinic_id=clinic_id)
-    if patient:
-        Patient.update(data['patient_id'], {
-            'last_diagnosis': data.get('diagnosis', patient.get('last_diagnosis', '')),
-            'last_visit_date': data.get('visit_date', datetime.utcnow().isoformat()),
-        }, clinic_id=clinic_id)
-
     return jsonify({'record': record}), 201
 
 
@@ -122,7 +116,7 @@ def build_sheet_row_data(opd, patient, drive_urls):
     consultation_fee = safe_int(opd.get('consultation_fee'))
     medicine_fee = safe_int(opd.get('medicine_fee'))
     panchakarma_fee = safe_int(opd.get('panchakarma_fee'))
-    discount_value = safe_int(opd.get('discount'))
+    discount_value = safe_int(opd.get('discount_value') or opd.get('discount'))
     discount_type = opd.get('discount_type', 'None')
 
     subtotal = consultation_fee + medicine_fee + panchakarma_fee
@@ -137,7 +131,7 @@ def build_sheet_row_data(opd, patient, drive_urls):
         total_fee = subtotal
 
     pk_val = opd.get('panchakarma_notes', '')
-    logger.info("SHEET DEBUG: build_sheet_row_data for OPD %s panchakarma_notes=%r", opd['id'], pk_val)
+    logger.info("SHEET DEBUG: build_sheet_row_data for OPD %s panchakarma_notes=%r", opd.get('id') or opd.get('opd_id'), pk_val)
 
     # Preserve existing image_links from PostgreSQL when no new drive_urls provided.
     # This prevents sync push from overwriting uploaded image links with empty.
@@ -145,20 +139,21 @@ def build_sheet_row_data(opd, patient, drive_urls):
         existing_links = opd.get('image_links', '') or ''
         if existing_links:
             drive_urls = existing_links.split('\n')
-            logger.info("SHEET PRESERVED image_links for OPD %s: %s", opd['id'], drive_urls)
+            logger.info("SHEET PRESERVED image_links for OPD %s: %s", opd.get('id') or opd.get('opd_id'), drive_urls)
 
     return {
-        'OPD ID': opd['id'],
-        'Patient ID': opd['patient_id'],
-        'Patient Name': patient.get('name', ''),
-        'Mobile': patient.get('mobile', ''),
+        'OPD ID': opd.get('id') or opd.get('opd_id'),
+        'Patient ID': opd.get('patient_id'),
+        'Patient Name': patient.get('full_name') or patient.get('name', ''),
+        'Mobile': patient.get('mobile_number') or patient.get('mobile', ''),
         'Gender': patient.get('gender', ''),
         'DOB': patient.get('dob', ''),
         'Age': patient.get('age', 0),
+        'Weight': patient.get('weight'),
         'Blood Group': patient.get('blood_group', '') or opd.get('blood_group', ''),
         'Address': patient.get('address', ''),
-        'Visit Date': opd.get('visit_date', ''),
-        'OPD Type': opd.get('type', 'consultation'),
+        'Visit Date': opd.get('visit_datetime') or opd.get('visit_date', ''),
+        'OPD Type': opd.get('opd_type') or opd.get('type', 'OPD'),
         'Charge Type': opd.get('charge_type', ''),
         'Diagnosis': opd.get('diagnosis', ''),
         'Symptoms': opd.get('symptoms', ''),
@@ -172,9 +167,9 @@ def build_sheet_row_data(opd, patient, drive_urls):
         'Discount Type': discount_type if discount_type != 'None' else 'NA',
         'Discount Value': str(discount_value),
         'Payment Mode': opd.get('payment_mode', ''),
-        'Next Visit Date': opd.get('next_visit', ''),
-        'Follow-up Status': opd.get('follow_up_reason', '') or
-            ('Scheduled' if opd.get('next_visit', '') else 'No Follow-up'),
+        'Next Visit Date': opd.get('next_visit_date') or opd.get('next_visit', ''),
+        'Follow-up Status': opd.get('followup_status') or opd.get('follow_up_reason') or
+            ('Scheduled' if (opd.get('next_visit_date') or opd.get('next_visit', '')) else 'No Follow-up'),
         'Image Links': drive_urls,
     }
 
@@ -247,9 +242,9 @@ def upload_opd_images(opd_id):
         return jsonify({'error': 'No valid image files provided'}), 400
 
     try:
-        visit_date = datetime.fromisoformat(opd['visit_date'])
+        visit_date = datetime.fromisoformat(opd.get('visit_datetime') or opd.get('visit_date', ''))
     except (ValueError, TypeError):
-        logger.warning("Could not parse visit_date '%s', using current time", opd.get('visit_date'))
+        logger.warning("Could not parse visit_datetime/visit_date '%s', using current time", opd.get('visit_datetime') or opd.get('visit_date'))
         visit_date = datetime.utcnow()
 
     if IS_CLOUD:

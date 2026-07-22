@@ -88,6 +88,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       dob: (patientRow['dob'] as String?) ?? '',
       bloodGroup: (patientRow['blood_group'] as String?) ?? '',
       address: (patientRow['address'] as String?) ?? '',
+      weight: patientRow['weight'] != null ? (patientRow['weight'] as num).toDouble() : null,
     );
     final opdRepo = OpdRecordRepository();
     _opdRows = await opdRepo.getByPatientId(sqliteId);
@@ -347,6 +348,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                                             l10n.bloodGroup,
                                             patient.bloodGroup,
                                           ),
+                                          if (patient.weight != null) ...[
+                                            SizedBox(width: 12),
+                                            _glassTile(l10n.weight, '${patient.weight} kg'),
+                                          ],
                                         ],
                                       ),
                                     ],

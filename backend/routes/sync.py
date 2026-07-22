@@ -82,10 +82,42 @@ def _sync_opd_to_sheets(opd, image_links=None):
         from sheets_utils import upsert_opd_row_in_sheet
         upsert_opd_row_in_sheet(opd_id, row_data)
         logger.info("SHEET SYNC END: OPD=%s", opd_id)
+        return None
     except RuntimeError as e:
         logger.warning("Sheet sync skipped for OPD %s: %s", opd_id, e)
+        return f"Sheet sync skipped: {e}"
     except Exception as e:
         logger.warning("Sheet sync error for OPD %s: %s", opd_id, e)
+        return f"Sheet sync error: {e}"
+
+
+def _format_patient(p):
+    if not p:
+        return p
+    res = dict(p)
+    if 'full_name' in res:
+        res['name'] = res['full_name']
+    if 'mobile_number' in res:
+        res['mobile'] = res['mobile_number']
+    return res
+
+
+def _format_opd(r):
+    if not r:
+        return r
+    res = dict(r)
+    if 'opd_type' in res:
+        res['type'] = res['opd_type']
+    if 'visit_datetime' in res:
+        res['visit_date'] = res['visit_datetime']
+    if 'discount_value' in res:
+        res['discount'] = str(res['discount_value'])
+    if 'next_visit_date' in res:
+        res['next_visit'] = res['next_visit_date']
+        res['previous_visit_date'] = res['next_visit_date']
+    if 'followup_status' in res:
+        res['follow_up_reason'] = res['followup_status']
+    return res
 
 
 # ── Device Registration ─────────────────────────────
@@ -141,6 +173,7 @@ def sync_upload():
     )
 
     results = {'patients': [], 'opd_records': [], 'appointments': []}
+    sheet_sync_errors = []
     temp_id_map = {}
 
     # ── Patients (last-write-wins) ──
@@ -149,6 +182,13 @@ def sync_upload():
         p['device_id'] = device_id
         p['sync_status'] = 'synced'
         p['last_synced_at'] = now
+        
+        # Backward compatibility translation:
+        if 'name' in p and 'full_name' not in p:
+            p['full_name'] = p['name']
+        if 'mobile' in p and 'mobile_number' not in p:
+            p['mobile_number'] = p['mobile']
+
         old_id = p.get('id', '')
         is_temp = old_id.startswith('TEMP_')
         if is_temp:
@@ -161,12 +201,12 @@ def sync_upload():
             local_updated = existing.get('updated_at', '')
             if remote_updated >= local_updated:
                 Patient.update(p['id'], p, clinic_id=clinic_id)
-                results['patients'].append(Patient.get(p['id'], clinic_id=clinic_id))
+                results['patients'].append(_format_patient(Patient.get(p['id'], clinic_id=clinic_id)))
             else:
-                results['patients'].append(existing)
+                results['patients'].append(_format_patient(existing))
         else:
             Patient.create(p)
-            results['patients'].append(Patient.get(p['id'], clinic_id=clinic_id))
+            results['patients'].append(_format_patient(Patient.get(p['id'], clinic_id=clinic_id)))
 
     # ── OPD Records (last-write-wins) ──
     for r in data.get('opd_records', []):
@@ -174,6 +214,19 @@ def sync_upload():
         r['device_id'] = device_id
         r['sync_status'] = 'synced'
         r['last_synced_at'] = now
+
+        # Backward compatibility translation:
+        if 'type' in r and 'opd_type' not in r:
+            r['opd_type'] = r['type']
+        if 'visit_date' in r and 'visit_datetime' not in r:
+            r['visit_datetime'] = r['visit_date']
+        if 'discount' in r and 'discount_value' not in r:
+            r['discount_value'] = r['discount']
+        if 'next_visit' in r and 'next_visit_date' not in r:
+            r['next_visit_date'] = r['next_visit']
+        if 'follow_up_reason' in r and 'followup_status' not in r:
+            r['followup_status'] = r['follow_up_reason']
+
         pat_id = r.get('patient_id', '')
         if pat_id in temp_id_map:
             r['patient_id'] = temp_id_map[pat_id]
@@ -191,11 +244,14 @@ def sync_upload():
             OPDRecord.create(r)
             result = OPDRecord.get(r['id'], clinic_id=clinic_id)
 
-        results['opd_records'].append(result)
+        results['opd_records'].append(_format_opd(result))
         try:
-            _sync_opd_to_sheets(result)
+            sheet_err = _sync_opd_to_sheets(result)
+            if sheet_err:
+                sheet_sync_errors.append({'opd_id': r.get('id'), 'error': sheet_err})
         except Exception as e:
             logger.warning("Sheet sync failed for OPD %s: %s", r.get('id'), e)
+            sheet_sync_errors.append({'opd_id': r.get('id'), 'error': str(e)})
 
     # ── Appointments (last-write-wins) ──
     for a in data.get('appointments', []):
@@ -238,6 +294,8 @@ def sync_upload():
     }
     if temp_id_map:
         response['temp_ids_mapped'] = temp_id_map
+    if sheet_sync_errors:
+        response['sheet_sync_errors'] = sheet_sync_errors
 
     return jsonify(response), 200
 
@@ -260,16 +318,19 @@ def sync_download():
     appointments = Appointment.updated_since(last_sync, clinic_id=clinic_id)
     deleted_entities = DeletedEntity.since(last_sync, clinic_id=clinic_id)
 
+    formatted_patients = [_format_patient(p) for p in patients]
+    formatted_opd = [_format_opd(o) for o in opd_records]
+
     logger.info(
         "DOWNLOAD clinic=%s since=%s patients=%d opd=%d appts=%d deleted=%d",
         clinic_id, last_sync,
-        len(patients), len(opd_records),
+        len(formatted_patients), len(formatted_opd),
         len(appointments), len(deleted_entities),
     )
 
     return jsonify({
-        'patients': patients,
-        'opd_records': opd_records,
+        'patients': formatted_patients,
+        'opd_records': formatted_opd,
         'appointments': appointments,
         'deleted_entities': deleted_entities,
         'server_time': datetime.utcnow().isoformat(),
@@ -290,6 +351,9 @@ def full_restore():
     opd_records = OPDRecord.full_restore(clinic_id)
     appointments = Appointment.full_restore(clinic_id)
 
+    formatted_patients = [_format_patient(p) for p in patients]
+    formatted_opd = [_format_opd(o) for o in opd_records]
+
     db = get_db()
     deleted_entities_rows = db.execute(
         "SELECT entity_type, entity_id, deleted_at FROM deleted_entities "
@@ -303,8 +367,8 @@ def full_restore():
 
     return jsonify({
         'clinic': clinic,
-        'patients': patients,
-        'opd_records': opd_records,
+        'patients': formatted_patients,
+        'opd_records': formatted_opd,
         'appointments': appointments,
         'deleted_entities': deleted_entities,
         'server_time': datetime.utcnow().isoformat(),
@@ -338,7 +402,7 @@ def sync_upload_images(opd_id):
         return jsonify({'error': 'No valid image files provided'}), 400
 
     try:
-        visit_date = datetime.fromisoformat(opd['visit_date'])
+        visit_date = datetime.fromisoformat(opd.get('visit_datetime') or opd.get('visit_date', ''))
     except (ValueError, TypeError):
         visit_date = datetime.utcnow()
 
@@ -376,12 +440,18 @@ def sync_upload_images(opd_id):
     logger.info("Image links persisted in DB for OPD %s: %s", opd_id, urls_text)
 
     sheet_update_ok = True
+    sheet_error = None
     try:
-        _sync_opd_to_sheets(opd, drive_urls)
-        logger.info("Google Sheet update SUCCESS for OPD %s", opd_id)
+        sheet_error = _sync_opd_to_sheets(opd, drive_urls)
+        if sheet_error:
+            logger.error("Sheet update FAILED for OPD %s: %s", opd_id, sheet_error)
+            sheet_update_ok = False
+        else:
+            logger.info("Google Sheet update SUCCESS for OPD %s", opd_id)
     except Exception as e:
         logger.error("Sheet update FAILED for OPD %s: %s", opd_id, e)
         sheet_update_ok = False
+        sheet_error = str(e)
 
     response = {
         'opd_id': opd_id,
@@ -396,6 +466,8 @@ def sync_upload_images(opd_id):
         return jsonify(response), 200
     else:
         response['message'] = 'Images uploaded to Drive, but Google Sheet was not updated.'
+        if sheet_error:
+            response['sheet_error_detail'] = sheet_error
         return jsonify(response), 207
 
 

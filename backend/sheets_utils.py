@@ -27,7 +27,7 @@ CALENDAR_TAB_NAME = "calendar_notes"
 
 HEADERS = [
     "OPD ID", "Patient ID", "Patient Name", "Mobile",
-    "Gender", "DOB", "Age", "Blood Group", "Address", "Visit Date",
+    "Gender", "DOB", "Age", "Weight", "Blood Group", "Address", "Visit Date",
     "OPD Type", "Charge Type", "Diagnosis", "Symptoms", "Clinical Notes","Panchakarma Notes",
     "Medicines",
     "Consultation Fee", "Medicine Fee", "Panchakarma Fee", "Total Fee",
@@ -38,7 +38,7 @@ HEADERS = [
 HEADER_TO_INDEX = {h: i for i, h in enumerate(HEADERS)}
 
 COLUMN_WIDTHS = [
-    180, 120, 220, 130, 110, 110, 70, 110, 260, 150,
+    180, 120, 220, 130, 110, 110, 70, 80, 110, 260, 150,
     120, 120, 180, 180, 260, 260,
     280,
     130, 120, 140, 110, 110,

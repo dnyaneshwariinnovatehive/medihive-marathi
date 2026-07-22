@@ -495,7 +495,7 @@ class _LoginScreenState extends State<LoginScreen>
             _staggeredItem(3, TextButton(
               onPressed: auth.isLoading ? null : () => context.push('/register'),
               child: Text(
-                'New clinic? Create an account',
+                AppLocalizations.of(context)!.newClinicCreateAccount,
                 style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600, fontSize: 14),
               ),
             )),

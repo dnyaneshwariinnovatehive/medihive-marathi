@@ -61,6 +61,10 @@ class LocalNotificationService {
     required String id,
     required String patientName,
     required DateTime appointmentTime,
+    String? channelName,
+    String? channelDescription,
+    String? reminderTitle,
+    String? reminderBody,
   }) async {
     if (!_initialized) await init();
 
@@ -74,25 +78,28 @@ class LocalNotificationService {
     final tzNow = tz.TZDateTime.now(tz.UTC);
     final tzRemindAt = tzNow.add(diff);
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'appointment_reminder',
-      'Appointment Reminders',
-      channelDescription: 'Reminders for upcoming appointments',
+      channelName ?? 'Appointment Reminders',
+      channelDescription: channelDescription ?? 'Reminders for upcoming appointments',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
     );
     const iosDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
+    final title = reminderTitle ?? 'Appointment Reminder';
+    final body = reminderBody ?? 'You have an appointment with $patientName in 10 minutes';
+
     try {
       await sharedNotificationPlugin.zonedSchedule(
         id.hashCode,
-        'Appointment Reminder',
-        'You have an appointment with $patientName in 10 minutes',
+        title,
+        body,
         tzRemindAt,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -103,8 +110,8 @@ class LocalNotificationService {
       debugPrint('LocalNotificationService: exact schedule failed, fallback: $e');
       await sharedNotificationPlugin.zonedSchedule(
         id.hashCode,
-        'Appointment Reminder',
-        'You have an appointment with $patientName in 10 minutes',
+        title,
+        body,
         tzRemindAt,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

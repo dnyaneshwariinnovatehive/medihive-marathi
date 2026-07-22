@@ -1378,4 +1378,212 @@ class AppLocalizationsEn extends AppLocalizations {
   String disconnectFailedMessage(String error) {
     return 'Failed to disconnect: $error';
   }
+
+  @override
+  String get chatPromptAddPatient => 'How do I add a new patient?';
+
+  @override
+  String get chatPromptExportData => 'Export last month\'s data';
+
+  @override
+  String get chatPromptAppointments => 'Show me today\'s appointments';
+
+  @override
+  String get chatPromptPrescription => 'Help with prescription format';
+
+  @override
+  String get chatResponseAddPatient =>
+      'To add a new patient:\n\n1. Tap the \"OPD Registration\" button on the Dashboard.\n2. Fill in the patient details: name, age, gender, phone number, and address.\n3. Tap \"Save\" to register the patient.\n\nThe patient will appear in your patient list immediately.';
+
+  @override
+  String get chatResponseExport =>
+      'To export last month\'s data:\n\n1. Go to Settings → Backup & Restore.\n2. Tap \"Export to Excel\".\n3. Select the date range for last month.\n4. Choose what to include: Patients, OPD Records, Appointments.\n5. Tap \"Export\" — the file will be saved to your device.\n\nYou can also back up to Google Drive from the same screen.';
+
+  @override
+  String get chatResponseAppointments =>
+      'To view today\'s appointments:\n\n1. Tap the \"Calendar\" icon on the Dashboard.\n2. Today\'s date is highlighted — all appointments for today will be listed.\n3. Tap any appointment to view or edit details.\n\nYou can also add new appointments from the Calendar screen.';
+
+  @override
+  String get chatResponsePrescription =>
+      'A prescription in MediHive includes:\n\n• Patient name, age, gender\n• Diagnosis\n• Medicines with dosage & duration\n• Clinical notes\n• Doctor\'s name, clinic info & license number\n• Consultation & medicine fees\n• Follow-up date (optional)\n\nTo create a prescription: go to Patient Details → tap \"Create Prescription\".\nThe PDF is generated automatically and can be shared via WhatsApp.';
+
+  @override
+  String get chatOpenAction => 'Open →';
+
+  @override
+  String get faqBackupTitle => 'How do I backup my data?';
+
+  @override
+  String get faqBackupAnswer =>
+      'Go to Settings > Backup & Cloud Sync and click on \"Generate Backup\" to create a local backup or sync with cloud storage.';
+
+  @override
+  String get faqExportTitle => 'Can I export patient records?';
+
+  @override
+  String get faqExportAnswer =>
+      'Yes, you can export patient records as Excel files from the Backup section. Choose the time period and click Complete Backup.';
+
+  @override
+  String get faqShareTitle => 'How do I share prescriptions via WhatsApp?';
+
+  @override
+  String get faqShareAnswer =>
+      'Open the prescription screen and click the \"Share via WhatsApp\" button to send the prescription directly to the patient.';
+
+  @override
+  String get faqPasswordTitle => 'How to change my password?';
+
+  @override
+  String get faqPasswordAnswer =>
+      'Navigate to Settings > Authentication and click on \"Change Password\" to update your login credentials.';
+
+  @override
+  String get emailLabel => 'Email:';
+
+  @override
+  String get phoneLabel => 'Phone:';
+
+  @override
+  String get platformMobile => 'Mobile (Android/iOS)';
+
+  @override
+  String get lastUpdatedDate => 'May 2026';
+
+  @override
+  String get backupStoragePath => 'Internal Storage/MediHive/backup';
+
+  @override
+  String get createClinicAccount => 'Create Clinic Account';
+
+  @override
+  String get registerClinicSubtitle => 'Register your clinic to get started';
+
+  @override
+  String get clinicNameRequired => 'Clinic name required';
+
+  @override
+  String get phoneOptional => 'Phone (optional)';
+
+  @override
+  String get addressOptional => 'Address (optional)';
+
+  @override
+  String get doctorInformationSection => 'Doctor Information';
+
+  @override
+  String get enterYourName => 'Enter your name';
+
+  @override
+  String get emailOptional => 'Email (optional)';
+
+  @override
+  String get loginCredentialsSection => 'Login Credentials';
+
+  @override
+  String get enterUsernamePlaceholder => 'Enter a username';
+
+  @override
+  String get atLeast3Characters => 'At least 3 characters';
+
+  @override
+  String get enterPasswordPlaceholder => 'Enter a password';
+
+  @override
+  String get atLeast4CharactersLabel => 'At least 4 characters';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm Password';
+
+  @override
+  String get createClinicBtn => 'CREATE CLINIC';
+
+  @override
+  String get alreadyHaveAccountSignIn => 'Already have an account? Sign In';
+
+  @override
+  String get passwordsDoNotMatchExclaim => 'Passwords do not match!';
+
+  @override
+  String get usernameAlreadyExists => 'Username already exists. Try another.';
+
+  @override
+  String get registrationFailed =>
+      'Registration failed. Check your connection.';
+
+  @override
+  String get newClinicCreateAccount => 'New clinic? Create an account';
+
+  @override
+  String get appointmentReminders => 'Appointment Reminders';
+
+  @override
+  String get appointmentRemindersDesc => 'Reminders for upcoming appointments';
+
+  @override
+  String get appointmentReminderTitle => 'Appointment Reminder';
+
+  @override
+  String appointmentReminderBody(String patientName) {
+    return 'You have an appointment with $patientName in 10 minutes';
+  }
+
+  @override
+  String get pushNotificationsChannel => 'Push Notifications';
+
+  @override
+  String get pushNotificationsDesc => 'Push notifications from server';
+
+  @override
+  String backupGenFailed(String error) {
+    return 'Backup generation failed: $error';
+  }
+
+  @override
+  String googleDriveUsed(String usage) {
+    return 'Google Drive used: $usage of your Drive storage';
+  }
+
+  @override
+  String get restoreInProgress => 'Restoring Data';
+
+  @override
+  String get dailyFrequency => 'Daily';
+
+  @override
+  String get weeklyFrequency => 'Weekly';
+
+  @override
+  String get onEverySave => 'On every save';
+
+  @override
+  String get changeBtn => 'Change';
+
+  @override
+  String get neverLabel => 'Never';
+
+  @override
+  String get unknownDate => 'Unknown Date';
+
+  @override
+  String get shareBackupText => 'MediHive Backup - Clinic Data Export';
+
+  @override
+  String todayAt(String time) {
+    return 'Today at $time';
+  }
+
+  @override
+  String yesterdayAt(String time) {
+    return 'Yesterday at $time';
+  }
+
+  @override
+  String get weight => 'Weight';
+
+  @override
+  String get enterWeight => 'Enter weight (kg)';
+
+  @override
+  String get invalidWeight => 'Please enter a valid weight (e.g. 72.5)';
 }

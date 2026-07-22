@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' show Locale;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/prescription.dart';
+import '../utils/medicine_localizer.dart';
 
 class PrescriptionPdfService {
   static Uint8List? _cachedLogoBytes;
@@ -18,7 +20,7 @@ class PrescriptionPdfService {
   }
 
   static Future<Uint8List> generatePdf(Prescription rx,
-      {bool includePatientDetails = true}) async {
+      {bool includePatientDetails = true, Locale? locale}) async {
     await _ensureLogoLoaded();
     final pdf = pw.Document();
 
@@ -52,7 +54,7 @@ class PrescriptionPdfService {
                 pw.SizedBox(height: 16),
               ],
 
-              _buildMedicinesTable(rx),
+              _buildMedicinesTable(rx, locale: locale),
               pw.SizedBox(height: 20),
 
               if (includePatientDetails) ...[
@@ -265,7 +267,7 @@ class PrescriptionPdfService {
     );
   }
 
-  static pw.Widget _buildMedicinesTable(Prescription rx) {
+  static pw.Widget _buildMedicinesTable(Prescription rx, {Locale? locale}) {
     final cellStyle = pw.TextStyle(
       fontSize: 11,
       color: PdfColors.grey800,
@@ -369,7 +371,10 @@ class PrescriptionPdfService {
                     ),
                     pw.Expanded(
                       flex: 5,
-                      child: pw.Text(med.name, style: cellStyle),
+                      child: pw.Text(
+                        locale != null ? localizeMedicineName(med.name, locale) : med.name,
+                        style: cellStyle,
+                      ),
                     ),
                     pw.Expanded(
                       flex: 4,

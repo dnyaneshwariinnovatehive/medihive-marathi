@@ -92,15 +92,27 @@ class AuthProvider extends ChangeNotifier {
 
       _isAuthenticated = true;
       _currentUser = user;
-      await _storageService.setLoggedIn(_rememberMe);
 
-      // Load clinic_id from the API response
-      try {
-        final me = await ApiService.getMe();
-        _clinicId = me['user']?['clinic_id'] as String? ?? '';
-        final prefs = await SharedPreferences.getInstance();
-        if (_clinicId.isNotEmpty) await prefs.setString('clinic_id', _clinicId);
-      } catch (_) {}
+      _clinicId = user.clinicId;
+      debugPrint('LOGIN RESPONSE: clinic_id=$_clinicId');
+      final prefs = await SharedPreferences.getInstance();
+      if (_clinicId.isNotEmpty) {
+        await prefs.setString('clinic_id', _clinicId);
+        debugPrint('SAVED clinic_id=$_clinicId');
+      } else {
+        try {
+          final me = await ApiService.getMe();
+          _clinicId = me['user']?['clinic_id'] as String? ?? '';
+          if (_clinicId.isNotEmpty) {
+            await prefs.setString('clinic_id', _clinicId);
+          }
+          debugPrint('FALLBACK getMe clinic_id=$_clinicId');
+        } catch (e) {
+          debugPrint('WARNING: getMe failed, clinic_id may be empty: $e');
+        }
+      }
+
+      await _storageService.setLoggedIn(_rememberMe);
 
       if (_rememberMe) {
         await _storageService.setRememberMe(true);
@@ -181,16 +193,35 @@ class AuthProvider extends ChangeNotifier {
     final wasLoggedIn = await _storageService.getLoggedIn();
     final prefs = await SharedPreferences.getInstance();
     _clinicId = prefs.getString('clinic_id') ?? '';
+    debugPrint('READ clinic_id=$_clinicId from SharedPreferences');
 
     if (wasLoggedIn) {
       final user = await _authService.signInSilently();
       if (user != null) {
         _isAuthenticated = true;
         _currentUser = user;
+        if (user.clinicId.isNotEmpty && user.clinicId != _clinicId) {
+          _clinicId = user.clinicId;
+          await prefs.setString('clinic_id', _clinicId);
+          debugPrint('REFRESHED clinic_id=$_clinicId from silent sign-in');
+        }
       } else if (_rememberMe) {
         _username = await _storageService.getUsername();
         _isAuthenticated = true;
         _currentUser = AppUser(id: '1', name: 'Dr. $_username', email: '$_username@medihive.com');
+      }
+
+      if (_clinicId.isEmpty) {
+        try {
+          final me = await ApiService.getMe();
+          _clinicId = me['user']?['clinic_id'] as String? ?? '';
+          if (_clinicId.isNotEmpty) {
+            await prefs.setString('clinic_id', _clinicId);
+            debugPrint('REFRESHED clinic_id=$_clinicId from /auth/me');
+          }
+        } catch (e) {
+          debugPrint('WARNING: Failed to refresh clinic_id on restart: $e');
+        }
       }
     }
     _hasLoadedCredentials = true;

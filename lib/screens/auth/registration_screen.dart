@@ -47,7 +47,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_passwordCtrl.text != _confirmCtrl.text) {
-      setState(() => _errorMessage = 'Passwords do not match!');
+      setState(() => _errorMessage = AppLocalizations.of(context)!.passwordsDoNotMatchExclaim);
       return;
     }
 
@@ -83,9 +83,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
+          final t = AppLocalizations.of(context)!;
           _errorMessage = e.toString().contains('already exists')
-              ? 'Username already exists. Try another.'
-              : 'Registration failed. Check your connection.';
+              ? t.usernameAlreadyExists
+              : t.registrationFailed;
         });
       }
     }
@@ -140,7 +141,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Create Clinic Account',
+                            t.createClinicAccount,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -149,7 +150,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Register your clinic to get started',
+                            t.registerClinicSubtitle,
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.white.withValues(alpha: 0.7),
@@ -170,14 +171,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       key: _formKey,
                       child: Column(children: [
                         // Clinic Info Section
-                        _sectionHeader('Clinic Information'),
+                        _sectionHeader(t.clinicInformation),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _clinicNameCtrl,
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
-                          decoration: _inputDecoration('Clinic Name', Icons.local_hospital),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Clinic name required' : null,
+                          decoration: _inputDecoration(t.clinicNameField, Icons.local_hospital),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? t.clinicNameRequired : null,
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -185,7 +186,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.phone,
-                          decoration: _inputDecoration('Phone (optional)', Icons.phone),
+                          decoration: _inputDecoration(t.phoneOptional, Icons.phone),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -193,18 +194,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
                           maxLines: 2,
-                          decoration: _inputDecoration('Address (optional)', Icons.location_on),
+                          decoration: _inputDecoration(t.addressOptional, Icons.location_on),
                         ),
                         const SizedBox(height: 20),
                         // Doctor Info Section
-                        _sectionHeader('Doctor Information'),
+                        _sectionHeader(t.doctorInformationSection),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _nameCtrl,
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
-                          decoration: _inputDecoration('Full Name', Icons.person),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+                          decoration: _inputDecoration(t.fullName, Icons.person),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? t.enterYourName : null,
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -212,20 +213,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: _inputDecoration('Email (optional)', Icons.email),
+                          decoration: _inputDecoration(t.emailOptional, Icons.email),
                         ),
                         const SizedBox(height: 20),
                         // Login Credentials Section
-                        _sectionHeader('Login Credentials'),
+                        _sectionHeader(t.loginCredentialsSection),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _usernameCtrl,
                           enabled: !_isSubmitting,
                           textInputAction: TextInputAction.next,
-                          decoration: _inputDecoration('Username', Icons.person_outline),
+                          decoration: _inputDecoration(t.username, Icons.person_outline),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Enter a username';
-                            if (v.length < 3) return 'At least 3 characters';
+                            if (v == null || v.trim().isEmpty) return t.enterUsernamePlaceholder;
+                            if (v.length < 3) return t.atLeast3Characters;
                             return null;
                           },
                         ),
@@ -235,13 +236,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           enabled: !_isSubmitting,
                           obscureText: !_showPassword,
                           textInputAction: TextInputAction.next,
-                          decoration: _inputDecoration('Password', Icons.lock_outline, suffix: IconButton(
+                          decoration: _inputDecoration(t.password, Icons.lock_outline, suffix: IconButton(
                             icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 22),
                             onPressed: () => setState(() => _showPassword = !_showPassword),
                           )),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Enter a password';
-                            if (v.length < 4) return 'At least 4 characters';
+                            if (v == null || v.trim().isEmpty) return t.enterPasswordPlaceholder;
+                            if (v.length < 4) return t.atLeast4CharactersLabel;
                             return null;
                           },
                         ),
@@ -252,11 +253,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           obscureText: !_showConfirm,
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _register(),
-                          decoration: _inputDecoration('Confirm Password', Icons.lock_outline, suffix: IconButton(
+                          decoration: _inputDecoration(t.confirmPasswordLabel, Icons.lock_outline, suffix: IconButton(
                             icon: Icon(_showConfirm ? Icons.visibility_off : Icons.visibility, size: 22),
                             onPressed: () => setState(() => _showConfirm = !_showConfirm),
                           )),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Confirm your password' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? t.confirmYourPassword : null,
                         ),
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 12),
@@ -287,13 +288,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             ),
                             child: _isSubmitting
                                 ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                                : const Text('CREATE CLINIC', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                                : Text(t.createClinicBtn, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: _isSubmitting ? null : () => context.go('/login'),
-                          child: Text('Already have an account? Sign In', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+                          child: Text(t.alreadyHaveAccountSignIn, style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
                         ),
                       ]),
                     ),

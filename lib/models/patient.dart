@@ -8,6 +8,7 @@ class Patient {
   final String dob;
   final int visitCount;
   final String diagnosis;
+  final double? weight;
 
   const Patient({
     required this.id,
@@ -19,6 +20,7 @@ class Patient {
     required this.dob,
     this.visitCount = 1,
     this.diagnosis = '',
+    this.weight,
   });
 
   String get initial => name.isNotEmpty ? name[0].toUpperCase() : '?';
@@ -33,6 +35,7 @@ class Patient {
     String? dob,
     int? visitCount,
     String? diagnosis,
+    double? weight,
   }) {
     return Patient(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class Patient {
       dob: dob ?? this.dob,
       visitCount: visitCount ?? this.visitCount,
       diagnosis: diagnosis ?? this.diagnosis,
+      weight: weight ?? this.weight,
     );
   }
 }
@@ -57,6 +61,7 @@ class PatientDetail {
   final String dob;
   final String bloodGroup;
   final String address;
+  final double? weight;
 
   const PatientDetail({
     required this.id,
@@ -67,6 +72,7 @@ class PatientDetail {
     required this.dob,
     required this.bloodGroup,
     required this.address,
+    this.weight,
   });
 
   String get initial => name.isNotEmpty ? name[0].toUpperCase() : '?';

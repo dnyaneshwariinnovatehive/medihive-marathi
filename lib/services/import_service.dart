@@ -85,6 +85,7 @@ class ImportService {
           'gender': _nonEmpty(row['gender'] as String?, 'Not Specified'),
           'blood_group': _nonEmpty(row['blood_group'] as String?, 'Not Specified'),
           'created_at': nowStr,
+          'weight': row['weight'] != null ? (row['weight'] as num).toDouble() : null,
         };
 
         if (existing != null) {

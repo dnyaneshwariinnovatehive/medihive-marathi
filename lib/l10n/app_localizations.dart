@@ -2617,6 +2617,384 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to disconnect: {error}'**
   String disconnectFailedMessage(String error);
+
+  /// No description provided for @chatPromptAddPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I add a new patient?'**
+  String get chatPromptAddPatient;
+
+  /// No description provided for @chatPromptExportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export last month\'s data'**
+  String get chatPromptExportData;
+
+  /// No description provided for @chatPromptAppointments.
+  ///
+  /// In en, this message translates to:
+  /// **'Show me today\'s appointments'**
+  String get chatPromptAppointments;
+
+  /// No description provided for @chatPromptPrescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Help with prescription format'**
+  String get chatPromptPrescription;
+
+  /// No description provided for @chatResponseAddPatient.
+  ///
+  /// In en, this message translates to:
+  /// **'To add a new patient:\n\n1. Tap the \"OPD Registration\" button on the Dashboard.\n2. Fill in the patient details: name, age, gender, phone number, and address.\n3. Tap \"Save\" to register the patient.\n\nThe patient will appear in your patient list immediately.'**
+  String get chatResponseAddPatient;
+
+  /// No description provided for @chatResponseExport.
+  ///
+  /// In en, this message translates to:
+  /// **'To export last month\'s data:\n\n1. Go to Settings → Backup & Restore.\n2. Tap \"Export to Excel\".\n3. Select the date range for last month.\n4. Choose what to include: Patients, OPD Records, Appointments.\n5. Tap \"Export\" — the file will be saved to your device.\n\nYou can also back up to Google Drive from the same screen.'**
+  String get chatResponseExport;
+
+  /// No description provided for @chatResponseAppointments.
+  ///
+  /// In en, this message translates to:
+  /// **'To view today\'s appointments:\n\n1. Tap the \"Calendar\" icon on the Dashboard.\n2. Today\'s date is highlighted — all appointments for today will be listed.\n3. Tap any appointment to view or edit details.\n\nYou can also add new appointments from the Calendar screen.'**
+  String get chatResponseAppointments;
+
+  /// No description provided for @chatResponsePrescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A prescription in MediHive includes:\n\n• Patient name, age, gender\n• Diagnosis\n• Medicines with dosage & duration\n• Clinical notes\n• Doctor\'s name, clinic info & license number\n• Consultation & medicine fees\n• Follow-up date (optional)\n\nTo create a prescription: go to Patient Details → tap \"Create Prescription\".\nThe PDF is generated automatically and can be shared via WhatsApp.'**
+  String get chatResponsePrescription;
+
+  /// No description provided for @chatOpenAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Open →'**
+  String get chatOpenAction;
+
+  /// No description provided for @faqBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I backup my data?'**
+  String get faqBackupTitle;
+
+  /// No description provided for @faqBackupAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings > Backup & Cloud Sync and click on \"Generate Backup\" to create a local backup or sync with cloud storage.'**
+  String get faqBackupAnswer;
+
+  /// No description provided for @faqExportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can I export patient records?'**
+  String get faqExportTitle;
+
+  /// No description provided for @faqExportAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, you can export patient records as Excel files from the Backup section. Choose the time period and click Complete Backup.'**
+  String get faqExportAnswer;
+
+  /// No description provided for @faqShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I share prescriptions via WhatsApp?'**
+  String get faqShareTitle;
+
+  /// No description provided for @faqShareAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the prescription screen and click the \"Share via WhatsApp\" button to send the prescription directly to the patient.'**
+  String get faqShareAnswer;
+
+  /// No description provided for @faqPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to change my password?'**
+  String get faqPasswordTitle;
+
+  /// No description provided for @faqPasswordAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate to Settings > Authentication and click on \"Change Password\" to update your login credentials.'**
+  String get faqPasswordAnswer;
+
+  /// No description provided for @emailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email:'**
+  String get emailLabel;
+
+  /// No description provided for @phoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone:'**
+  String get phoneLabel;
+
+  /// No description provided for @platformMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile (Android/iOS)'**
+  String get platformMobile;
+
+  /// No description provided for @lastUpdatedDate.
+  ///
+  /// In en, this message translates to:
+  /// **'May 2026'**
+  String get lastUpdatedDate;
+
+  /// No description provided for @backupStoragePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal Storage/MediHive/backup'**
+  String get backupStoragePath;
+
+  /// No description provided for @createClinicAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Clinic Account'**
+  String get createClinicAccount;
+
+  /// No description provided for @registerClinicSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register your clinic to get started'**
+  String get registerClinicSubtitle;
+
+  /// No description provided for @clinicNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinic name required'**
+  String get clinicNameRequired;
+
+  /// No description provided for @phoneOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone (optional)'**
+  String get phoneOptional;
+
+  /// No description provided for @addressOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Address (optional)'**
+  String get addressOptional;
+
+  /// No description provided for @doctorInformationSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor Information'**
+  String get doctorInformationSection;
+
+  /// No description provided for @enterYourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name'**
+  String get enterYourName;
+
+  /// No description provided for @emailOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional)'**
+  String get emailOptional;
+
+  /// No description provided for @loginCredentialsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Login Credentials'**
+  String get loginCredentialsSection;
+
+  /// No description provided for @enterUsernamePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a username'**
+  String get enterUsernamePlaceholder;
+
+  /// No description provided for @atLeast3Characters.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 3 characters'**
+  String get atLeast3Characters;
+
+  /// No description provided for @enterPasswordPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a password'**
+  String get enterPasswordPlaceholder;
+
+  /// No description provided for @atLeast4CharactersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 4 characters'**
+  String get atLeast4CharactersLabel;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @createClinicBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'CREATE CLINIC'**
+  String get createClinicBtn;
+
+  /// No description provided for @alreadyHaveAccountSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign In'**
+  String get alreadyHaveAccountSignIn;
+
+  /// No description provided for @passwordsDoNotMatchExclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match!'**
+  String get passwordsDoNotMatchExclaim;
+
+  /// No description provided for @usernameAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Username already exists. Try another.'**
+  String get usernameAlreadyExists;
+
+  /// No description provided for @registrationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration failed. Check your connection.'**
+  String get registrationFailed;
+
+  /// No description provided for @newClinicCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'New clinic? Create an account'**
+  String get newClinicCreateAccount;
+
+  /// No description provided for @appointmentReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Reminders'**
+  String get appointmentReminders;
+
+  /// No description provided for @appointmentRemindersDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders for upcoming appointments'**
+  String get appointmentRemindersDesc;
+
+  /// No description provided for @appointmentReminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Reminder'**
+  String get appointmentReminderTitle;
+
+  /// No description provided for @appointmentReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have an appointment with {patientName} in 10 minutes'**
+  String appointmentReminderBody(String patientName);
+
+  /// No description provided for @pushNotificationsChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Notifications'**
+  String get pushNotificationsChannel;
+
+  /// No description provided for @pushNotificationsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications from server'**
+  String get pushNotificationsDesc;
+
+  /// No description provided for @backupGenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup generation failed: {error}'**
+  String backupGenFailed(String error);
+
+  /// No description provided for @googleDriveUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Drive used: {usage} of your Drive storage'**
+  String googleDriveUsed(String usage);
+
+  /// No description provided for @restoreInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring Data'**
+  String get restoreInProgress;
+
+  /// No description provided for @dailyFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get dailyFrequency;
+
+  /// No description provided for @weeklyFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get weeklyFrequency;
+
+  /// No description provided for @onEverySave.
+  ///
+  /// In en, this message translates to:
+  /// **'On every save'**
+  String get onEverySave;
+
+  /// No description provided for @changeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changeBtn;
+
+  /// No description provided for @neverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get neverLabel;
+
+  /// No description provided for @unknownDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Date'**
+  String get unknownDate;
+
+  /// No description provided for @shareBackupText.
+  ///
+  /// In en, this message translates to:
+  /// **'MediHive Backup - Clinic Data Export'**
+  String get shareBackupText;
+
+  /// No description provided for @todayAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Today at {time}'**
+  String todayAt(String time);
+
+  /// No description provided for @yesterdayAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday at {time}'**
+  String yesterdayAt(String time);
+
+  /// No description provided for @weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weight;
+
+  /// No description provided for @enterWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter weight (kg)'**
+  String get enterWeight;
+
+  /// No description provided for @invalidWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid weight (e.g. 72.5)'**
+  String get invalidWeight;
 }
 
 class _AppLocalizationsDelegate

@@ -13,16 +13,23 @@ class HelpCenterScreen extends StatefulWidget {
 
 class _HelpCenterScreenState extends State<HelpCenterScreen> {
   int? _expandedFaq;
-  final _faqs = const [
-    {'q': 'How do I backup my data?', 'a': 'Go to Settings > Backup & Cloud Sync and click on "Generate Backup" to create a local backup or sync with cloud storage.'},
-    {'q': 'Can I export patient records?', 'a': 'Yes, you can export patient records as Excel files from the Backup section. Choose the time period and click Complete Backup.'},
-    {'q': 'How do I share prescriptions via WhatsApp?', 'a': 'Open the prescription screen and click the "Share via WhatsApp" button to send the prescription directly to the patient.'},
-    {'q': 'How to change my password?', 'a': 'Navigate to Settings > Authentication and click on "Change Password" to update your login credentials.'},
-  ];
+  List<Map<String, String>> _faqs = [];
+
+  void _initFaqs(AppLocalizations l10n) {
+    if (_faqs.isEmpty) {
+      _faqs = [
+        {'q': l10n.faqBackupTitle, 'a': l10n.faqBackupAnswer},
+        {'q': l10n.faqExportTitle, 'a': l10n.faqExportAnswer},
+        {'q': l10n.faqShareTitle, 'a': l10n.faqShareAnswer},
+        {'q': l10n.faqPasswordTitle, 'a': l10n.faqPasswordAnswer},
+      ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    _initFaqs(l10n);
     return Scaffold(backgroundColor: AppTheme.background, body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
       StandardHeader(title: l10n.helpAndSupport, showBack: true, onBack: () => context.go('/app/settings')),
       SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
@@ -30,8 +37,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           _row(l10n.forTechnicalQueries, ''),
           Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
-              _detailRow('Email:', 'ashwin.innovatehive@gmail.com', AppTheme.primary),
-              SizedBox(height: 8), _detailRow('Phone:', '8767555945', AppTheme.textPrimary),
+              _detailRow(l10n.emailLabel, 'ashwin.innovatehive@gmail.com', AppTheme.primary),
+              SizedBox(height: 8), _detailRow(l10n.phoneLabel, '8767555945', AppTheme.textPrimary),
             ])),
         ]),
         SizedBox(height: 16),
@@ -40,8 +47,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             child: Column(children: [
               _detailRow(l10n.appNameLabel, 'MediHive', AppTheme.textPrimary), SizedBox(height: 8),
               _detailRow(l10n.version, 'v1.0.7', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow(l10n.platform, 'Mobile (Android/iOS)', AppTheme.textPrimary), SizedBox(height: 8),
-              _detailRow(l10n.lastUpdated, 'May 2026', AppTheme.textPrimary),
+              _detailRow(l10n.platform, l10n.platformMobile, AppTheme.textPrimary), SizedBox(height: 8),
+              _detailRow(l10n.lastUpdated, l10n.lastUpdatedDate, AppTheme.textPrimary),
             ])),
         ]),
         SizedBox(height: 16),
@@ -52,7 +59,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(l10n.location, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
               SizedBox(height: 4),
-              Text('Internal Storage/MediHive/backup', style: TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontFamily: 'monospace')),
+              Text(l10n.backupStoragePath, style: TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontFamily: 'monospace')),
             ])),
         ]),
         SizedBox(height: 16),

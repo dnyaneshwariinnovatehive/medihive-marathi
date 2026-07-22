@@ -37,6 +37,9 @@ class PatientModel extends HiveObject {
   @HiveField(10)
   final String bloodGroup;
 
+  @HiveField(11)
+  final double? weight;
+
   PatientModel({
     required this.id,
     required this.name,
@@ -49,6 +52,7 @@ class PatientModel extends HiveObject {
     this.isSynced = false,
     this.gender = 'Not Specified',
     this.bloodGroup = 'Not Specified',
+    this.weight,
   });
 
   Map<String, dynamic> toJson() => {
@@ -63,6 +67,7 @@ class PatientModel extends HiveObject {
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
     'is_synced': isSynced ? 1 : 0,
+    'weight': weight,
   };
 
   factory PatientModel.fromJson(Map<String, dynamic> json) => PatientModel(
@@ -77,6 +82,7 @@ class PatientModel extends HiveObject {
     createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     isSynced: json['is_synced'] == true || json['is_synced'] == 1,
+    weight: json['weight'] != null ? (json['weight'] as num).toDouble() : null,
   );
 
   PatientModel copyWith({
@@ -91,6 +97,7 @@ class PatientModel extends HiveObject {
     bool? isSynced,
     String? gender,
     String? bloodGroup,
+    double? weight,
   }) {
     return PatientModel(
       id: id ?? this.id,
@@ -104,6 +111,7 @@ class PatientModel extends HiveObject {
       isSynced: isSynced ?? this.isSynced,
       gender: gender ?? this.gender,
       bloodGroup: bloodGroup ?? this.bloodGroup,
+      weight: weight ?? this.weight,
     );
   }
 }

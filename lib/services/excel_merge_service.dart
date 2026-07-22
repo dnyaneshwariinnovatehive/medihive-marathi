@@ -70,9 +70,10 @@ class ExcelMergeService {
         final name = row[1]?.value?.toString() ?? '';
         final dob = row[2]?.value?.toString() ?? '';
         final age = int.tryParse(row[3]?.value?.toString() ?? '0') ?? 0;
-        final mobile = row[4]?.value?.toString() ?? '';
-        final address = row[5]?.value?.toString() ?? '';
-        final updatedAt = _parseDate(row[9]?.value?.toString()) ?? DateTime.now();
+        final weight = double.tryParse(row[4]?.value?.toString() ?? '');
+        final mobile = row[5]?.value?.toString() ?? '';
+        final address = row[6]?.value?.toString() ?? '';
+        final updatedAt = _parseDate(row[10]?.value?.toString()) ?? DateTime.now();
 
         final existing = await patientRepo.getById(sqliteId);
         if (existing != null) {
@@ -90,6 +91,7 @@ class ExcelMergeService {
           'mobile_number': mobile,
           'address': address,
           'created_at': DateFormat('yyyy-MM-dd HH:mm:ss').format(updatedAt),
+          'weight': weight,
         };
         if (existing != null) {
           await patientRepo.update(sqliteId, patientRow);

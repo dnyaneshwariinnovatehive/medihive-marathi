@@ -1,4 +1,4 @@
-const int databaseVersion = 5;
+const int databaseVersion = 6;
 
 const String tablePatients = 'patients';
 const String tableOpdVisits = 'opd_visits';
@@ -30,6 +30,7 @@ String get createPatientsTable => '''
     last_synced_at DATETIME,
     created_at DATETIME,
     updated_at DATETIME,
+    weight FLOAT,
     PRIMARY KEY (id)
   )
 ''';

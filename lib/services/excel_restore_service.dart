@@ -79,9 +79,10 @@ class ExcelRestoreService {
         final name = row[1]?.value?.toString() ?? '';
         final dob = row[2]?.value?.toString() ?? '';
         final age = int.tryParse(row[3]?.value?.toString() ?? '0') ?? 0;
-        final mobile = row[4]?.value?.toString() ?? '';
-        final address = row[5]?.value?.toString() ?? '';
-        final createdAt = _parseDate(row[8]?.value?.toString()) ?? DateTime.now();
+        final weight = double.tryParse(row[4]?.value?.toString() ?? '');
+        final mobile = row[5]?.value?.toString() ?? '';
+        final address = row[6]?.value?.toString() ?? '';
+        final createdAt = _parseDate(row[9]?.value?.toString()) ?? DateTime.now();
 
         patientNameToId[name] = id;
         final nowStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(createdAt);
@@ -94,6 +95,7 @@ class ExcelRestoreService {
           'mobile_number': mobile,
           'address': address,
           'created_at': nowStr,
+          'weight': weight,
         };
         await patientRepo.insert(patientRow);
         totalRestored++;

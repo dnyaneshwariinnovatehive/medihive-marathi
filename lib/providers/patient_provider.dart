@@ -121,6 +121,7 @@ class PatientProvider extends ChangeNotifier {
           lastVisit: (model.lastVisitDate ?? model.createdAt).toString().split(' ')[0],
           dob: model.dob,
           diagnosis: model.lastDiagnosis ?? '',
+          weight: model.weight,
         );
       }).toList();
       _patients.sort((a, b) => b.lastVisit.compareTo(a.lastVisit));
@@ -237,6 +238,7 @@ class PatientProvider extends ChangeNotifier {
           'age': ageFromDob > 0 ? ageFromDob : existing['age'],
           'blood_group': formData.bloodGroup.isNotEmpty ? formData.bloodGroup : existing['blood_group'],
           'address': formData.address.isNotEmpty ? formData.address : existing['address'],
+          'weight': formData.weight != null ? formData.weight : existing['weight'],
         };
         print('PATIENT ADD: updating patient id=${existing['id']} syncId=${formData.patientId}');
         print('PATIENT ADD: name="${updateData['full_name']}" gender="${updateData['gender']}" mobile="${updateData['mobile_number']}"');
@@ -278,6 +280,7 @@ class PatientProvider extends ChangeNotifier {
       'blood_group': formData.bloodGroup.isNotEmpty ? formData.bloodGroup : 'Not Specified',
       'address': formData.address.isEmpty ? 'Not specified' : formData.address,
       'created_at': DateTime.now().toIso8601String(),
+      'weight': formData.weight,
     });
 
     await _addSyncQueueEntry('patient', nextId);
@@ -359,6 +362,7 @@ class PatientProvider extends ChangeNotifier {
       isSynced: false,
       gender: row['gender'] as String? ?? 'Not Specified',
       bloodGroup: row['blood_group'] as String? ?? 'Not Specified',
+      weight: row['weight'] != null ? (row['weight'] as num).toDouble() : null,
     );
   }
 }

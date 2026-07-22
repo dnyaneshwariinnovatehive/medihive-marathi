@@ -510,5 +510,85 @@
   "disconnectFailedMessage": "Failed to disconnect: {error}",
   "@disconnectFailedMessage": {
     "placeholders": {"error": {"type": "String"}}
-  }
+  },
+
+  "chatPromptAddPatient": "How do I add a new patient?",
+  "chatPromptExportData": "Export last month's data",
+  "chatPromptAppointments": "Show me today's appointments",
+  "chatPromptPrescription": "Help with prescription format",
+  "chatResponseAddPatient": "To add a new patient:\n\n1. Tap the \"OPD Registration\" button on the Dashboard.\n2. Fill in the patient details: name, age, gender, phone number, and address.\n3. Tap \"Save\" to register the patient.\n\nThe patient will appear in your patient list immediately.",
+  "chatResponseExport": "To export last month's data:\n\n1. Go to Settings → Backup & Restore.\n2. Tap \"Export to Excel\".\n3. Select the date range for last month.\n4. Choose what to include: Patients, OPD Records, Appointments.\n5. Tap \"Export\" — the file will be saved to your device.\n\nYou can also back up to Google Drive from the same screen.",
+  "chatResponseAppointments": "To view today's appointments:\n\n1. Tap the \"Calendar\" icon on the Dashboard.\n2. Today's date is highlighted — all appointments for today will be listed.\n3. Tap any appointment to view or edit details.\n\nYou can also add new appointments from the Calendar screen.",
+  "chatResponsePrescription": "A prescription in MediHive includes:\n\n• Patient name, age, gender\n• Diagnosis\n• Medicines with dosage & duration\n• Clinical notes\n• Doctor's name, clinic info & license number\n• Consultation & medicine fees\n• Follow-up date (optional)\n\nTo create a prescription: go to Patient Details → tap \"Create Prescription\".\nThe PDF is generated automatically and can be shared via WhatsApp.",
+  "chatOpenAction": "Open →",
+
+  "faqBackupTitle": "How do I backup my data?",
+  "faqBackupAnswer": "Go to Settings > Backup & Cloud Sync and click on \"Generate Backup\" to create a local backup or sync with cloud storage.",
+  "faqExportTitle": "Can I export patient records?",
+  "faqExportAnswer": "Yes, you can export patient records as Excel files from the Backup section. Choose the time period and click Complete Backup.",
+  "faqShareTitle": "How do I share prescriptions via WhatsApp?",
+  "faqShareAnswer": "Open the prescription screen and click the \"Share via WhatsApp\" button to send the prescription directly to the patient.",
+  "faqPasswordTitle": "How to change my password?",
+  "faqPasswordAnswer": "Navigate to Settings > Authentication and click on \"Change Password\" to update your login credentials.",
+  "emailLabel": "Email:",
+  "phoneLabel": "Phone:",
+  "platformMobile": "Mobile (Android/iOS)",
+  "lastUpdatedDate": "May 2026",
+  "backupStoragePath": "Internal Storage/MediHive/backup",
+
+  "createClinicAccount": "Create Clinic Account",
+  "registerClinicSubtitle": "Register your clinic to get started",
+  "clinicNameRequired": "Clinic name required",
+  "phoneOptional": "Phone (optional)",
+  "addressOptional": "Address (optional)",
+  "doctorInformationSection": "Doctor Information",
+  "enterYourName": "Enter your name",
+  "emailOptional": "Email (optional)",
+  "loginCredentialsSection": "Login Credentials",
+  "enterUsernamePlaceholder": "Enter a username",
+  "atLeast3Characters": "At least 3 characters",
+  "enterPasswordPlaceholder": "Enter a password",
+  "atLeast4CharactersLabel": "At least 4 characters",
+  "confirmPasswordLabel": "Confirm Password",
+  "createClinicBtn": "CREATE CLINIC",
+  "alreadyHaveAccountSignIn": "Already have an account? Sign In",
+  "passwordsDoNotMatchExclaim": "Passwords do not match!",
+  "usernameAlreadyExists": "Username already exists. Try another.",
+  "registrationFailed": "Registration failed. Check your connection.",
+
+  "newClinicCreateAccount": "New clinic? Create an account",
+
+  "appointmentReminders": "Appointment Reminders",
+  "appointmentRemindersDesc": "Reminders for upcoming appointments",
+  "appointmentReminderTitle": "Appointment Reminder",
+  "appointmentReminderBody": "You have an appointment with {patientName} in 10 minutes",
+  "@appointmentReminderBody": {
+    "placeholders": {"patientName": {"type": "String"}}
+  },
+  "pushNotificationsChannel": "Push Notifications",
+  "pushNotificationsDesc": "Push notifications from server",
+
+  "backupGenFailed": "Backup generation failed: {error}",
+  "@backupGenFailed": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "googleDriveUsed": "Google Drive used: {usage} of your Drive storage",
+  "@googleDriveUsed": {
+    "placeholders": {"usage": {"type": "String"}}
+  },
+  "restoreInProgress": "Restoring Data",
+  "dailyFrequency": "Daily",
+  "weeklyFrequency": "Weekly",
+  "onEverySave": "On every save",
+  "changeBtn": "Change",
+  "neverLabel": "Never",
+  "unknownDate": "Unknown Date",
+  "shareBackupText": "MediHive Backup - Clinic Data Export",
+  "todayAt": "Today at {time}",
+  "@todayAt": {"placeholders": {"time": {"type": "String"}}},
+  "yesterdayAt": "Yesterday at {time}",
+  "@yesterdayAt": {"placeholders": {"time": {"type": "String"}}},
+  "weight": "Weight",
+  "enterWeight": "Enter weight (kg)",
+  "invalidWeight": "Please enter a valid weight (e.g. 72.5)"
 }

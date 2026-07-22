@@ -12,60 +12,44 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final _scrollCtrl = ScrollController();
   final List<Map<String, String?>> _messages = [];
-  final _prompts = ['How do I add a new patient?', "Export last month's data", "Show me today's appointments", 'Help with prescription format'];
+  List<String> _prompts = [];
+
+  void _initPrompts(AppLocalizations l10n) {
+    if (_prompts.isEmpty) {
+      _prompts = [l10n.chatPromptAddPatient, l10n.chatPromptExportData, l10n.chatPromptAppointments, l10n.chatPromptPrescription];
+    }
+  }
 
   void _send(String text) {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _messages.add({'role': 'user', 'content': text}));
     _scrollDown();
     Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       setState(() => _messages.add({
         'role': 'bot',
-        'content': _getResponse(text),
+        'content': _getResponse(text, l10n),
         'action': _getAction(text),
       }));
       _scrollDown();
     });
   }
 
-  String _getResponse(String query) {
+  String _getResponse(String query, AppLocalizations l10n) {
     final q = query.toLowerCase();
     if (q.contains('add new patient') || q.contains('new patient') || q.contains('register patient')) {
-      return 'To add a new patient:\n\n'
-          '1. Tap the "OPD Registration" button on the Dashboard.\n'
-          '2. Fill in the patient details: name, age, gender, phone number, and address.\n'
-          '3. Tap "Save" to register the patient.\n\n'
-          'The patient will appear in your patient list immediately.';
+      return l10n.chatResponseAddPatient;
     }
     if (q.contains('export') || q.contains('backup') || q.contains('last month')) {
-      return 'To export last month\'s data:\n\n'
-          '1. Go to Settings → Backup & Restore (gear icon on Dashboard).\n'
-          '2. Tap "Export to Excel".\n'
-          '3. Select the date range for last month.\n'
-          '4. Choose what to include: Patients, OPD Records, Appointments.\n'
-          '5. Tap "Export" — the file will be saved to your device.\n\n'
-          'You can also back up to Google Drive from the same screen.';
+      return l10n.chatResponseExport;
     }
     if (q.contains('today') && (q.contains('appointment') || q.contains('schedule'))) {
-      return 'To view today\'s appointments:\n\n'
-          '1. Tap the "Calendar" icon on the Dashboard.\n'
-          '2. Today\'s date is highlighted — all appointments for today will be listed.\n'
-          '3. Tap any appointment to view or edit details.\n\n'
-          'You can also add new appointments from the Calendar screen.';
+      return l10n.chatResponseAppointments;
     }
     if (q.contains('prescription') || q.contains('format') || q.contains('prescription format')) {
-      return 'A prescription in MediHive includes:\n\n'
-          '• Patient name, age, gender\n'
-          '• Diagnosis\n'
-          '• Medicines with dosage & duration\n'
-          '• Clinical notes\n'
-          '• Doctor\'s name, clinic info & license number\n'
-          '• Consultation & medicine fees\n'
-          '• Follow-up date (optional)\n\n'
-          'To create a prescription: go to Patient Details → tap "Create Prescription".\n'
-          'The PDF is generated automatically and can be shared via WhatsApp.';
+      return l10n.chatResponsePrescription;
     }
-    return AppLocalizations.of(context)!.demoAssistantMessage;
+    return l10n.demoAssistantMessage;
   }
 
   String? _getAction(String query) {
@@ -99,6 +83,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    _initPrompts(l10n);
     return Scaffold(backgroundColor: AppTheme.background, body: Column(children: [
       Container(
         decoration: const BoxDecoration(gradient: AppTheme.primaryGradient,
@@ -232,7 +217,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       case 'backup': return l10n.openBackupRestore;
       case 'calendar': return l10n.openCalendar;
       case 'prescription': return l10n.viewPatientList;
-      default: return 'Open →';
+      default: return AppLocalizations.of(context)!.chatOpenAction;
     }
   }
 }

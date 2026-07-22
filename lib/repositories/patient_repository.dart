@@ -46,6 +46,7 @@ class PatientRepository {
       'last_synced_at': row['last_synced_at'],
       'created_at': row['created_at'] ?? now,
       'updated_at': row['updated_at'] ?? row['created_at'] ?? now,
+      'weight': row['weight'],
     });
   }
 

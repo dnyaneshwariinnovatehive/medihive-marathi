@@ -32,6 +32,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   Map<String, dynamic>? _patientRow;
+  late TextEditingController _weightController;
 
   final List<String> _genders = ['Male', 'Female', 'Other'];
   final List<String> _bloodGroups = [
@@ -72,6 +73,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
     _dobController = TextEditingController(text: patient['dob'] as String? ?? '');
     _gender = patient['gender'] as String? ?? 'Male';
     _bloodGroup = patient['blood_group'] as String? ?? 'O+';
+    _weightController = TextEditingController(text: patient['weight']?.toString() ?? '');
     setState(() => _isLoading = false);
   }
 
@@ -82,6 +84,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
     _mobileController.dispose();
     _addressController.dispose();
     _dobController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -103,6 +106,8 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
       final name = _nameController.text.trim();
       final age = int.tryParse(_ageController.text.trim()) ?? (_patientRow?['age'] as int? ?? 0);
 
+      final weight = double.tryParse(_weightController.text.trim());
+
       final updateData = <String, dynamic>{
         'full_name': name,
         'age': age,
@@ -111,6 +116,7 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
         'dob': _dobController.text.trim(),
         'gender': _gender,
         'blood_group': _bloodGroup,
+        'weight': weight,
       };
       print('PATIENT EDIT SAVE: updating with $updateData');
       final affected = await repo.update(sqliteId, updateData);
@@ -214,6 +220,15 @@ class _PatientEditScreenState extends State<PatientEditScreen> {
                             _buildField(l10n.dateOfBirthLabel, _dobController, Icons.calendar_today_outlined),
                             const SizedBox(height: 16),
                             _buildDropdown(l10n.bloodGroup, _bloodGroup, _bloodGroups, (v) => setState(() => _bloodGroup = v!)),
+                            const SizedBox(height: 16),
+                            _buildField(l10n.weight, _weightController, Icons.monitor_weight_outlined, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: (v) {
+                                if (v != null && v.trim().isNotEmpty) {
+                                  if (double.tryParse(v) == null) {
+                                    return l10n.invalidWeight;
+                                  }
+                                }
+                                return null;
+                              }),
                           ],
                         ),
                       ),

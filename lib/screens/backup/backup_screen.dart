@@ -91,7 +91,7 @@ class _BackupScreenState extends State<BackupScreen> {
       });
     } catch (_) {
       setState(() {
-        _driveUsageStr = 'Unknown';
+        _driveUsageStr = AppLocalizations.of(context)?.unknown ?? 'Unknown';
       });
       if (mounted) {
         _showToast(AppLocalizations.of(context)!.failedToFetchDriveUsage, isError: true);
@@ -127,13 +127,13 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   String _formatDateTime(DateTime? dateTime) {
-    if (dateTime == null) return 'Unknown Date';
+    if (dateTime == null) return AppLocalizations.of(context)!.unknownDate;
     final now = DateTime.now();
     final difference = now.difference(dateTime);
     if (difference.inDays == 0) {
-      return 'Today at ${_formatTimeOfDay(TimeOfDay.fromDateTime(dateTime))}';
+      return AppLocalizations.of(context)!.todayAt(_formatTimeOfDay(TimeOfDay.fromDateTime(dateTime)));
     } else if (difference.inDays == 1) {
-      return 'Yesterday at ${_formatTimeOfDay(TimeOfDay.fromDateTime(dateTime))}';
+      return AppLocalizations.of(context)!.yesterdayAt(_formatTimeOfDay(TimeOfDay.fromDateTime(dateTime)));
     }
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
@@ -200,7 +200,7 @@ class _BackupScreenState extends State<BackupScreen> {
 
       await Share.shareXFiles(
         [XFile(tempFile.path)],
-        text: 'MediHive Backup - Shree Clinic Data Export',
+        text: AppLocalizations.of(context)!.shareBackupText,
       );
     } catch (e) {
       _showToast(AppLocalizations.of(context)!.shareFailed(e.toString()), isError: true);
@@ -272,7 +272,7 @@ class _BackupScreenState extends State<BackupScreen> {
         _isRestoring = false;
         _restoreProgressStr = '';
       });
-      _showToast('✗ Restore failed: $e', isError: true);
+      _showToast(AppLocalizations.of(context)!.restoreFailed(e.toString()), isError: true);
     }
   }
 
@@ -314,7 +314,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Google Drive used: $_driveUsageStr of your Drive storage',
+                                    l10n.googleDriveUsed(_driveUsageStr),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
@@ -453,7 +453,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                           }
                                         }
                                       } catch (e) {
-                                        _showToast('✗ Backup generation failed: $e', isError: true);
+                                        _showToast(l10n.backupGenFailed(e.toString()), isError: true);
                                       }
                                     },
                                     child: Container(
@@ -644,8 +644,8 @@ class _BackupScreenState extends State<BackupScreen> {
                                     children: [
                                       Text(l10n.lastSyncLabel, style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
                                       Text(
-                                        settings.lastSyncTime.contains('Never') 
-                                            ? 'Never' 
+                                        settings.lastSyncTime.contains(l10n.neverLabel) 
+                                            ? l10n.neverLabel
                                             : settings.lastSyncTime,
                                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
                                       ),
@@ -673,7 +673,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                           dropdownColor: AppTheme.surface,
                                           style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                                           underline: const SizedBox.shrink(),
-                                          items: ['Daily', 'Weekly', 'On every save'].map((String val) {
+                                          items: [l10n.dailyFrequency, l10n.weeklyFrequency, l10n.onEverySave].map((String val) {
                                             return DropdownMenuItem<String>(
                                               value: val,
                                               child: Text(val),
@@ -719,7 +719,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                         ),
                                         onPressed: () => _selectBackupTime(context, syncMgr),
                                         icon: const Icon(Icons.alarm, size: 16),
-                                        label: const Text('Change', style: TextStyle(fontSize: 12)),
+                                        label: Text(l10n.changeBtn, style: TextStyle(fontSize: 12)),
                                       ),
                                     ],
                                   ),
@@ -777,7 +777,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                     }
                                                   } catch (e) {
                                                     if (context.mounted) {
-                                                      _showToast('Sync failed: $e', isError: true);
+                                                      _showToast(l10n.syncFailedMessage(e.toString()), isError: true);
                                                     }
                                                   }
                                                 },
@@ -808,7 +808,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                                     }
                                                   } catch (e) {
                                                     if (context.mounted) {
-                                                      _showToast('Upload failed: $e', isError: true);
+                                                      _showToast(l10n.uploadFailed(e.toString()), isError: true);
                                                     }
                                                   }
                                                 },
@@ -979,7 +979,7 @@ class _BackupScreenState extends State<BackupScreen> {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 20),
                       Text(
-                        'Restoring Data',
+                        l10n.restoreInProgress,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

@@ -29,6 +29,7 @@ import '../../repositories/patient_repository.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../l10n/app_localizations.dart';
+import '../../utils/medicine_localizer.dart';
 
 class OpdRegistrationScreen extends StatefulWidget {
   final String? editPatientId;
@@ -904,6 +905,22 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 12),
+                    _textField(
+                      l10n.weight,
+                      l10n.enterWeight,
+                      opd.formData.weight?.toString() ?? '',
+                      (v) => opd.updateField('weight', v),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (value) {
+                        if (value != null && value.isNotEmpty) {
+                          if (double.tryParse(value) == null) {
+                            return l10n.invalidWeight;
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1377,13 +1394,13 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                               (med) => ListTile(
                                 dense: true,
                                 title: Text(
-                                  med['name']!,
+                                  localizeMedicineName(med['name']!, Localizations.localeOf(context)),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 subtitle: Text(
-                                  med['type']!,
+                                  localizeMedicineType(med['type']!, Localizations.localeOf(context)),
                                   style: TextStyle(
                                     color: AppTheme.textSecondary,
                                     fontSize: 12,
@@ -1440,7 +1457,7 @@ class _OpdRegistrationScreenState extends State<OpdRegistrationScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                '${item['name']} ${item['type'] != null && item['type'].toString().isNotEmpty ? '— ${item['type']}' : ''}',
+                                '${localizeMedicineName(item['name'].toString(), Localizations.localeOf(context))} ${item['type'] != null && item['type'].toString().isNotEmpty ? '— ${localizeMedicineType(item['type'].toString(), Localizations.localeOf(context))}' : ''}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,

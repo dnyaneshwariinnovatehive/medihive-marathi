@@ -40,13 +40,16 @@ WHATSAPP_API_BASE = f'https://graph.facebook.com/{WHATSAPP_API_VERSION}'
 # Google Sheet ID (inside "MediHive - Patient Records" folder):
 GOOGLE_SHEET_ID = os.environ.get(
     'GOOGLE_SHEET_ID',
-    '1NECj89gjbga45i5ZlwwHU04l107vmKbQGrEJLPQBmpY'
+    '1Nxj2Z5NE2m1eKxnojEZmpXTbRkvxmzcOKmuSza2a0mA'
 )
 #
 # Google Drive folder ID for OPD images ("MediHive Images"):
 DRIVE_ROOT_FOLDER_ID = os.environ.get(
     'DRIVE_ROOT_FOLDER_ID',
-    '1Ogx1JHYBBSLTx4glL4-yhcGPLOdBN0GI'
+    os.environ.get(
+        'GOOGLE_DRIVE_ROOT_FOLDER_ID',
+        '1Ogx1JHYBBSLTx4glL4-yhcGPLOdBN0GI'
+    )
 )
 # ─────────────────────────────────────────────────────────
 

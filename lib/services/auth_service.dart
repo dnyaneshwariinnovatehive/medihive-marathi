@@ -9,12 +9,14 @@ class AppUser {
   final String name;
   final String email;
   final String? photoUrl;
+  final String clinicId;
 
   AppUser({
     required this.id,
     required this.name,
     required this.email,
     this.photoUrl,
+    this.clinicId = '',
   });
 }
 
@@ -26,10 +28,13 @@ class AuthService {
     try {
       final data = await ApiService.login(username, password);
       final user = data['user'] as Map<String, dynamic>;
+      final clinicId = user['clinic_id']?.toString() ?? '';
+      debugPrint('AuthService.login: clinic_id=$clinicId');
       return AppUser(
         id: user['id']?.toString() ?? '',
         name: user['name']?.toString() ?? 'Doctor',
         email: '${user['username']}@medihive.com',
+        clinicId: clinicId,
       );
     } catch (e) {
       debugPrint('AuthService.login: API failed, falling back to local auth: $e');
@@ -86,20 +91,19 @@ class AuthService {
     required String email,
     String? photoUrl,
   }) async {
-    // Register/login with Flask backend so ApiService has a valid JWT token.
-    // Google already authenticated the user; this gives us a Flask JWT for API calls.
     const flaskPassword = 'medihive-google-user';
+    String clinicId = '';
     try {
       await ApiService.register(email, flaskPassword, name: name);
-    } catch (_) {
-      // User likely already exists — ignore
-    }
+    } catch (_) {}
     try {
-      await ApiService.login(email, flaskPassword);
+      final data = await ApiService.login(email, flaskPassword);
+      final user = data['user'] as Map<String, dynamic>?;
+      clinicId = user?['clinic_id']?.toString() ?? '';
     } catch (e) {
       debugPrint('AuthService: Flask login after Google sign-in failed: $e');
     }
-    return AppUser(id: id, name: name, email: email, photoUrl: photoUrl);
+    return AppUser(id: id, name: name, email: email, photoUrl: photoUrl, clinicId: clinicId);
   }
 
   /// Google Sign In — delegates to GoogleAuthService (single shared instance)

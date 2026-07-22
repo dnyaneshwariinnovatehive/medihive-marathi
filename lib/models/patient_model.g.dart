@@ -28,13 +28,14 @@ class PatientModelAdapter extends TypeAdapter<PatientModel> {
       isSynced: fields[8] as bool,
       gender: fields[9] as String,
       bloodGroup: fields[10] as String,
+      weight: fields[11] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PatientModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class PatientModelAdapter extends TypeAdapter<PatientModel> {
       ..writeByte(9)
       ..write(obj.gender)
       ..writeByte(10)
-      ..write(obj.bloodGroup);
+      ..write(obj.bloodGroup)
+      ..writeByte(11)
+      ..write(obj.weight);
   }
 
   @override
